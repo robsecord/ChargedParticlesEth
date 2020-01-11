@@ -1,0 +1,20 @@
+{
+  "name": "charged-particles",
+  "version": "0.0.1",
+  "keywords": [],
+  "scripts": {
+    "verify": "truffle run verify ChargedParticles --network mainnet"
+  },
+  "dependencies": {
+    "multi-token-standard": "^0.8.9"
+  },
+  "devDependencies": {
+    "dotenv": "^8.0.0",
+    "ethereumjs-wallet": "^0.6.3",
+    "lodash": "^4.17.15",
+    "openzeppelin-solidity": "^2.4.0",
+    "truffle-hdwallet-provider": "^1.0.17",
+    "truffle-plugin-verify": "^0.3.5",
+    "web3": "^1.2.4"
+  }
+}
