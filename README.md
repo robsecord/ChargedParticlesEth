@@ -1,4 +1,5 @@
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with **DAI** and accrue interest via **CHAI** giving the Token a "Charge". Charged Particles can be "discharged" at any time by the owner, collecting the interest from the token. They can also be burned to reclaim the underlying DAI + interest in full, destroying the token.
+Charged Particles, therefore, always have an underlying value in DAI. 
 
 Based on the amount of "charge" a token has, Smart Contracts and/or Dapps can decide how to handle the token - custom mechanics can be designed around the level of "Charge" a token has.
 
