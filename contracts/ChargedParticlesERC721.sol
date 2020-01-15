@@ -423,7 +423,6 @@ contract ChargedParticlesERC721 is ERC721 {
      * @notice Gets the Amount of Base DAI held in the Token (amount token was minted with)
      * @return  The Amount of DAI held in the Token
      */
-    // view current amount of base-Dai held in particle
     function baseParticleMass() public view returns (uint256) {
         return requiredFunding;
     }
@@ -433,7 +432,6 @@ contract ChargedParticlesERC721 is ERC721 {
      * @param _tokenId      The ID of the Token
      * @return  The amount of interest the Token has generated
      */
-    // view current amount of interest earned by a particle
     function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
         require(_exists(_tokenId), "E402");
 
@@ -443,12 +441,11 @@ contract ChargedParticlesERC721 is ERC721 {
     }
 
     /**
-     * @notice Allows the owner of the Token to collect the interest generated form the token
+     * @notice Allows the owner of the Token to collect the interest generated from the token
      *  without removing the underlying DAI that is held in the token
      * @param _tokenId      The ID of the Token
      * @return  The amount of interest released from the token
      */
-    // collect current interest from particle
     function dischargeParticle(uint256 _tokenId) public returns (uint256) {
         require(_isApprovedOrOwner(msg.sender, _tokenId), "E103");
 
@@ -469,7 +466,7 @@ contract ChargedParticlesERC721 is ERC721 {
     /**
      * @notice Mints multiple new Particles
      * @param _to       The owner address to assign the new tokens to
-     * @param _amount   The amounts of tokens to mint
+     * @param _amount   The amount of tokens to mint
      * @param _data     Custom data used for transferring tokens into contracts
      * @return  The IDs of the newly minted tokens
      */
@@ -487,7 +484,7 @@ contract ChargedParticlesERC721 is ERC721 {
             _tokenIds[i] = _tokenId;
             _safeMint(_to, _tokenId, _data);
         }
-        totalMintedTokens = totalMintedTokens + _amount;
+        totalMintedTokens = totalMintedTokens.add(_amount);
 
         if (_totalDai > 0) {
             // Transfer DAI from User to Contract
@@ -540,7 +537,7 @@ contract ChargedParticlesERC721 is ERC721 {
             _burn(msg.sender, _tokenId);
 
             // Payout Dai + Interest
-            _totalChai = _totalChai + chaiBalanceByTokenId[_tokenId];
+            _totalChai = chaiBalanceByTokenId[_tokenId].add(_totalChai);
             chaiBalanceByTokenId[_tokenId] = 0;
         }
         _payoutFundedDai(msg.sender, _totalChai);
@@ -561,9 +558,7 @@ contract ChargedParticlesERC721 is ERC721 {
         chai = IChai(_chaiAddress);
 
         // Setup Chai to Tokenize DAI Interest
-//        chai.approve(_self, uint(-1));
-//        dai.approve(_self, uint(-1));
-//        dai.approve(_chaiAddress, uint(-1));
+        dai.approve(_chaiAddress, uint(-1));
 
         mintFee = _mintFee;
         requiredFunding = _requiredFunding;

@@ -708,7 +708,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
      *          Note: Requires DAI to mint Non-Fungible Tokens
      * @param _to       The owner address to assign the new tokens to
      * @param _types    The Type IDs of the new tokens to mint
-     * @param _amounts  The amounts of tokens to mint (always 1 for Non-Fungibles)
+     * @param _amounts  The amount of tokens to mint (always 1 for Non-Fungibles)
      * @param _data     Custom data used for transferring tokens into contracts
      * @return  The IDs of the newly minted tokens
      */
@@ -826,9 +826,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         chai = IChai(_chaiAddress);
 
         // Setup Chai to Tokenize DAI Interest
-//        chai.approve(_self, uint(-1));
-        dai.approve(_self, uint(-1));
-//        dai.approve(_chaiAddress, uint(-1));
+        dai.approve(_chaiAddress, uint(-1));
 
         createFee = _createFee;
         mintFee = _mintFee;
