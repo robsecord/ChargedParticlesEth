@@ -5,8 +5,9 @@ Based on the amount of "charge" a token has, Smart Contracts and/or Dapps can de
 
 Imagine an NFT that represents a Sword - the power of that sword could be dependant on the amount of "Charge" the token has. Or perhaps certain items can only be used once they reach a certain level of charge.
 
-Other possibilities include battling over the "charge" of a particle - the winner earns the interest from their competitor's particles.
+Other possibilities include battling over the "charge" of a particle - the winner earns the interest from their competitor's particles.  (Still trying to work this part out, ideas are welcome!)
 
 
 Charged Particles come in 2 flavours: **ERC-721** & **ERC-1155**
 
+Feel free to fork and/or use in your own projects!  Contributions are welcome!
