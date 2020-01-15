@@ -37,5 +37,5 @@ contract IChai {
     function exit(address src, uint wad) public;
 
     // wad is denominated in dai
-    function draw(address src, uint wad) external;
+    function draw(address src, uint wad) external returns (uint chai);
 }

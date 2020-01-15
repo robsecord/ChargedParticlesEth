@@ -19,7 +19,7 @@ module.exports = {
             skipDryRun    : true                                // Skip dry run before migrations? (default: false for public nets)
         },
         kovan: {
-            provider      : new HDWalletProvider(wallets.kovan.mnemonic, infura.endpoint, wallets.kovan.accountIndex), //, 1, true, "m/44'/1'/0'/0/"),
+            provider      : new HDWalletProvider(wallets.kovan.mnemonic, infura.endpoint.kovan, wallets.kovan.accountIndex), //, 1, true, "m/44'/1'/0'/0/"),
             network_id    : '42',                               // Kovan Testnet
             gas           : networkOptions.kovan.gas,           // https://kovan.etherscan.io/blocks
             gasPrice      : networkOptions.kovan.gasPrice,      // https://kovan.etherscan.io/gastracker
@@ -28,7 +28,7 @@ module.exports = {
             skipDryRun    : true                                // Skip dry run before migrations? (default: false for public nets)
         },
         mainnet: {
-            provider      : new HDWalletProvider(wallets.mainnet.mnemonic, infura.endpoint, wallets.mainnet.accountIndex), //, 1, true, "m/44'/1'/0'/0/"),
+            provider      : new HDWalletProvider(wallets.mainnet.mnemonic, infura.endpoint.mainnet, wallets.mainnet.accountIndex), //, 1, true, "m/44'/1'/0'/0/"),
             network_id    : '1',                                // Mainnet
             gas           : networkOptions.mainnet.gas,         // https://etherscan.io/blocks
             gasPrice      : networkOptions.mainnet.gasPrice,    // https://etherscan.io/gastracker

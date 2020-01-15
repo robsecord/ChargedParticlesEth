@@ -1,10 +1,5 @@
 // chai.sol -- a dai savings token
-// Copyright (C) 2017, 2018, 2019, 2020 dbrock, rain, mrchico, lucasvo, livnev
-
-// Updated by @robsecord;
-// added function to read interest by wad rather than entire user balance
-// - function dai(uint chai) external returns (uint wad)
-// removed permit since this Chai will be controlled via the ChargedParticles contract
+// Copyright (C) 2017, 2018, 2019 dbrock, rain, mrchico, lucasvo, livnev
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -18,6 +13,14 @@
 //
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+
+// Updated by @robsecord;
+//   added function to read interest by wad rather than entire user balance
+//     - function dai(uint chai) external returns (uint wad)
+//   removed permit since this Chai should only be controlled
+//   via the ChargedParticles contract
+
 
 // Resources:
 // ~~~~~~~~~~
@@ -180,9 +183,10 @@ contract Chai {
     }
 
     // wad is denominated in dai
-    function draw(address src, uint wad) external {
+    function draw(address src, uint wad) external returns (uint chai) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         // rounding up ensures usr gets at least wad dai
-        exit(src, rdivup(wad, chi));
+        chai = rdivup(wad, chi);
+        exit(src, chai);
     }
 }

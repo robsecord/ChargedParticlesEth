@@ -9,12 +9,13 @@ const { Lib } = require('./common');
 const {
     daiAddress,
     networkOptions,
-    baseMetadataUri,
+    tokenSetupData,
 } = require('../config');
 const _ = require('lodash');
 
 const Chai = artifacts.require('Chai');
-const ChargedParticles = artifacts.require('ChargedParticles');
+const ChargedParticlesERC721 = artifacts.require('ChargedParticlesERC721');
+const ChargedParticlesERC1155 = artifacts.require('ChargedParticlesERC1155');
 
 
 module.exports = async function(deployer, network, accounts) {
@@ -28,7 +29,7 @@ module.exports = async function(deployer, network, accounts) {
     const owner = accounts[0];
     const options = networkOptions[Lib.network];
     const daiToken = daiAddress[Lib.network];
-    const baseUri = baseMetadataUri[Lib.network];
+    const tokenSetup = tokenSetupData[Lib.network];
 
     const _getTxOptions = (opts = {}) => {
         const gasPrice = options.gasPrice;
@@ -42,8 +43,12 @@ module.exports = async function(deployer, network, accounts) {
     Lib.log({separator: true});
 
     try {
-        const chai = await Chai.deployed();
-        const chargedParticles = await ChargedParticles.deployed();
+        let chai = {address: '0x06af07097c9eeb7fd685c692751d5c66db49c215'};
+        if (Lib.network !== 'local') {
+            chai = await Chai.deployed();
+        }
+        const chargedParticlesERC721 = await ChargedParticlesERC721.deployed();
+        const chargedParticlesERC1155 = await ChargedParticlesERC1155.deployed();
         let receipt;
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -57,21 +62,22 @@ module.exports = async function(deployer, network, accounts) {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Set contract addresses
         Lib.log({spacer: true});
-        Lib.log({msg: '-- Set Dai/Chai Addresses --'});
-        Lib.log({msg: `DAI: ${daiToken}`, indent: 1});
-        Lib.log({msg: `CHAI: ${chai.address}`, indent: 1});
-        receipt = await chargedParticles.setupDai(daiToken, chai.address, _getTxOptions());
+        Lib.log({msg: '-- Setup ChargedParticlesERC721 --'});
+        Lib.log({msg: `Dai: ${daiToken}`, indent: 1});
+        Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
+        Lib.log({msg: `MintFee: ${tokenSetup.mintFee}`, indent: 1});
+        Lib.log({msg: `RequireFunds: ${tokenSetup.requiredFundsErc721}`, indent: 1});
+        receipt = await chargedParticlesERC721.setup(daiToken, chai.address, tokenSetup.mintFee, tokenSetup.requiredFundsErc721,  _getTxOptions());
         Lib.logTxResult(receipt);
 
-        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        // Set Base Metadata URI
-        if (!_.isEmpty(baseUri)) {
-            Lib.log({spacer: true});
-            Lib.log({msg: '-- Set Base Metadata URI --'});
-            Lib.log({msg: `URI: ${baseUri}`, indent: 1});
-            receipt = await chargedParticles.setBaseMetadataURI(baseUri, _getTxOptions());
-            Lib.logTxResult(receipt);
-        }
+        Lib.log({spacer: true});
+        Lib.log({msg: '-- Setup ChargedParticlesERC1155 --'});
+        Lib.log({msg: `Dai: ${daiToken}`, indent: 1});
+        Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
+        Lib.log({msg: `CreateFee: ${tokenSetup.createFee}`, indent: 1});
+        Lib.log({msg: `MintFee: ${tokenSetup.mintFee}`, indent: 1});
+        receipt = await chargedParticlesERC1155.setup(daiToken, chai.address, tokenSetup.createFee, tokenSetup.mintFee, _getTxOptions());
+        Lib.logTxResult(receipt);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Initializations Complete

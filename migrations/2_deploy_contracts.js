@@ -12,7 +12,8 @@ const {
 const _ = require('lodash');
 
 const Chai = artifacts.require('Chai');
-const ChargedParticles = artifacts.require('ChargedParticles');
+const ChargedParticlesERC721 = artifacts.require('ChargedParticlesERC721');
+const ChargedParticlesERC1155 = artifacts.require('ChargedParticlesERC1155');
 
 
 module.exports = async function(deployer, network, accounts) {
@@ -38,6 +39,9 @@ module.exports = async function(deployer, network, accounts) {
     Lib.log({separator: true});
 
     try {
+        let chargedParticlesERC721;
+        let chargedParticlesERC1155;
+        let chai;
         let receipt;
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,10 +55,14 @@ module.exports = async function(deployer, network, accounts) {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Deploy Contracts
         Lib.log({spacer: true});
-        Lib.log({msg: '-- Chai --'});
-        const chai = await deployer.deploy(Chai, _getTxOptions());
-        Lib.log({msg: '-- ChargedParticles --'});
-        const chargedParticles = await deployer.deploy(ChargedParticles, _getTxOptions());
+        if (Lib.network !== 'local') {
+            Lib.log({msg: '-- Chai --'});
+            chai = await deployer.deploy(Chai, _getTxOptions());
+        }
+        Lib.log({msg: '-- ChargedParticlesERC721 --'});
+        chargedParticlesERC721 = await deployer.deploy(ChargedParticlesERC721, _getTxOptions());
+        Lib.log({msg: '-- chargedParticlesERC1155 --'});
+        chargedParticlesERC1155 = await deployer.deploy(ChargedParticlesERC1155, _getTxOptions());
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Deploy Complete
@@ -65,8 +73,11 @@ module.exports = async function(deployer, network, accounts) {
         Lib.log({spacer: true});
 
         Lib.log({msg: 'Contract Addresses:'});
-        Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
-        Lib.log({msg: `ChargedParticles: ${chargedParticles.address}`, indent: 1});
+        if (Lib.network !== 'local') {
+            Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
+        }
+        Lib.log({msg: `ChargedParticlesERC721: ${chargedParticlesERC721.address}`, indent: 1});
+        Lib.log({msg: `ChargedParticlesERC1155: ${chargedParticlesERC1155.address}`, indent: 1});
     }
     catch (err) {
         console.log(err);

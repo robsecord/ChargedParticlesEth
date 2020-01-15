@@ -1,22 +1,37 @@
 
 const config = {
     infura: {
-        endpoint: `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
+        endpoint: {
+            kovan: `https://kovan.infura.io/v3/${process.env.INFURA_API_KEY}`,
+            mainnet: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
+        }
     },
 
     etherscan: {
         apiKey: process.env.ETHERSCAN_API_KEY
     },
 
-    baseMetadataUri: {
-        local   : '',
-        kovan   : '',
-        mainnet : ''
+    tokenSetupData: {
+        local: {
+            requiredFundsErc721: '1000000000000000000',
+            createFee: '35000000000000', // 0.000035 ETH
+            mintFee: '50',
+        },
+        kovan: {
+            requiredFundsErc721: '1000000000000000000',
+            createFee: '35000000000000', // 0.000035 ETH
+            mintFee: '50',
+        },
+        mainnet: {
+            requiredFundsErc721: '1000000000000000000',
+            createFee: '35000000000000', // 0.000035 ETH
+            mintFee: '50',
+        }
     },
 
     daiAddress: {
-        local   : '',
-        kovan   : '0x4f96fe3b7a6cf9725f59d353f723c1bdb64ca6aa',
+        local   : '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa',
+        kovan   : '0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa',
         mainnet : '0x6B175474E89094C44Da98b954EedeAC495271d0F'
     },
 
@@ -45,10 +60,10 @@ const config = {
         },
         kovan: {
             // For contract deployments
-            // gas      : 6500000,             // https://kovan.etherscan.io/blocks
+            gas      : 6000000,             // https://kovan.etherscan.io/blocks
             // For contract interactions
-            gas      : 500000,
-            gasPrice : 11e9                 // https://kovan.etherscan.io/gastracker
+            // gas      : 1000000,
+            gasPrice : 20e9                 // https://kovan.etherscan.io/gastracker
         },
         mainnet: {
             // For contract deployments
