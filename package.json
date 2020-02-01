@@ -1,6 +1,6 @@
 {
   "name": "charged-particles",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "keywords": [],
   "scripts": {
     "verify": "truffle run verify ChargedParticles --network mainnet"

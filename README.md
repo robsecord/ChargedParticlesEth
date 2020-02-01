@@ -11,3 +11,5 @@ Other possibilities include battling over the "charge" of a particle - the winne
 Charged Particles come in 2 flavours: **ERC-721** & **ERC-1155**
 
 Feel free to fork and/or use in your own projects!  Contributions are welcome!
+
+_MIT License_
