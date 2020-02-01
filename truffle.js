@@ -42,7 +42,7 @@ module.exports = {
             version: '0.5.13',
             settings: {
                 optimizer: {
-                    enabled: false,
+                    enabled: true,
                     runs: 200
                 },
                 // evmVersion: 'petersburg' // Important, see https://github.com/trufflesuite/truffle/issues/2416

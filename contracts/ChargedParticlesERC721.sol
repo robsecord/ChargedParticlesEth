@@ -1,5 +1,5 @@
 // ChargedParticlesERC721.sol -- Interest-bearing NFTs based on the DAI Savings Token
-// Copyright (C) 2020 robsecord
+// Copyright (C) 2020 robsecord.eth
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU Affero General Public License as published by
@@ -551,8 +551,6 @@ contract ChargedParticlesERC721 is ERC721 {
      * @dev Setup the DAI/CHAI contracts and configure the contract
      */
     function setup(address _daiAddress, address _chaiAddress, uint256 _mintFee, uint256 _requiredFunding) public onlyOwner {
-        address _self = address(this);
-
         // Set DAI as Funding Token
         dai = IERC20(_daiAddress);
         chai = IChai(_chaiAddress);

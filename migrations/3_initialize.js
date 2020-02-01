@@ -1,6 +1,9 @@
 
 'use strict';
 
+// const Web3 = require('web3');
+// const web3 = new Web3(new Web3.providers.HttpProvider());
+
 // Required by zos-lib when running from truffle
 global.artifacts = artifacts;
 global.web3 = web3;
@@ -74,9 +77,17 @@ module.exports = async function(deployer, network, accounts) {
         Lib.log({msg: '-- Setup ChargedParticlesERC1155 --'});
         Lib.log({msg: `Dai: ${daiToken}`, indent: 1});
         Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
-        Lib.log({msg: `CreateFee: ${tokenSetup.createFee}`, indent: 1});
+        Lib.log({msg: `CreateFeeEth: ${tokenSetup.createFeeEth}`, indent: 1});
+        Lib.log({msg: `CreateFeeIon: ${tokenSetup.createFeeIon}`, indent: 1});
         Lib.log({msg: `MintFee: ${tokenSetup.mintFee}`, indent: 1});
-        receipt = await chargedParticlesERC1155.setup(daiToken, chai.address, tokenSetup.createFee, tokenSetup.mintFee, _getTxOptions());
+        receipt = await chargedParticlesERC1155.setup(daiToken, chai.address, tokenSetup.createFeeEth, tokenSetup.createFeeIon, tokenSetup.mintFee, _getTxOptions());
+        Lib.logTxResult(receipt);
+
+        Lib.log({spacer: true});
+        Lib.log({msg: '-- Mint ION Tokens --'});
+        Lib.log({msg: `URI: ${tokenSetup.ionTokenUrl}`, indent: 1});
+        Lib.log({msg: `Amount: ${tokenSetup.ionTokenSupply}`, indent: 1});
+        receipt = await chargedParticlesERC1155.mintIons(tokenSetup.ionTokenUrl, tokenSetup.ionTokenSupply, _getTxOptions());
         Lib.logTxResult(receipt);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

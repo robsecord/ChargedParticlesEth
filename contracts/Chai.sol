@@ -15,7 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-// Updated by @robsecord;
+// Updated by @robsecord <robsecord.eth>;
 //   added function to read interest by wad rather than entire user balance
 //     - function dai(uint chai) external returns (uint wad)
 //   removed permit since this Chai should only be controlled

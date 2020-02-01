@@ -13,19 +13,28 @@ const config = {
 
     tokenSetupData: {
         local: {
-            requiredFundsErc721: '1000000000000000000',
-            createFee: '35000000000000', // 0.000035 ETH
-            mintFee: '50',
+            requiredFundsErc721 : '1000000000000000000',
+            createFeeEth        : '35000000000000',                 // 0.000035 ETH
+            createFeeIon        : '100000000000000000000',          // 100 ION
+            mintFee             : '50',
+            ionTokenUrl         : 'https://ion.particles.network/token_data/',
+            ionTokenSupply      : '1000000000000000000000000',      // 1 million ION
         },
         kovan: {
-            requiredFundsErc721: '1000000000000000000',
-            createFee: '35000000000000', // 0.000035 ETH
-            mintFee: '50',
+            requiredFundsErc721 : '1000000000000000000',
+            createFeeEth        : '35000000000000',                 // 0.000035 ETH
+            createFeeIon        : '100000000000000000000',          // 100 ION
+            mintFee             : '50',
+            ionTokenUrl         : 'https://ion.particles.network/token_data/',
+            ionTokenSupply      : '1000000000000000000000000',      // 1 million ION
         },
         mainnet: {
-            requiredFundsErc721: '1000000000000000000',
-            createFee: '35000000000000', // 0.000035 ETH
-            mintFee: '50',
+            requiredFundsErc721 : '1000000000000000000',
+            createFeeEth        : '35000000000000',                 // 0.000035 ETH
+            createFeeIon        : '100000000000000000000',          // 100 ION
+            mintFee             : '50',
+            ionTokenUrl         : 'https://ion.particles.network/token_data/',
+            ionTokenSupply      : '1000000000000000000000000',      // 1 million ION
         }
     },
 
