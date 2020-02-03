@@ -36,7 +36,9 @@ Other possibilities include battling over the "charge" of a particle - the winne
 competitor's particles.  (Still trying to work this part out, ideas are welcome!)
 
 #### Token Flavours
-Charged Particles currently come in 2 flavours: **ERC-721** & **ERC-1155**
+Charged Particles currently come in 2 flavours: 
+ - **ERC-721** - based on **openzeppelin-solidity v2.4.0** 
+ - **ERC-1155** - based on **multi-token-standard v0.8.9**
 
 Potential 3rd-flavour being researched: **ERC-998** for composable particles that can wrap existing NFTs, enabling 
 them to generate a charge too! Thanks to James McCall @mccallios for contributing to the idea!
