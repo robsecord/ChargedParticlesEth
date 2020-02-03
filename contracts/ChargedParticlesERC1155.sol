@@ -31,6 +31,8 @@ pragma experimental ABIEncoderV2;
 //  200:        MATH
 //      201         Underflow
 //      202         Overflow
+//      203         Multiplication overflow
+//      204         Division by zero
 //  300:        ERC1155
 //      301         Invalid Recipient
 //      302         Invalid on-received message
@@ -51,7 +53,7 @@ pragma experimental ABIEncoderV2;
 
 /**
  * @title Chai.money interface
- * @dev https://github.com/dapphub/chai
+ * @dev see https://github.com/dapphub/chai
  */
 contract IChai {
     function transfer(address dst, uint wad) external returns (bool);
@@ -79,7 +81,7 @@ contract IChai {
 
 /**
  * @title ERC165
- * @dev https://github.com/ethereum/EIPs/blob/master/EIPS/eip-165.md
+ * @dev see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-165.md
  */
 interface IERC165 {
     function supportsInterface(bytes4 _interfaceId) external view returns (bool);
@@ -118,7 +120,7 @@ interface IERC1155 {
 }
 
 /**
- * @dev ERC-1155 interface for accepting safe transfers.
+ * @dev ERC-1155 token receiver interface for accepting safe transfers.
  */
 interface IERC1155TokenReceiver {
     function onERC1155Received(address _operator, address _from, uint256 _id, uint256 _amount, bytes calldata _data) external returns(bytes4);
@@ -126,33 +128,47 @@ interface IERC1155TokenReceiver {
     function supportsInterface(bytes4 interfaceID) external view returns (bool);
 }
 
-///**
-// * @title SafeMath
-// * @dev Unsigned math operations with safety checks that revert on error
-// */
-//library SafeMath {
-//
-//    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-//        require(b <= a, "E201");
-//        uint256 c = a - b;
-//
-//        return c;
-//    }
-//
-//    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-//        uint256 c = a + b;
-//        require(c >= a, "E202");
-//
-//        return c;
-//    }
-//}
+/**
+ * @title SafeMath
+ * @dev Unsigned math operations with safety checks that revert on error
+ */
+library SafeMath {
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a, "E201");
+        uint256 c = a - b;
+        return c;
+    }
+
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "E202");
+        return c;
+    }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) { return 0; }
+        uint256 c = a * b;
+        require(c / a == b, "E203");
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "E204");
+    }
+
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
+    }
+}
 
 /**
  * @dev Implementation of ERC1155 Multi-Token Standard contract
  * @dev see node_modules/multi-token-standard/contracts/tokens/ERC1155/ERC1155.sol
  */
 contract ERC1155 is IERC165 {
-//    using SafeMath for uint256;
+    using SafeMath for uint256;
 
     uint256 constant internal TYPE_MASK = uint256(uint128(~0)) << 128;
     uint256 constant internal NF_INDEX_MASK = uint128(~0);
@@ -251,10 +267,8 @@ contract ERC1155 is IERC165 {
         // Fungible
         else {
             require(_amount <= balances[_from][_id]);
-            //        balances[_from][_id] = balances[_from][_id].sub(_amount); // Subtract amount
-            //        balances[_to][_id] = balances[_to][_id].add(_amount);     // Add amount
-            balances[_from][_id] = balances[_from][_id] - _amount; // Subtract amount
-            balances[_to][_id] = balances[_to][_id] + _amount;     // Add amount
+            balances[_from][_id] = balances[_from][_id].sub(_amount); // Subtract amount
+            balances[_to][_id] = balances[_to][_id].add(_amount);     // Add amount
         }
 
         // Emit event
@@ -276,10 +290,8 @@ contract ERC1155 is IERC165 {
                 nfOwners[id] = _to;
             } else {
                 require(amount <= balances[_from][id]);
-                //            balances[_from][id] = balances[_from][id].sub(_amount);
-                //            balances[_to][id] = balances[_to][id].add(_amount);
-                balances[_from][id] = balances[_from][id] - amount;
-                balances[_to][id] = balances[_to][id] + amount;
+                balances[_from][id] = balances[_from][id].sub(amount);
+                balances[_to][id] = balances[_to][id].add(amount);
             }
         }
 
@@ -321,7 +333,7 @@ contract ERC1155 is IERC165 {
 
         // Non-fungible
         if (_type & TYPE_NF_BIT == TYPE_NF_BIT) {
-            uint256 index = maxIndex[_type] + 1;
+            uint256 index = maxIndex[_type].add(1);
             maxIndex[_type] = index;
 
             _tokenId  = _type | index;
@@ -332,9 +344,8 @@ contract ERC1155 is IERC165 {
         // Fungible
         else {
             _tokenId = _type;
-            maxIndex[_type] = maxIndex[_type] + _amount;
-            balances[_to][_type] = balances[_to][_type] + _amount;
-            //        balances[_to][_type] = balances[_to][_type].add(_amount);
+            maxIndex[_type] = maxIndex[_type].add(_amount);
+            balances[_to][_type] = balances[_to][_type].add(_amount);
         }
 
         emit TransferSingle(msg.sender, address(0x0), _to, _tokenId, _amount);
@@ -359,7 +370,7 @@ contract ERC1155 is IERC165 {
 
             // Non-fungible
             if (_type & TYPE_NF_BIT == TYPE_NF_BIT) {
-                _index = maxIndex[_type] + 1;
+                _index = maxIndex[_type].add(1);
                 maxIndex[_type] = _index;
 
                 _tokenId  = _type | _index;
@@ -371,9 +382,8 @@ contract ERC1155 is IERC165 {
             // Fungible
             else {
                 _tokenIds[i] = _type;
-                maxIndex[_type] = maxIndex[_type] + _amount;
-                balances[_to][_type] = balances[_to][_type] + _amount;
-                //            balances[_to][_types[i]] = balances[_to][_types[i]].add(_amounts[i]);
+                maxIndex[_type] = maxIndex[_type].add(_amount);
+                balances[_to][_type] = balances[_to][_type].add(_amount);
             }
         }
 
@@ -394,9 +404,8 @@ contract ERC1155 is IERC165 {
         // Fungible
         else {
             require(balanceOf(_from, _tokenId) >= _amount, "E306");
-            maxIndex[_tokenId] = maxIndex[_tokenId] - _amount;
-            balances[_from][_tokenId] = balances[_from][_tokenId] - _amount;
-            //        balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
+            maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
+            balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
         }
 
         emit TransferSingle(msg.sender, _from, address(0x0), _tokenId, _amount);
@@ -422,9 +431,8 @@ contract ERC1155 is IERC165 {
             // Fungible
             else {
                 require(balanceOf(_from, _tokenId) >= _amount, "E306");
-                maxIndex[_tokenId] = maxIndex[_tokenId] - _amount;
-                balances[_from][_tokenId] = balances[_from][_tokenId] - _amount;
-                //            balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
+                maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
+                balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
             }
         }
 
@@ -492,7 +500,7 @@ contract ERC1155 is IERC165 {
  *  -- ERC-1155 Edition
  */
 contract ChargedParticlesERC1155 is ERC1155 {
-    //    using SafeMath for uint256;
+    using SafeMath for uint256;
 
     /***********************************|
     |        Variables and Events       |
@@ -502,19 +510,19 @@ contract ChargedParticlesERC1155 is ERC1155 {
     IChai internal chai;
 
     //       TypeID => Type Creator
-    mapping(uint256 => address) internal registeredTypeCreators;
+    mapping (uint256 => address) internal registeredTypeCreators;
 
     //       TypeID => Required DAI
-    mapping(uint256 => uint256) internal requiredFundingByType;   // Amount of Dai to deposit when minting
+    mapping (uint256 => uint256) internal requiredFundingByType;   // Amount of Dai to deposit when minting
 
     //      TokenID => Balance
-    mapping(uint256 => uint256) internal chaiBalanceByTokenId;    // Amount of Chai minted from Dai deposited
+    mapping (uint256 => uint256) internal chaiBalanceByTokenId;    // Amount of Chai minted from Dai deposited
 
     //      TokenID => Max Supply
-    mapping(uint256 => uint256) internal maxSupplyByType;
+    mapping (uint256 => uint256) internal maxSupplyByType;
 
     //       TypeID => Access Type (1=Public / 2=Private)
-    mapping(uint256 => uint8) internal registeredTypes;
+    mapping (uint256 => uint8) internal registeredTypes;
 
     uint256 internal createFeeEth;
     uint256 internal createFeeIon;
@@ -526,6 +534,8 @@ contract ChargedParticlesERC1155 is ERC1155 {
     uint256 internal ionTokenId;
 
     address private owner; // To be assigned to a DAO
+
+    bytes16 public version = "v0.0.3";
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
@@ -587,7 +597,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         if (registeredTypes[_type] == 1) {
             // Has Max
             if (maxSupplyByType[_type] > 0) {
-                return maxIndex[_type] <= (maxSupplyByType[_type] + _amount);
+                return maxIndex[_type] <= maxSupplyByType[_type].add(_amount);
             }
             // No Max
             return true;
@@ -598,7 +608,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         }
         // Has Max
         if (maxSupplyByType[_type] > 0) {
-            return maxIndex[_type] <= (maxSupplyByType[_type] + _amount);
+            return maxIndex[_type] <= maxSupplyByType[_type].add(_amount);
         }
         // No Max
         return true;
@@ -610,8 +620,8 @@ contract ChargedParticlesERC1155 is ERC1155 {
      * @return  The ETH price to create a type
      */
     function getCreationPrice(bool _isNF) public view returns (uint256 eth, uint256 ion) {
-        eth = _isNF ? (createFeeEth * 2) : createFeeEth;
-        ion = _isNF ? (createFeeIon * 2) : createFeeIon;
+        eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
+        ion = _isNF ? (createFeeIon.mul(2)) : createFeeIon;
     }
 
     /***********************************|
@@ -641,8 +651,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         uint256 currentCharge = chai.dai(chaiBalanceByTokenId[_tokenId]);
         uint256 originalCharge = requiredFundingByType[_type];
         if (originalCharge >= currentCharge) { return 0; }
-        return currentCharge - originalCharge;
-        // return currentCharge.sub(originalCharge);
+        return currentCharge.sub(originalCharge);
     }
 
     /**
@@ -660,7 +669,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         require(_currentChargeInDai > 0, "E403");
 
         uint256 _paidChai = _payoutChargedDai(msg.sender, _currentChargeInDai);
-        chaiBalanceByTokenId[_tokenId] = chaiBalanceByTokenId[_tokenId] - _paidChai;
+        chaiBalanceByTokenId[_tokenId] = chaiBalanceByTokenId[_tokenId].sub(_paidChai);
 
         return _currentChargeInDai;
     }
@@ -687,8 +696,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
         _particleTypeId = _createParticle(msg.sender, _uri, _isNF, _isPrivate, _requiredDai, _maxSupply);
 
         // Refund over-payment
-        uint256 overage = msg.value - ethPrice;
-        // uint256 overage = msg.value.sub(ethPrice);
+        uint256 overage = msg.value.sub(ethPrice);
         if (overage > 0) {
             msg.sender.transfer(overage);
         }
@@ -748,8 +756,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
             uint256 _postBalance = chai.balanceOf(_self);
 
             // Track Chai in each Token
-            chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(_postBalance - _preBalance);
-            // chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(_postBalance.sub(_preBalance));
+            chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(_postBalance.sub(_preBalance));
         }
 
         return _tokenId;
@@ -781,8 +788,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
             _amount = _amounts[i];
             require(canMint(_type, _amount), "E407");
             _requiredDai = requiredFundingByType[_type];
-            _totalDai = _requiredDai + _totalDai;
-            // _totalDai = _requiredDai.add(_totalDai);
+            _totalDai = _requiredDai.add(_totalDai);
         }
 
         // Mint Tokens
@@ -803,8 +809,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
                     chai.join(_self, _requiredDai);
 
                     // Track Chai in each Token
-                    chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(chai.balanceOf(_self) - _balance);
-                    // chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(chai.balanceOf(_self).sub(_balance));
+                    chaiBalanceByTokenId[_tokenId] = _totalChaiForToken(chai.balanceOf(_self).sub(_balance));
                     _balance = chai.balanceOf(_self);
                 }
             }
@@ -852,8 +857,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
             require(registeredTypes[_tokenId & TYPE_MASK] > 0, "E402");
 
             if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-                _totalChai = chaiBalanceByTokenId[_tokenId] + _totalChai;
-                // _totalChai = chaiBalanceByTokenId[_tokenId].add(_totalChai);
+                _totalChai = chaiBalanceByTokenId[_tokenId].add(_totalChai);
                 chaiBalanceByTokenId[_tokenId] = 0;
             }
         }
@@ -1023,10 +1027,8 @@ contract ChargedParticlesERC1155 is ERC1155 {
      */
     function _totalChaiForToken(uint256 _tokenChai) internal returns (uint256) {
         if (mintFee == 0) { return _tokenChai; }
-        uint256 _mintFee = (_tokenChai * mintFee) / 1e4;
-        collectedFees = collectedFees + _mintFee;
-        // collectedFees = collectedFees.add(_mintFee);
-        return _tokenChai - _mintFee;
-        // return _tokenChai.sub(_mintFee);
+        uint256 _mintFee = _tokenChai.mul(mintFee).div(1e4);
+        collectedFees = collectedFees.add(_mintFee);
+        return _tokenChai.sub(_mintFee);
     }
 }

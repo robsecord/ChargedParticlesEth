@@ -31,6 +31,8 @@ pragma experimental ABIEncoderV2;
 //  200:        MATH
 //      201         Underflow
 //      202         Overflow
+//      203         Multiplication overflow
+//      204         Division by zero
 //  300:        ERC721
 //      301         Invalid Recipient
 //      302         Invalid on-received message
@@ -46,7 +48,7 @@ pragma experimental ABIEncoderV2;
 
 /**
  * @title Chai.money interface
- * @dev https://github.com/dapphub/chai
+ * @dev see https://github.com/dapphub/chai
  */
 contract IChai {
     function transfer(address dst, uint wad) external returns (bool);
@@ -74,7 +76,7 @@ contract IChai {
 
 /**
  * @title ERC165
- * @dev https://github.com/ethereum/EIPs/blob/master/EIPS/eip-165.md
+ * @dev see https://github.com/ethereum/EIPs/blob/master/EIPS/eip-165.md
  */
 interface IERC165 {
     function supportsInterface(bytes4 _interfaceId) external view returns (bool);
@@ -115,9 +117,7 @@ contract IERC721 {
 }
 
 /**
- * @title ERC721 token receiver interface
- * @dev Interface for any contract that wants to support safeTransfers
- * from ERC721 asset contracts.
+ * @dev ERC721 token receiver interface for accepting safe transfers.
  */
 contract IERC721Receiver {
     function onERC721Received(address operator, address from, uint256 tokenId, bytes memory data) public returns (bytes4);
@@ -128,23 +128,41 @@ contract IERC721Receiver {
  * @dev Unsigned math operations with safety checks that revert on error
  */
 library SafeMath {
-
-    function sub(uint256 a, uint256 b) internal pure returns (uint256 c) {
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
         require(b <= a, "E201");
-        c = a - b;
+        uint256 c = a - b;
+        return c;
     }
 
-    function add(uint256 a, uint256 b) internal pure returns (uint256 c) {
-        c = a + b;
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
         require(c >= a, "E202");
+        return c;
+    }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) { return 0; }
+        uint256 c = a * b;
+        require(c / a == b, "E203");
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "E204");
+    }
+
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
     }
 }
 
 /**
  * @title Counters
  * @author Matt Condon (@shrugs)
- * @dev Provides counters that can only be incremented or decremented by one. This can be used e.g. to track the number
- * of elements in a mapping, issuing ERC721 ids, or counting request ids.
+ * @dev Provides counters that can only be incremented or decremented by one.
+ * This can be used e.g. to track the number of elements in a mapping, issuing ERC721 ids, or counting request ids.
  */
 library Counters {
     using SafeMath for uint256;
@@ -174,7 +192,6 @@ library Counters {
  * @dev see node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721.sol
  */
 contract ERC721 is IERC165, IERC721 {
-    using SafeMath for uint256;
     using Counters for Counters.Counter;
 
     bytes4 constant internal INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
@@ -185,7 +202,7 @@ contract ERC721 is IERC165, IERC721 {
 
     string private _name;
     string private _symbol;
-    mapping(uint256 => string) private _tokenURIs;
+    mapping (uint256 => string) private _tokenURIs;
     mapping (uint256 => address) private _tokenOwner;
     mapping (uint256 => address) private _tokenApprovals;
     mapping (address => Counters.Counter) private _ownedTokensCount;
@@ -383,6 +400,8 @@ contract ChargedParticlesERC721 is ERC721 {
 
     address private owner; // To be assigned to a DAO
 
+    bytes16 public version = "v0.0.3";
+
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /***********************************|
@@ -459,7 +478,7 @@ contract ChargedParticlesERC721 is ERC721 {
         require(_currentChargeInDai > 0, "E403");
 
         uint256 _paidChai = _payoutChargedDai(msg.sender, _currentChargeInDai);
-        chaiBalanceByTokenId[_tokenId] = chaiBalanceByTokenId[_tokenId] - _paidChai;
+        chaiBalanceByTokenId[_tokenId] = chaiBalanceByTokenId[_tokenId].sub(_paidChai);
 
         return _currentChargeInDai;
     }
@@ -486,7 +505,7 @@ contract ChargedParticlesERC721 is ERC721 {
         for (i = 0; i < _amount; ++i) {
             _totalDai = requiredFunding.add(_totalDai);
 
-            _tokenId = (totalMintedTokens + i + 1);
+            _tokenId = (totalMintedTokens.add(i+1));
             _tokenIds[i] = _tokenId;
             _safeMint(_to, _tokenId, _data);
         }
@@ -649,7 +668,7 @@ contract ChargedParticlesERC721 is ERC721 {
      */
     function _totalChaiForToken(uint256 _tokenChai) internal returns (uint256) {
         if (mintFee == 0) { return _tokenChai; }
-        uint256 _mintFee = (_tokenChai * mintFee) / 1e4;
+        uint256 _mintFee = _tokenChai.mul(mintFee).div(1e4);
         collectedFees = collectedFees.add(_mintFee);
         return _tokenChai.sub(_mintFee);
     }
