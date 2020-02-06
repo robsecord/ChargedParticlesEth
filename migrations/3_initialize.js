@@ -17,8 +17,7 @@ const {
 const _ = require('lodash');
 
 const Chai = artifacts.require('Chai');
-const ChargedParticlesERC721 = artifacts.require('ChargedParticlesERC721');
-const ChargedParticlesERC1155 = artifacts.require('ChargedParticlesERC1155');
+const ChargedParticles = artifacts.require('ChargedParticles');
 
 
 module.exports = async function(deployer, network, accounts) {
@@ -50,8 +49,7 @@ module.exports = async function(deployer, network, accounts) {
         if (Lib.network !== 'local') {
             chai = await Chai.deployed();
         }
-        const chargedParticlesERC721 = await ChargedParticlesERC721.deployed();
-        const chargedParticlesERC1155 = await ChargedParticlesERC1155.deployed();
+        const chargedParticles = await ChargedParticles.deployed();
         let receipt;
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -65,29 +63,20 @@ module.exports = async function(deployer, network, accounts) {
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Set contract addresses
         Lib.log({spacer: true});
-        Lib.log({msg: '-- Setup ChargedParticlesERC721 --'});
-        Lib.log({msg: `Dai: ${daiToken}`, indent: 1});
-        Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
-        Lib.log({msg: `MintFee: ${tokenSetup.mintFee}`, indent: 1});
-        Lib.log({msg: `RequireFunds: ${tokenSetup.requiredFundsErc721}`, indent: 1});
-        receipt = await chargedParticlesERC721.setup(daiToken, chai.address, tokenSetup.mintFee, tokenSetup.requiredFundsErc721,  _getTxOptions());
-        Lib.logTxResult(receipt);
-
-        Lib.log({spacer: true});
-        Lib.log({msg: '-- Setup ChargedParticlesERC1155 --'});
+        Lib.log({msg: '-- Setup ChargedParticles --'});
         Lib.log({msg: `Dai: ${daiToken}`, indent: 1});
         Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
         Lib.log({msg: `CreateFeeEth: ${tokenSetup.createFeeEth}`, indent: 1});
         Lib.log({msg: `CreateFeeIon: ${tokenSetup.createFeeIon}`, indent: 1});
         Lib.log({msg: `MintFee: ${tokenSetup.mintFee}`, indent: 1});
-        receipt = await chargedParticlesERC1155.setup(daiToken, chai.address, tokenSetup.createFeeEth, tokenSetup.createFeeIon, tokenSetup.mintFee, _getTxOptions());
+        receipt = await chargedParticles.setup(daiToken, chai.address, tokenSetup.createFeeEth, tokenSetup.createFeeIon, tokenSetup.mintFee, _getTxOptions());
         Lib.logTxResult(receipt);
 
         Lib.log({spacer: true});
         Lib.log({msg: '-- Mint ION Tokens --'});
         Lib.log({msg: `URI: ${tokenSetup.ionTokenUrl}`, indent: 1});
         Lib.log({msg: `Amount: ${tokenSetup.ionTokenSupply}`, indent: 1});
-        receipt = await chargedParticlesERC1155.mintIons(tokenSetup.ionTokenUrl, tokenSetup.ionTokenSupply, _getTxOptions());
+        receipt = await chargedParticles.mintIons(tokenSetup.ionTokenUrl, tokenSetup.ionTokenSupply, _getTxOptions());
         Lib.logTxResult(receipt);
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

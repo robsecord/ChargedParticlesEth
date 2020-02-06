@@ -1,4 +1,4 @@
-// ChargedParticlesERC1155.sol -- Interest-bearing NFTs based on the DAI Savings Token
+// ChargedParticles -- Interest-bearing NFTs based on the DAI Savings Token
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
@@ -14,7 +14,7 @@
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
@@ -23,16 +23,20 @@
 pragma solidity ^0.5.13;
 pragma experimental ABIEncoderV2;
 
+// Reduce deployment gas costs by limiting the size of text used in error messages
 // ERROR CODES:
 //  100:        ADDRESS, OWNER, OPERATOR
 //      101         Invalid Address
 //      102         Sender is not owner
 //      103         Sender is not owner or operator
+//      104         Insufficient balance
+//      105         Unable to send value, recipient may have reverted
 //  200:        MATH
-//      201         Underflow
-//      202         Overflow
+//      201         Addition Overflow
+//      202         Subtraction Overflow
 //      203         Multiplication overflow
 //      204         Division by zero
+//      205         Modulo by zero
 //  300:        ERC1155
 //      301         Invalid Recipient
 //      302         Invalid on-received message
@@ -50,10 +54,88 @@ pragma experimental ABIEncoderV2;
 //      406         Invalid value for "requiredDai" parameter
 //      407         No access to Mint (Private Type)
 //      408         Transfer Failed
+//      409         Particle has insufficient charge
+//      410         Particle must be non-fungible to hold a charge
+
+/**
+ * @title Address
+ * @dev see node_modules/openzeppelin-solidity/contracts/utils/Address.sol
+ */
+library Address {
+    function isContract(address account) internal view returns (bool) {
+        bytes32 codehash;
+        bytes32 accountHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { codehash := extcodehash(account) }
+        return (codehash != 0x0 && codehash != accountHash);
+    }
+
+    function toPayable(address account) internal pure returns (address payable) {
+        return address(uint160(account));
+    }
+
+    function sendValue(address payable recipient, uint256 amount) internal {
+        require(address(this).balance >= amount, "E104");
+        // solhint-disable-next-line avoid-call-value
+        (bool success, ) = recipient.call.value(amount)("");
+        require(success, "E105");
+    }
+}
+
+/**
+ * @title SafeMath
+ * @dev see node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol
+ */
+library SafeMath {
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a, "E201");
+        return c;
+    }
+
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        return sub(a, b, "E202");
+    }
+
+    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b <= a, errorMessage);
+        uint256 c = a - b;
+        return c;
+    }
+
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        if (a == 0) { return 0; }
+        uint256 c = a * b;
+        require(c / a == b, "E203");
+        return c;
+    }
+
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        return div(a, b, "E204");
+    }
+
+    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b > 0, errorMessage);
+        uint256 c = a / b;
+        return c;
+    }
+
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        return mod(a, b, "E205");
+    }
+
+    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
+        require(b != 0, errorMessage);
+        return a % b;
+    }
+}
 
 /**
  * @title Chai.money interface
  * @dev see https://github.com/dapphub/chai
+ * @dev NOTE Updated by @robsecord <robsecord.eth>;
+ *       Added functions to read interest by specific amount rather than entire user balance
+ *       Requires Deploying and Connecting to the accompanying CHAI contract (PCHAI; ParticleChai)
  */
 contract IChai {
     function transfer(address dst, uint wad) external returns (bool);
@@ -63,11 +145,9 @@ contract IChai {
     function approve(address usr, uint wad) external returns (bool);
     function balanceOf(address usr) external returns (uint);
 
-    // Approve by signature
-    function permit(address holder, address spender, uint256 nonce, uint256 expiry, bool allowed, uint8 v, bytes32 r, bytes32 s) external;
-
     function dai(address usr) external returns (uint wad);
-    function dai(uint chai) external returns (uint wad);
+    function dai(uint chai) external returns (uint wad); // Added
+    function chai(uint _dai) external returns (uint pie); // Added
 
     // wad is denominated in dai
     function join(address dst, uint wad) external;
@@ -76,7 +156,7 @@ contract IChai {
     function exit(address src, uint wad) public;
 
     // wad is denominated in dai
-    function draw(address src, uint wad) external returns (uint chai);
+    function draw(address src, uint wad) external returns (uint _chai);
 }
 
 /**
@@ -129,45 +209,11 @@ interface IERC1155TokenReceiver {
 }
 
 /**
- * @title SafeMath
- * @dev Unsigned math operations with safety checks that revert on error
- */
-library SafeMath {
-    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b <= a, "E201");
-        uint256 c = a - b;
-        return c;
-    }
-
-    function add(uint256 a, uint256 b) internal pure returns (uint256) {
-        uint256 c = a + b;
-        require(c >= a, "E202");
-        return c;
-    }
-
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        if (a == 0) { return 0; }
-        uint256 c = a * b;
-        require(c / a == b, "E203");
-        return c;
-    }
-
-    function div(uint256 a, uint256 b) internal pure returns (uint256) {
-        return div(a, b, "E204");
-    }
-
-    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {
-        require(b > 0, errorMessage);
-        uint256 c = a / b;
-        return c;
-    }
-}
-
-/**
  * @dev Implementation of ERC1155 Multi-Token Standard contract
  * @dev see node_modules/multi-token-standard/contracts/tokens/ERC1155/ERC1155.sol
  */
 contract ERC1155 is IERC165 {
+    using Address for address;
     using SafeMath for uint256;
 
     uint256 constant internal TYPE_MASK = uint256(uint128(~0)) << 128;
@@ -300,7 +346,7 @@ contract ERC1155 is IERC165 {
 
     function _callonERC1155Received(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) internal {
         // Check if recipient is contract
-        if (isContract(_to)) {
+        if (_to.isContract()) {
             bytes4 retval = IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _amount, _data);
             require(retval == ERC1155_RECEIVED_VALUE, "E302");
         }
@@ -308,7 +354,7 @@ contract ERC1155 is IERC165 {
 
     function _callonERC1155BatchReceived(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) internal {
         // Pass data if recipient is contract
-        if (isContract(_to)) {
+        if (_to.isContract()) {
             bytes4 retval = IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _amounts, _data);
             require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E302");
         }
@@ -459,12 +505,6 @@ contract ERC1155 is IERC165 {
     //        return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK != 0);
     //    }
 
-    function isContract(address _address) internal view returns (bool) {
-        bytes32 codehash;
-        assembly { codehash := extcodehash(_address) }
-        return (codehash != 0x0 && codehash != ACCOUNT_HASH);
-    }
-
     function _uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
             return "0";
@@ -497,9 +537,8 @@ contract ERC1155 is IERC165 {
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
- *  -- ERC-1155 Edition
  */
-contract ChargedParticlesERC1155 is ERC1155 {
+contract ChargedParticles is ERC1155 {
     using SafeMath for uint256;
 
     /***********************************|
@@ -524,6 +563,9 @@ contract ChargedParticlesERC1155 is ERC1155 {
     //       TypeID => Access Type (1=Public / 2=Private)
     mapping (uint256 => uint8) internal registeredTypes;
 
+    //      Operator =>
+    mapping (address => mapping(address => bool)) internal operators;
+
     uint256 internal createFeeEth;
     uint256 internal createFeeIon;
     uint256 internal mintFee;
@@ -537,6 +579,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
 
     bytes16 public version = "v0.0.3";
 
+    event TransferCharge(address indexed _ownerOrOperator, uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
     /***********************************|
@@ -558,8 +601,8 @@ contract ChargedParticlesERC1155 is ERC1155 {
     constructor() public {
 //         createFeeEth = 35 szabo;     //  ERC20  = 0.000035 ETH  (~ USD $0.005)
 //                                      //  ERC721 = 0.000070 ETH  (~ USD $0.01)
-//         createFeeIon = 100 ether;    //  ERC20  = 100 IONs
-//                                      //  ERC721 = 200 IONs
+//         createFeeIon = 10 ether;     //  ERC20  = 1 ION
+//                                      //  ERC721 = 2 IONs
 //         mintFee = 50;                //  0.5% of Chai from deposited Dai
 
         owner = msg.sender;
@@ -641,7 +684,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
     /**
      * @notice Gets the amount of interest the Token has generated (it's accumulated particle-charge)
      * @param _tokenId      The ID of the Token
-     * @return  The amount of interest the Token has generated
+     * @return  The amount of interest the Token has generated (in Funding Token; DAI)
      */
     function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
         uint256 _type = _tokenId & TYPE_MASK;
@@ -658,7 +701,7 @@ contract ChargedParticlesERC1155 is ERC1155 {
      * @notice Allows the owner of the Token to collect the interest generated form the token
      *  without removing the underlying DAI that is held in the token
      * @param _tokenId      The ID of the Token
-     * @return  The amount of interest released from the token
+     * @return  The amount of interest released from the token (in Funding Token; DAI)
      */
     // collect current interest from particle
     function dischargeParticle(uint256 _tokenId) public returns (uint256) {
@@ -872,6 +915,37 @@ contract ChargedParticlesERC1155 is ERC1155 {
     }
 
     /***********************************|
+    |         Transfer Charge           |
+    |__________________________________*/
+
+    /**
+     * @notice Transfers a tokens full-charge from one particle to another
+     * @param _from         The owner address to transfer the Charge from
+     * @param _fromTokenId  The Token ID to transfer the Charge from
+     * @param _toTokenId    The Token ID to transfer the Charge to
+     */
+    function transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId) public {
+        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
+
+        // Transfer Full Amount of Charge
+        uint256 currentCharge = currentParticleCharge(_fromTokenId); // In Funding Token
+        _transferCharge(_from, _fromTokenId, _toTokenId, currentCharge);
+    }
+
+    /**
+     * @notice Transfers some of a tokens charge from one particle to another
+     * @param _from         The owner address to transfer the Charge from
+     * @param _fromTokenId  The Token ID to transfer the Charge from
+     * @param _toTokenId    The Token ID to transfer the Charge to
+     * @param _amount       The Amount of Charge to be transferred - must be <= particle charge
+     */
+    function transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId, uint256 _amount) public {
+        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
+
+        _transferCharge(_from, _fromTokenId, _toTokenId, _amount);
+    }
+
+    /***********************************|
     |            Only Owner             |
     |__________________________________*/
 
@@ -1011,12 +1085,39 @@ contract ChargedParticlesERC1155 is ERC1155 {
         address _self = address(this);
 
         // Collect Interest
+        //  contract receives DAI,
+        //  function call returns amount of CHAI exchanged
         uint256 _chai = chai.draw(_self, _totalDai);
 
         // Transfer Interest
         uint256 _receivedDai = dai.balanceOf(_self);
         require(dai.transferFrom(_self, _to, _receivedDai), "E408");
         return _chai;
+    }
+
+    /**
+     * @dev Transfers a tokens charge from one particle to another
+     * @param _from         The owner address to transfer the Charge from
+     * @param _fromTokenId  The Token ID to transfer the Charge from
+     * @param _toTokenId    The Token ID to transfer the Charge to
+     * @param _amount       The Amount of Charge to be transferred - must be <= particle charge
+     */
+    function _transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId, uint256 _amount) internal {
+        uint256 currentCharge = currentParticleCharge(_fromTokenId); // In Funding Token
+        require(currentCharge > 0, "E403");
+        require(currentCharge >= _amount, "E409");
+
+        // Verify Tokens are NFTs
+        require(_fromTokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E410");
+        require(_toTokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E410");
+
+        // Move Chai (already held in contract, just need to swap balances)
+        uint256 _chaiAmount = chai.chai(_amount);
+        chaiBalanceByTokenId[_fromTokenId] = chaiBalanceByTokenId[_fromTokenId].sub(_chaiAmount);
+        chaiBalanceByTokenId[_toTokenId] = chaiBalanceByTokenId[_toTokenId].add(_chaiAmount);
+
+        // Emit event
+        emit TransferCharge(_from, _fromTokenId, _toTokenId, _amount);
     }
 
     /**

@@ -16,8 +16,7 @@
 
 
 // Updated by @robsecord <robsecord.eth>;
-//   added function to read interest by wad rather than entire user balance
-//     - function dai(uint chai) external returns (uint wad)
+//   added functions to read interest by specific amount rather than entire user balance
 //   removed permit since this Chai should only be controlled
 //   via the ChargedParticles contract
 
@@ -153,6 +152,12 @@ contract Chai {
         wad = rmul(chi, chai);
     }
 
+    function chai(uint _dai) external returns (uint pie) {
+        uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
+        // rounding up ensures usr gets at least wad dai
+        pie = rdivup(_dai, chi);
+    }
+
     // wad is denominated in dai
     function join(address dst, uint wad) external {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
@@ -183,10 +188,10 @@ contract Chai {
     }
 
     // wad is denominated in dai
-    function draw(address src, uint wad) external returns (uint chai) {
+    function draw(address src, uint wad) external returns (uint _chai) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         // rounding up ensures usr gets at least wad dai
-        chai = rdivup(wad, chi);
-        exit(src, chai);
+        _chai = rdivup(wad, chi);
+        exit(src, _chai);
     }
 }

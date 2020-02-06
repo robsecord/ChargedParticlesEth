@@ -15,8 +15,7 @@ const {
 const _ = require('lodash');
 
 const Chai = artifacts.require('Chai');
-const ChargedParticlesERC721 = artifacts.require('ChargedParticlesERC721');
-const ChargedParticlesERC1155 = artifacts.require('ChargedParticlesERC1155');
+const ChargedParticles = artifacts.require('ChargedParticles');
 
 
 module.exports = async function(deployer, network, accounts) {
@@ -42,8 +41,7 @@ module.exports = async function(deployer, network, accounts) {
     Lib.log({separator: true});
 
     try {
-        let chargedParticlesERC721;
-        let chargedParticlesERC1155;
+        let chargedParticles;
         let chai;
         let receipt;
 
@@ -59,13 +57,11 @@ module.exports = async function(deployer, network, accounts) {
         // Deploy Contracts
         Lib.log({spacer: true});
         if (Lib.network !== 'local') {
-            Lib.log({msg: '-- Chai --'});
+            Lib.log({msg: '-- ParticleChai --'});
             chai = await deployer.deploy(Chai, _getTxOptions());
         }
-        Lib.log({msg: '-- ChargedParticlesERC721 --'});
-        chargedParticlesERC721 = await deployer.deploy(ChargedParticlesERC721, _getTxOptions());
-        Lib.log({msg: '-- chargedParticlesERC1155 --'});
-        chargedParticlesERC1155 = await deployer.deploy(ChargedParticlesERC1155, _getTxOptions());
+        Lib.log({msg: '-- ChargedParticles --'});
+        chargedParticles = await deployer.deploy(ChargedParticles, _getTxOptions());
 
         // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         // Deploy Complete
@@ -77,10 +73,9 @@ module.exports = async function(deployer, network, accounts) {
 
         Lib.log({msg: 'Contract Addresses:'});
         if (Lib.network !== 'local') {
-            Lib.log({msg: `Chai: ${chai.address}`, indent: 1});
+            Lib.log({msg: `ParticleChai: ${chai.address}`, indent: 1});
         }
-        Lib.log({msg: `ChargedParticlesERC721: ${chargedParticlesERC721.address}`, indent: 1});
-        Lib.log({msg: `ChargedParticlesERC1155: ${chargedParticlesERC1155.address}`, indent: 1});
+        Lib.log({msg: `ChargedParticles: ${chargedParticles.address}`, indent: 1});
     }
     catch (err) {
         console.log(err);
