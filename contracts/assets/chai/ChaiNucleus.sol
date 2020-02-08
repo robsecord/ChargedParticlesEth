@@ -1,4 +1,27 @@
-// chai.sol -- a dai savings token
+// ChaiNucleus.sol -- Interest-bearing NFTs
+// MIT License
+// Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+
+// [original] chai.sol -- a dai savings token
 // Copyright (C) 2017, 2018, 2019 dbrock, rain, mrchico, lucasvo, livnev
 
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +38,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-// Updated by @robsecord <robsecord.eth>;
+// Modified for use in Charged Particles by @robsecord <robsecord.eth>;
 //   added functions to read interest by specific amount rather than entire user balance
 //   removed permit since this Chai should only be controlled
 //   via the ChargedParticles contract
@@ -25,14 +48,15 @@
 // ~~~~~~~~~~
 // https://github.com/dapphub/chai/blob/master/src/chai.sol
 // https://github.com/makerdao/developerguides/blob/master/dai/dsr-integration-guide/dsr-integration-guide-01.md#smart-contract-addresses-and-abis
-// https://github.com/mattlockyer/composables-998/blob/master/contracts/ComposableTopDown.sol
-// https://kauri.io/gamifying-crypto-assets-with-the-erc998-composables-token-standard/436178ce670d4a9e9ffbd9cb7a8476fd/a
 //
 // Contract Addresses/ABI:
 //   https://changelog.makerdao.com/releases/mainnet/1.0.0/index.html
 //   https://changelog.makerdao.com/releases/kovan/0.2.17/index.html
 
-pragma solidity 0.5.13;
+
+pragma solidity 0.5.16;
+
+import "../INucleus.sol";
 
 contract VatLike {
     function hope(address) external;
@@ -56,7 +80,7 @@ contract GemLike {
     function approve(address,uint) external returns (bool);
 }
 
-contract Chai {
+contract ChaiNucleus is INucleus {
     // --- Data ---
     // Mainnet:
     // VatLike  public vat = VatLike( 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);         // MCD_VAT
@@ -77,9 +101,7 @@ contract Chai {
     uint8   public constant decimals = 18;
     uint256 public totalSupply;
 
-    mapping (address => uint)                      public balanceOf;
-    mapping (address => mapping (address => uint)) public allowance;
-    mapping (address => uint)                      public nonces;
+    mapping (address => uint) private balanceOf;
 
     event Approval(address indexed src, address indexed guy, uint wad);
     event Transfer(address indexed src, address indexed dst, uint wad);
@@ -115,83 +137,85 @@ contract Chai {
         daiToken.approve(address(daiJoin), uint(-1));
     }
 
-    // --- Token ---
-    function transfer(address dst, uint wad) external returns (bool) {
-        return transferFrom(msg.sender, dst, wad);
-    }
-    // like transferFrom but dai-denominated
-    function move(address src, address dst, uint wad) external returns (bool) {
-        uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        // rounding up ensures dst gets at least wad dai
-        return transferFrom(src, dst, rdivup(wad, chi));
-    }
-    function transferFrom(address src, address dst, uint wad) public returns (bool) {
-        require(balanceOf[src] >= wad, "chai/insufficient-balance");
-        if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
-            require(allowance[src][msg.sender] >= wad, "chai/insufficient-allowance");
-            allowance[src][msg.sender] = sub(allowance[src][msg.sender], wad);
-        }
-        balanceOf[src] = sub(balanceOf[src], wad);
-        balanceOf[dst] = add(balanceOf[dst], wad);
-        emit Transfer(src, dst, wad);
-        return true;
-    }
-    function approve(address usr, uint wad) external returns (bool) {
-        allowance[msg.sender][usr] = wad;
-        emit Approval(msg.sender, usr, wad);
-        return true;
+    /**
+     * @dev Balance in Interest-bearing Token
+     */
+    //    function balanceOf(address _account) external returns (uint);
+    function interestBalance(address _account) external returns (uint) {
+        return balanceOf[_account];
     }
 
-    function dai(address usr) external returns (uint wad) {
+    /**
+     * @dev Balance in Asset Token
+     */
+    //    function dai(address usr) external returns (uint wad);
+    function assetBalance(address _account) external returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        wad = rmul(chi, balanceOf[usr]);
+        return rmul(chi, balanceOf[_account]);
     }
 
-    function dai(uint chai) external returns (uint wad) {
+    /**
+     * @dev Get amount of Asset Token equivalent to Interest Token
+     */
+    //    function dai(uint chai) external returns (uint wad); // Added
+    function toAsset(uint _interestAmount) external returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        wad = rmul(chi, chai);
+        return rmul(chi, _interestAmount);
     }
 
-    function chai(uint _dai) external returns (uint pie) {
+    /**
+     * @dev Get amount of Interest Token equivalent to Asset Token
+     */
+    //    function chai(uint _dai) external returns (uint pie); // Added
+    function toInterest(uint _assetAmount) external returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        // rounding up ensures usr gets at least wad dai
-        pie = rdivup(_dai, chi);
+        // rounding up ensures usr gets at least _assetAmount dai
+        return rdivup(_assetAmount, chi);
     }
 
-    // wad is denominated in dai
-    function join(address dst, uint wad) external {
+    /**
+     * @dev Deposit Asset Token and receive Interest-bearing Token
+     */
+    //    function join(address dst, uint wad) external;
+    function depositAsset(address _account, uint _assetAmount) external {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        uint pie = rdiv(wad, chi);
-        balanceOf[dst] = add(balanceOf[dst], pie);
-        totalSupply    = add(totalSupply, pie);
+        uint pie = rdiv(_assetAmount, chi);
+        balanceOf[_account] = add(balanceOf[_account], pie);
+        totalSupply = add(totalSupply, pie);
 
-        daiToken.transferFrom(msg.sender, address(this), wad);
-        daiJoin.join(address(this), wad);
+        daiToken.transferFrom(msg.sender, address(this), _assetAmount);
+        daiJoin.join(address(this), _assetAmount);
         pot.join(pie);
-        emit Transfer(address(0), dst, pie);
+
+        emit Transfer(address(0), _account, pie);
     }
 
-    // wad is denominated in (1/chi) * dai
-    function exit(address src, uint wad) public {
-        require(balanceOf[src] >= wad, "chai/insufficient-balance");
-        if (src != msg.sender && allowance[src][msg.sender] != uint(-1)) {
-            require(allowance[src][msg.sender] >= wad, "chai/insufficient-allowance");
-            allowance[src][msg.sender] = sub(allowance[src][msg.sender], wad);
-        }
-        balanceOf[src] = sub(balanceOf[src], wad);
-        totalSupply    = sub(totalSupply, wad);
+    /**
+     * @dev Withdraw amount specified in Interest-bearing Token
+     */
+    //    function exit(address src, uint wad) public;
+    function withdrawInterest(address _account, uint _interestAmount) public {
+        require(_account == msg.sender, "pchai/insufficient-allowance");
+        require(balanceOf[_account] >= _interestAmount, "pchai/insufficient-balance");
+
+        balanceOf[_account] = sub(balanceOf[_account], _interestAmount);
+        totalSupply = sub(totalSupply, _interestAmount);
 
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        pot.exit(wad);
-        daiJoin.exit(msg.sender, rmul(chi, wad));
-        emit Transfer(src, address(0), wad);
+        pot.exit(_interestAmount);
+        daiJoin.exit(msg.sender, rmul(chi, _interestAmount));
+        emit Transfer(_account, address(0), _interestAmount);
     }
 
-    // wad is denominated in dai
-    function draw(address src, uint wad) external returns (uint _chai) {
+    /**
+     * @dev Withdraw amount specified in Asset Token
+     */
+    //    function draw(address src, uint wad) external returns (uint _chai);
+    function withdrawAsset(address _account, uint _assetAmount) external returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        // rounding up ensures usr gets at least wad dai
-        _chai = rdivup(wad, chi);
-        exit(src, _chai);
+        // rounding up ensures usr gets at least _assetAmount dai
+        uint _chai = rdivup(_assetAmount, chi);
+        withdrawInterest(_account, _chai);
+        return _chai;
     }
 }

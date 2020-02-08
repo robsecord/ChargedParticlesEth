@@ -54,7 +54,7 @@
 //      409         Particle has insufficient charge
 //      410         Particle must be non-fungible to hold a charge
 
-pragma solidity ^0.5.13;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "../../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
@@ -63,7 +63,7 @@ import "../../../node_modules/openzeppelin-solidity/contracts/introspection/IERC
 import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../../../node_modules/multi-token-standard/contracts/interfaces/IERC1155.sol";
 import "../../../node_modules/multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
-import "../../chai/IChai.sol";
+import "../../assets/chai/IChai.sol";
 
 /**
  * @dev Implementation of ERC1155 Multi-Token Standard contract
@@ -478,7 +478,7 @@ contract ChargedParticlesCHAI is ERC1155 {
     //  This value should be assigned to a Multisig Wallet or a DAO
     address private owner;
 
-    bytes16 public version = "v0.0.3";
+    bytes16 public version = "v0.1.3";
 
     event TransferCharge(address indexed _ownerOrOperator, uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

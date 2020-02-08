@@ -48,14 +48,14 @@
 //      405         Transfer Failed
 //      406         Particle has insufficient charge
 
-pragma solidity ^0.5.13;
+pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
 import "../../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
 import "../../../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721Metadata.sol";
-import "../../chai/IChai.sol";
+import "../../assets/chai/IChai.sol";
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
@@ -104,7 +104,7 @@ contract ChargedParticlesCHAI is ERC721Metadata {
     //  This value should be assigned to a Multisig Wallet or a DAO
     address private owner;
 
-    bytes16 public version = "v0.0.3";
+    bytes16 public version = "v0.1.3";
 
     event TransferCharge(address indexed from, uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _amount);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

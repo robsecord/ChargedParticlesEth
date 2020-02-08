@@ -17,11 +17,11 @@
 pragma solidity ^0.5.13;
 
 /**
- * @title Chai.money interface
+ * @title ParticleChai (variation on Chai.money) interface
  * @dev see https://github.com/dapphub/chai
- * @dev NOTE Updated by @robsecord <robsecord.eth>;
- *       Added functions to read interest by specific amount rather than entire user balance
- *       Requires Deploying and Connecting to the accompanying CHAI contract (PCHAI; ParticleChai)
+ * @dev NOTE Modified variation by @robsecord <robsecord.eth>;
+ *      Added functions to read interest by specific amount rather than entire user balance
+ *      Refactored to match interface for Charged Particles - INucleus
  */
 contract IChai {
     function transfer(address dst, uint wad) external returns (bool);
