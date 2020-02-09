@@ -473,7 +473,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event ParticleTypeCreated(uint256 indexed _particleTypeId, string _uri, bool _isNF, bool _isPrivate, uint256 _assetPairId, uint256 _maxSupply);
+    event ParticleTypeCreated(uint256 indexed _particleTypeId, string _uri, bool _isNF, bool _isPrivate, bytes16 _assetPairId, uint256 _maxSupply);
     event ParticleMinted(uint256 indexed _tokenId, uint256 _amount, string _uri);
     event ParticleBurned(uint256 indexed _tokenId, uint256 _amount);
 
