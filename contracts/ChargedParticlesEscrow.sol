@@ -116,23 +116,22 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //      Contract =>    Asset-Pair-ID => Deposit Fees earned for External Contract
     mapping (address => mapping (bytes16 => uint256)) internal custom_collectedDepositFees;
 
-    // To Mint Tokens of any "Type", there is a Deposit Fee, which is
-    //  a small percentage of the Funding Asset of the token (in this case, DAI) upon Minting.
+    // To "Energize" Particles of any Type, there is a Deposit Fee, which is
+    //  a small percentage of the Interest-bearing Asset of the token immediately after deposit.
     //  A value of "50" here would represent a Fee of 0.5% of the Funding Asset ((50 / 10000) * 100)
     //    This allows a fee as low as 0.01%  (value of "1")
-    //  This means that a newly minted particle would have 99.5% of its "Mass" and 0% of its "Charge".
+    //  This means that a brand new particle would have 99.5% of its "Mass" and 0% of its "Charge".
     //    As the "Charge" increases over time, the particle will fill up the "Mass" to 100% and then
     //    the "Charge" will start building up.  Essentially, only a small portion of the interest
-    //    is used to pay the minting fee.  The particle will be in "cool-down" mode until the "Mass"
+    //    is used to pay the deposit fee.  The particle will be in "cool-down" mode until the "Mass"
     //    of the particle returns to 100% (this should be a relatively short period of time).
-    //    When the particle reaches 100% "Mass" is can be "Melted" (or burned) to reclaim the underlying
-    //    asset (in this case DAI).  Since the "Mass" will be back to 100%, "Melting" will yield at least 100%
+    //    When the particle reaches 100% "Mass" is can be "Released" (or burned) to reclaim the underlying
+    //    asset + interest.  Since the "Mass" will be back to 100%, "Releasing" will yield at least 100%
     //    of the underlying asset back to the owner (plus any interest accrued, the "charge").
-    //  This value is completely optional and can be set to 0 to specify No Fee.
     uint256 public depositFee;
 
     // Contract Version
-    bytes16 public version = "v0.1.3";
+    bytes16 public version;
 
     //
     // Events
@@ -152,11 +151,25 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
+        version = "v0.1.3";
     }
 
     /***********************************|
     |         Particle Physics          |
     |__________________________________*/
+
+    function isAssetPairEnabled(bytes16 _assetPairId) public view returns (bool) {
+        return assetPairEnabled[_assetPairId];
+    }
+
+    function getAssetPairsCount() public view returns (uint) {
+        return assetPairs.length;
+    }
+
+    function getAssetPairByIndex(uint _index) public view returns (bytes16) {
+        require(_index >= 0 && _index < assetPairs.length, "Index out-of-bounds");
+        return assetPairs[_index];
+    }
 
     function getTokenUUID(address _contractAddress, uint256 _tokenId) public pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(_contractAddress, _tokenId)));
@@ -166,7 +179,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @dev Calculates the amount of Fees to be paid for a specific deposit amount
      * @return  The amount of base fees and the amount of creator fees
      */
-    function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) internal view returns (uint256, uint256) {
+    function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256) {
         uint256 _depositFee;
         if (depositFee > 0) {
             _depositFee = _interestTokenAmount.mul(depositFee).div(DEPOSIT_FEE_MODIFIER);
@@ -220,8 +233,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(_is721 || _is1155, "Invalid Token-Type Interface");
 
         // Check Contract Owner to prevent random people from setting Limits
-        address _owner = IOwnable(_contractAddress).owner();
-        require(_owner == msg.sender, "Invalid Contract Owner");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender, "Invalid Contract Owner");
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
@@ -274,8 +287,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
 
         // Validate Contract Owner
-        address _owner = IOwnable(_contractAddress).owner();
-        require(_owner == msg.sender, "Caller is not Contract Owner");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender, "Caller is not Contract Owner");
 
         for (uint i = 0; i < assetPairs.length; i++) {
             bytes16 _assetPairId = assetPairs[i];
@@ -411,8 +424,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
 
         // Validate Token Owner/Operator
-        address _owner = _tokenInterface.ownerOf(_tokenId);
-        require((_owner == msg.sender) || _tokenInterface.isApprovedForAll(_owner, msg.sender), "Unapproved owner or operator");
+        address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
+        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "Unapproved owner or operator");
 
         // Validate Token Burn before Release
         bool hasCustomSettings = custom_registeredContract[_contractAddress];
@@ -445,8 +458,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(assetToBeReleased[_tokenUuid], "Token not prepared for release");
 
         // Validate Token Burn
-        address _owner = _tokenInterface.ownerOf(_tokenId);
-        require(_owner == address(0x0), "Token requires burning before release");
+        address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
+        require(_tokenOwner == address(0x0), "Token requires burning before release");
 
         // Release Particle to Receiver
         return _payoutFull(_receiver, _tokenUuid, _assetPairId);
@@ -552,8 +565,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
 
         // Validate Token Owner/Operator
-        address _owner = _tokenInterface.ownerOf(_tokenId);
-        require((_owner == msg.sender) || _tokenInterface.isApprovedForAll(_owner, msg.sender), "Unapproved owner or operator");
+        address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
+        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "Unapproved owner or operator");
 
         // Validate Discharge Amount
         uint256 _currentCharge = currentParticleCharge(_contractAddress, _tokenId, _assetPairId);
