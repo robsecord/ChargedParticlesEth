@@ -451,6 +451,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     mapping (uint256 => uint256) internal typeCreatorAssetDepositMin;
     mapping (uint256 => uint256) internal typeCreatorAssetDepositMax;
 
+    // Allowed Asset-Pairs
+    mapping (bytes16 => bool) internal assetPairEnabled;
+
     // To Create "Types" (Fungible or Non-Fungible) there is a Fee.
     //  The Fee can be paid in ETH or in IONs.
     //  IONs are a custom ERC20 token minted within this contract.
@@ -868,6 +871,17 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 //    }
 
     /***********************************|
+    |        Type Creator Fees          |
+    |__________________________________*/
+
+    /**
+     * @dev Allows contract owner to withdraw any fees earned
+     */
+//    function withdrawCreatorFees(uint256 _type) public {
+//
+//    }
+
+    /***********************************|
     |            Only Owner             |
     |__________________________________*/
 
@@ -884,21 +898,18 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         escrow = IChargedParticlesEscrow(_escrowAddress);
     }
 
-    /**
-     * @dev Register Contracts for Asset/Interest Pairs
-     */
-//    function registerAssetPair(bytes16 _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
-//        require(address(assetToken[_assetPairId]) == address(0x0), "E411");
-//        require(_assetTokenAddress != address(0x0), "E412");
-//        require(_interestTokenAddress != address(0x0), "E412");
-//
-//        // Register Pair
-//        assetToken[_assetPairId] = IERC20(_assetTokenAddress);
-//        interestToken[_assetPairId] = INucleus(_interestTokenAddress);
-//
-//        // Allow Tokenizing Interest
-//        assetToken[_assetPairId].approve(_interestTokenAddress, uint(-1));
-//    }
+    function registerAssetPair(bytes16 _assetPairId) public onlyOwner {
+        require(escrow.isAssetPairEnabled(_assetPairId), "Asset-Pair not enabled in Escrow");
+
+        // Allow Escrow to Transfer Assets from this Contract
+        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPairId);
+        IERC20(_assetTokenAddress).approve(address(escrow), uint(-1));
+        assetPairEnabled[_assetPairId] = true;
+    }
+
+    function disableAssetPair(bytes16 _assetPairId) public onlyOwner {
+        assetPairEnabled[_assetPairId] = false;
+    }
 
     /**
      * @dev Setup internal ION Token
@@ -982,7 +993,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         require(_creatorFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
         if (_isNF) {
-            require(escrow.isAssetPairEnabled(_assetPairId), "E414");
+            require(assetPairEnabled[_assetPairId], "E414");
             require(_assetMin >= MIN_DEPOSIT_FEE, "E406");
         }
 

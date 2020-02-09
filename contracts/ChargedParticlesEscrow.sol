@@ -171,6 +171,16 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return assetPairs[_index];
     }
 
+    function getAssetTokenAddress(bytes16 _assetPairId) public view returns (address) {
+        require(isAssetPairEnabled(_assetPairId), "Asset-Pair is not enabled");
+        return address(assetToken[_assetPairId]);
+    }
+
+    function getInterestTokenAddress(bytes16 _assetPairId) public view returns (address) {
+        require(isAssetPairEnabled(_assetPairId), "Asset-Pair is not enabled");
+        return address(interestToken[_assetPairId]);
+    }
+
     function getTokenUUID(address _contractAddress, uint256 _tokenId) public pure returns (uint256) {
         return uint256(keccak256(abi.encodePacked(_contractAddress, _tokenId)));
     }
@@ -348,6 +358,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         }
 
         // Collect Asset Token (reverts on fail)
+        //   Has to be msg.sender, otherwise anyone could energize anyone else's particles,
+        //   provided the victim has approved this contract in the past.
+        //   If contracts wish to energize a particle, they must first collect the asset
+        //   from the user, and approve this contract to transfer from the source contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
         // Tokenize Interest

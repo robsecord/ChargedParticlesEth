@@ -31,6 +31,8 @@ contract IChargedParticlesEscrow {
     function isAssetPairEnabled(bytes16 _assetPairId) public pure returns (bool);
     function getAssetPairsCount() public pure returns (uint);
     function getAssetPairByIndex(uint _index) public pure returns (bytes16);
+    function getAssetTokenAddress(bytes16 _assetPairId) public view returns (address);
+    function getInterestTokenAddress(bytes16 _assetPairId) public view returns (address);
 
     function getTokenUUID(address _contractAddress, uint256 _tokenId) public pure returns (uint256);
     function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256);
