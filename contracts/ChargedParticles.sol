@@ -309,7 +309,8 @@ contract ERC1155 is Initializable, IERC165 {
     function _burn(address _from, uint256 _tokenId, uint256 _amount) internal {
         // Non-fungible
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            require(ownerOf(_tokenId) == _from, "E305");
+            address _tokenOwner = ownerOf(_tokenId);
+            require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
             nfOwners[_tokenId] = address(0x0);
             _amount = 1;
         }
@@ -329,6 +330,7 @@ contract ERC1155 is Initializable, IERC165 {
 
         uint256 _amount;
         uint256 _tokenId;
+        address _tokenOwner;
         uint256 _count = _tokenIds.length;
         for (uint256 i = 0; i < _count; i++) {
             _tokenId = _tokenIds[i];
@@ -336,7 +338,8 @@ contract ERC1155 is Initializable, IERC165 {
 
             // Non-fungible
             if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-                require(ownerOf(_tokenId) == _from, "E305");
+                _tokenOwner = ownerOf(_tokenId);
+                require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
                 nfOwners[_tokenId] = address(0x0);
                 _amounts[i] = 1;
             }
@@ -407,6 +410,7 @@ contract ERC1155 is Initializable, IERC165 {
  */
 contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     using SafeMath for uint256;
+    using Address for address payable;
 
     /***********************************|
     |        Variables and Events       |
@@ -414,7 +418,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
     uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 2e3; // 2000   (20%)
-    uint256 constant internal MIN_DEPOSIT_FEE = 1e6;        // 1000000 (0.000000000001 ETH  or  1000000 WEI)
 
     IChargedParticlesEscrow escrow;
 
@@ -441,15 +444,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     //        TypeID => Deposit Fee required by Type Creator
     mapping (uint256 => uint16) internal typeCreatorDepositFee;
 
-    //        TypeID => Deposit Fees earned for Type Creator
-    mapping (uint256 => uint256) internal typeCreatorCollectedFees;
-
     //        TypeID => Specific Asset-Pair to be used for this Type
     mapping (uint256 => bytes16) internal typeCreatorAssetPairId;
-
-    //        TypeID => Allowed Limit of Asset Token [min, max]
-    mapping (uint256 => uint256) internal typeCreatorAssetDepositMin;
-    mapping (uint256 => uint256) internal typeCreatorAssetDepositMax;
 
     // Allowed Asset-Pairs
     mapping (bytes16 => bool) internal assetPairEnabled;
@@ -481,12 +477,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     |__________________________________*/
 
     function initialize(address sender) public initializer {
-//         createFeeEth = 35 szabo;     //  ERC20  = 0.000035 ETH  (~ USD $0.005)
-//                                      //  ERC721 = 0.000070 ETH  (~ USD $0.01)
-//         createFeeIon = 10 ether;     //  ERC20  = 1 ION
-//                                      //  ERC721 = 2 IONs
-//         baseMintFee = 50;            //  0.5% of Interest-bearing Token from deposited Asset token
-
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
         ERC1155.initialize();
@@ -543,22 +533,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         ion = _isNF ? (createFeeIon.mul(2)) : createFeeIon;
     }
 
-    /**
-     * @dev Calculates the amount of Fees to be paid during Mint/Energize
-     * @param _type                 The ID of the token to get totals for
-     * @param _interestTokenAmount  The total amount of Interest-bearing Tokens received upon minting
-     * @return  The amount of base fees and the amount of creator fees
-     */
-    function getDepositFees(uint256 _type, uint256 _interestTokenAmount) public view returns (uint256, uint256) {
-        bytes16 _assetPairId = typeCreatorAssetPairId[_type];
-        (uint256 _depositFee, uint256 _customFee) = escrow.getFeeForDeposit(address(this), _interestTokenAmount, _assetPairId);
-        uint256 _creatorFee;
-        if (typeCreatorDepositFee[_type] > 0) {
-            _creatorFee = _interestTokenAmount.mul(typeCreatorDepositFee[_type]).div(DEPOSIT_FEE_MODIFIER);
-        }
-        return (_depositFee.add(_customFee), _creatorFee);
-    }
-
     /***********************************|
     |         Particle Physics          |
     |__________________________________*/
@@ -584,19 +558,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         return escrow.baseParticleMass(address(this), _tokenId, _assetPairId);
     }
 
-    /**
-     * @notice Allows the owner of the Token to collect the interest generated form the token
-     *  without removing the underlying DAI that is held in the token
-     */
-    function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
-        address _tokenOwner = ownerOf(_tokenId);
-        require((_tokenOwner == msg.sender) || isApprovedForAll(_tokenOwner, msg.sender), "E103");
-
-        uint256 _type = _tokenId & TYPE_MASK;
-        bytes16 _assetPairId = typeCreatorAssetPairId[_type];
-        return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
-    }
-
     /***********************************|
     |   Public Create Particle Types    |
     |__________________________________*/
@@ -611,8 +572,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         bool _isNF,
         bool _isPrivate,
         bytes16 _assetPairId,
-        uint256 _assetMin,
-        uint256 _assetMax,
         uint256 _maxSupply,
         uint16 _creatorFee
     )
@@ -630,8 +589,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
             _isNF,
             _isPrivate,
             _assetPairId,
-            _assetMin,
-            _assetMax,
             _maxSupply,
             _creatorFee
         );
@@ -639,7 +596,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Refund over-payment
         uint256 overage = msg.value.sub(ethPrice);
         if (overage > 0) {
-            msg.sender.transfer(overage);
+            msg.sender.sendValue(overage);
         }
     }
 
@@ -655,8 +612,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         bool _isNF,
         bool _isPrivate,
         bytes16 _assetPairId,
-        uint256 _assetMin,
-        uint256 _assetMax,
         uint256 _maxSupply,
         uint16 _creatorFee
     )
@@ -675,8 +630,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
             _isNF,
             _isPrivate,
             _assetPairId,
-            _assetMin,
-            _assetMax,
             _maxSupply,
             _creatorFee
         );
@@ -688,187 +641,119 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     /**
      * @notice Mints a new Particle of the specified Type (can be Fungible or Non-Fungible)
-     *          Note: Requires DAI to mint Non-Fungible Tokens
-     * @param _to       The owner address to assign the new token to
-     * @param _type     The Type ID of the new token to mint
-     * @param _amount   The amount of tokens to mint (always 1 for Non-Fungibles)
-     * @param _data     Custom data used for transferring tokens into contracts
+     *          Note: Requires Asset-Token to mint Non-Fungible Tokens
+     * @param _to           The owner address to assign the new token to
+     * @param _type         The Type ID of the new token to mint
+     * @param _amount       The amount of tokens to mint (always 1 for Non-Fungibles)
+     * @param _assetAmount  The amount of Asset-Tokens to deposit for non-fungibles
+     * @param _data         Custom data used for transferring tokens into contracts
      * @return  The ID of the newly minted token
      *
      * NOTE: Must approve THIS contract to TRANSFER your DAI on your behalf
      */
-//    function mintParticle(
-//        address _to,
-//        uint256 _type,
-//        uint256 _amount,
-//        uint256 _assetAmount,
-//        bytes memory _data
-//    )
-//        public
-//        returns (uint256)
-//    {
-//        require(canMint(_type, _amount), "E407");
-//        address _self = address(this);
-//
-//        // Mint Token
-//        uint256 _tokenId = _mint(_to, _type, _amount, _data);
-//
-//        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-//            // Transfer DAI from User to Contract
-//            uint256 _requiredAssets = typeAssetLimits[_type];
-//            _collectRequiredDai(msg.sender, _requiredDai);
-//
-//            // Tokenize Interest
-//            uint256 _preBalance = chai.balanceOf(_self);
-//            chai.join(_self, _requiredDai);
-//            uint256 _postBalance = chai.balanceOf(_self);
-//
-//            // Track Mass of each Particle
-//            interestTokenBalance[_tokenId] = _getInitialMass(_tokenId, _postBalance.sub(_preBalance));
-//        }
-//
-//        return _tokenId;
-//    }
+    function mintParticle(
+        address _to,
+        uint256 _type,
+        uint256 _amount,
+        uint256 _assetAmount,
+        bytes memory _data
+    )
+        public
+        returns (uint256)
+    {
+        require(canMint(_type, _amount), "E407");
 
-    /**
-     * @notice Mints multiple new Particles of the specified Types (can be Fungible and/or Non-Fungible)
-     *          Note: Requires DAI to mint Non-Fungible Tokens
-     * @param _to       The owner address to assign the new tokens to
-     * @param _types    The Type IDs of the new tokens to mint
-     * @param _amounts  The amount of tokens to mint (always 1 for Non-Fungibles)
-     * @param _data     Custom data used for transferring tokens into contracts
-     * @return  The IDs of the newly minted tokens
-     *
-     * NOTE: Must approve THIS contract to TRANSFER your DAI on your behalf
-     */
-//    function mintParticles(address _to, uint256[] memory _types, uint256[] memory _amounts, bytes memory _data) public returns (uint256[] memory) {
-//        address _self = address(this);
-//        uint256 i;
-//        uint256 _type;
-//        uint256 _amount;
-//        uint256 _tokenId;
-//        uint256 _totalDai;
-//        uint256 _requiredDai;
-//        uint256 _count = _types.length;
-//
-//        for (i = 0; i < _count; ++i) {
-//            _type = _types[i];
-//            _amount = _amounts[i];
-//            require(canMint(_type, _amount), "E407");
-//            _requiredDai = typeAssetLimits[_type];
-//            _totalDai = _requiredDai.add(_totalDai);
-//        }
-//
-//        // Mint Tokens
-//        uint256[] memory _tokenIds = _mintBatch(_to, _types, _amounts, _data);
-//
-//        if (_totalDai > 0) {
-//            // Transfer DAI from User to Contract
-//            _collectRequiredDai(msg.sender, _totalDai);
-//
-//            uint256 _balance = chai.balanceOf(_self);
-//            for (i = 0; i < _count; ++i) {
-//                _tokenId = _tokenIds[i];
-//                _type = _tokenId & TYPE_MASK;
-//                _requiredDai = typeAssetLimits[_type];
-//
-//                if (_requiredDai > 0) {
-//                    // Tokenize Interest
-//                    chai.join(_self, _requiredDai);
-//
-//                    // Track Mass of each Particle
-//                    interestTokenBalance[_tokenId] = _getInitialMass(_tokenId, chai.balanceOf(_self).sub(_balance));
-//                    _balance = chai.balanceOf(_self);
-//                }
-//            }
-//        }
-//        return _tokenIds;
-//    }
+        // Mint Token
+        uint256 _tokenId = _mint(_to, _type, _amount, _data);
+
+        // Energize NFT Particles
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            energizeParticle(_tokenId, _assetAmount);
+        }
+
+        return _tokenId;
+    }
 
     /***********************************|
     |    Public Burn (ERC20 & ERC721)   |
     |__________________________________*/
 
     /**
-     * @notice Destroys a Particle and releases the underlying DAI + Interest (Mass + Charge)
+     * @notice Destroys a Particle and releases the underlying Asset + Interest (Mass + Charge)
      * @param _tokenId  The ID of the token to burn
      * @param _amount   The amount of tokens to burn (always 1 for Non-Fungibles)
      */
-//    function burnParticle(uint256 _tokenId, uint256 _amount) public {
-//        // Verify Token
-//        uint256 _type = _tokenId & TYPE_MASK;
-//        require(registeredTypes[_type] > 0, "E402");
-//
-//        // Burn Token
-//        _burn(msg.sender, _tokenId, _amount);
-//
-//        // Payout Dai + Interest
-//        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-//            uint256 _tokenChai = interestTokenBalance[_tokenId];
-//            interestTokenBalance[_tokenId] = 0;
-//            _payoutFundedDai(msg.sender, _tokenChai);
-//        }
-//    }
+    function burnParticle(uint256 _tokenId, uint256 _amount) public {
+        address _self = address(this);
+        address _tokenOwner;
+        bytes16 _assetPairId;
 
-    /**
-     * @notice Destroys multiple Particles and releases the underlying DAI + Interest (Mass + Charge)
-     * @param _tokenIds     The IDs of the tokens to burn
-     * @param _amounts      The amounts of the tokens to burn (always 1 for Non-Fungibles)
-     */
-//    function burnParticles(uint256[] memory _tokenIds, uint256[] memory _amounts) public {
-//        // Verify Token
-//        uint256 _tokenId;
-//        uint256 _totalChai;
-//        uint256 _count = _tokenIds.length;
-//        for (uint256 i = 0; i < _count; ++i) {
-//            _tokenId = _tokenIds[i];
-//            require(registeredTypes[_tokenId & TYPE_MASK] > 0, "E402");
-//
-//            if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-//                _totalChai = interestTokenBalance[_tokenId].add(_totalChai);
-//                interestTokenBalance[_tokenId] = 0;
-//            }
-//        }
-//
-//        // Burn Tokens
-//        _burnBatch(msg.sender, _tokenIds, _amounts);
-//
-//        // Payout Dai + Interest
-//        if (_totalChai > 0) {
-//            _payoutFundedDai(msg.sender, _totalChai);
-//        }
-//    }
+        // Verify Token
+        uint256 _type = _tokenId & TYPE_MASK;
+        require(registeredTypes[_type] > 0, "E402");
+
+        // NFTs Only
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            // Prepare Particle Release
+            _tokenOwner = ownerOf(_tokenId);
+            _assetPairId = typeCreatorAssetPairId[_type];
+            escrow.releaseParticle(_tokenOwner, _self, _tokenId, _assetPairId);
+        }
+
+        // Burn Token
+        _burn(msg.sender, _tokenId, _amount);
+
+        // NFTs Only
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            // Release Particle (Payout Asset + Interest)
+            escrow.finalizeRelease(_tokenOwner, _self, _tokenId, _assetPairId);
+        }
+    }
 
     /***********************************|
-    |         Transfer Charge           |
+    |        Energize Particle          |
     |__________________________________*/
 
     /**
-     * @notice Transfers a tokens full-charge from one particle to another
-     * @param _from         The owner address to transfer the Charge from
-     * @param _fromTokenId  The Token ID to transfer the Charge from
-     * @param _toTokenId    The Token ID to transfer the Charge to
+     * @notice Allows the owner/operator of the Particle to add additional Asset Tokens
      */
-//    function transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId) public {
-//        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
-//
-//        // Transfer Full Amount of Charge
-//        uint256 currentCharge = currentParticleCharge(_fromTokenId); // In Funding Token
-//        _transferCharge(_from, _fromTokenId, _toTokenId, currentCharge);
-//    }
+    function energizeParticle(uint256 _tokenId, uint256 _assetAmount) public returns (uint256) {
+        uint256 _type = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeCreatorAssetPairId[_type];
+        address _reserveAddress = typeCreator[_type];
+        uint256 _reserveFee = typeCreatorDepositFee[_type];
+
+        // Transfer Asset Token from User to Contract
+        _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
+
+        // Energize Particle
+        return escrow.energizeParticle(address(this), _tokenId, _assetPairId, _assetAmount, _reserveAddress, _reserveFee);
+    }
+
+    /***********************************|
+    |        Discharge Particle         |
+    |__________________________________*/
 
     /**
-     * @notice Transfers some of a tokens charge from one particle to another
-     * @param _from         The owner address to transfer the Charge from
-     * @param _fromTokenId  The Token ID to transfer the Charge from
-     * @param _toTokenId    The Token ID to transfer the Charge to
-     * @param _amount       The Amount of Charge to be transferred - must be <= particle charge
+     * @notice Allows the owner/operator of the Particle to collect/transfer the interest generated
+     *  from the token without removing the underlying Asset that is held in the token
      */
-//    function transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId, uint256 _amount) public {
-//        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
-//
-//        _transferCharge(_from, _fromTokenId, _toTokenId, _amount);
-//    }
+    function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
+        uint256 _type = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeCreatorAssetPairId[_type];
+        return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
+    }
+
+    /**
+     * @notice Allows the owner/operator of the Particle to collect/transfer a specific amount of
+     *  the interest generated from the token without removing the underlying Asset that is held in the token
+     */
+    function dischargeParticle(address _receiver, uint256 _tokenId, uint256 _assetAmount) public returns (uint256, uint256) {
+        uint256 _type = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeCreatorAssetPairId[_type];
+        return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId, _assetAmount);
+    }
+
 
     /***********************************|
     |        Type Creator Fees          |
@@ -877,9 +762,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     /**
      * @dev Allows contract owner to withdraw any fees earned
      */
-//    function withdrawCreatorFees(uint256 _type) public {
-//
-//    }
+    function withdrawCreatorFees() public {
+        escrow.withdrawReserveFees(msg.sender);
+    }
 
     /***********************************|
     |            Only Owner             |
@@ -895,7 +780,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     function registerEscrow(address _escrowAddress) public onlyOwner {
         require(_escrowAddress != address(0x0), "E412");
+
+        // Register Escrow with this contract
         escrow = IChargedParticlesEscrow(_escrowAddress);
+
+        // Register this contract with the Escrow and set Rules
+        address _self = address(this);
+        escrow.registerParticleType(_self);
+        escrow.registerParticleSettingReleaseBurn(_self, true);
     }
 
     function registerAssetPair(bytes16 _assetPairId) public onlyOwner {
@@ -925,8 +817,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
             false,          // is Non-fungible?
             true,           // is Private?
             "",             // Asset-Pair-ID
-            0,              // Min Asset Amount
-            0,              // Max Asset Amount
             _amount,        // Max Supply
             0               // Creator Deposit Fee
         );
@@ -941,19 +831,15 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     }
 
     /**
-     * @dev Allows contract owner to withdraw any fees earned
+     * @dev Allows contract owner to withdraw any ETH fees earned
+     *      Interest-token Fees are collected in Escrow, withdraw from there
      */
     function withdrawFees() public onlyOwner {
-//        uint256 _balance = address(this).balance;
-//        if (_balance > 0) {
-//            msg.sender.transfer(_balance);
-//        }
-//        if (collectedMintFees > 0) {
-//            _payoutFundedDai(msg.sender, collectedMintFees);
-//            collectedMintFees = 0;
-//        }
+        uint256 _balance = address(this).balance;
+        if (_balance > 0) {
+            msg.sender.sendValue(_balance);
+        }
     }
-
 
     /***********************************|
     |         Private Functions         |
@@ -966,12 +852,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      * @param _isNF             True if the Type is a Non-Fungible (only Non-Fungible Tokens can hold Asset Tokens and generate Interest)
      * @param _isPrivate        True if the Type is Private and can only be minted by the creator; otherwise anyone can mint
      * @param _assetPairId      The ID of the Asset-Pair that the Particle will use for the Underlying Assets
-     * @param _assetMin         The Min amount of Asset Tokens (in WEI) that a Particle is allowed to hold (the Particle Mass)
-     * @param _assetMax         The Max amount of Asset Tokens (in WEI) that a Particle is allowed to hold (the Particle Mass)
-     *                          Min must be greater than 1000000 (in WEI)
-     *                          Max of 0 = no maximum
-     *                          Min == Max = Fixed, Required # of Asset Tokens to mint
-     *                          NOTE: This will be ignored for Fungible Tokens (ERC20), [0,0]
      * @param _maxSupply        The Max Supply of Tokens that can be minted
      *                          Provide a value of 0 for no limit
      * @param _creatorFee       The Fee that is collected for each Particle and paid to the Particle Type Creator
@@ -985,16 +865,15 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         bool _isNF,
         bool _isPrivate,
         bytes16 _assetPairId,
-        uint256 _assetMin,
-        uint256 _assetMax,
         uint256 _maxSupply,
         uint16 _creatorFee
-    ) internal returns (uint256 _particleTypeId) {
-
+    )
+        internal
+        returns (uint256 _particleTypeId)
+    {
         require(_creatorFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
         if (_isNF) {
             require(assetPairEnabled[_assetPairId], "E414");
-            require(_assetMin >= MIN_DEPOSIT_FEE, "E406");
         }
 
         // Create Type
@@ -1012,10 +891,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Max Supply of Token; 0 = No Max
         typeCreatorSupply[_particleTypeId] = _maxSupply;
 
-        // Min/Max Funding for NFTs
-        typeCreatorAssetDepositMin[_particleTypeId] = _isNF ? _assetMin : 0;
-        typeCreatorAssetDepositMax[_particleTypeId] = _isNF ? _assetMax : 0;
-
         // The Deposit Fee for Creators
         typeCreatorDepositFee[_particleTypeId] = _creatorFee;
     }
@@ -1031,75 +906,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     }
 
     /**
-     * @dev Collects the Required DAI from the users wallet during Minting
-     * @param _from         The owner address to collect the DAI from
-     * @param _requiredDai  The amount of DAI to collect from the user
+     * @dev Collects the Required Asset Token from the users wallet
      */
-//    function _collectRequiredDai(address _from, uint256 _requiredDai) internal {
-//        // Transfer DAI from User to Contract
-//        uint256 _userDaiBalance = dai.balanceOf(_from);
-//        require(_requiredDai <= _userDaiBalance, "E405");
-//        require(dai.transferFrom(_from, address(this), _requiredDai), "E408");
-//    }
+    function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
+        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPairId);
+        IERC20 _assetToken = IERC20(_assetTokenAddress);
 
-    /**
-     * @dev Pays out a specified amount of CHAI
-     * @param _to           The owner address to pay out to
-     * @param _totalChai    The total amount of CHAI to pay out
-     */
-//    function _payoutFundedDai(address _to, uint256 _totalChai) internal {
-//        address _self = address(this);
-//
-//        // Exit Chai and collect Dai + Interest
-//        chai.exit(_self, _totalChai);
-//
-//        // Transfer Dai + Interest
-//        uint256 _receivedDai = dai.balanceOf(_self);
-//        require(dai.transferFrom(_self, _to, _receivedDai), "E408");
-//    }
-
-    /**
-     * @dev Pays out a specified amount of DAI
-     * @param _to           The owner address to pay out to
-     * @param _totalDai     The total amount of DAI to pay out
-     */
-//    function _payoutCharge(address _to, uint256 _totalDai) internal returns (uint256) {
-//        address _self = address(this);
-//
-//        // Collect Interest
-//        //  contract receives DAI,
-//        //  function call returns amount of CHAI exchanged
-//        uint256 _chai = 0; // chai.draw(_self, _totalDai);
-//
-//        // Transfer Interest
-////        uint256 _receivedDai = dai.balanceOf(_self);
-////        require(dai.transferFrom(_self, _to, _receivedDai), "E408");
-//        return _chai;
-//    }
-
-    /**
-     * @dev Transfers a tokens charge from one particle to another
-     * @param _from         The owner address to transfer the Charge from
-     * @param _fromTokenId  The Token ID to transfer the Charge from
-     * @param _toTokenId    The Token ID to transfer the Charge to
-     * @param _amount       The Amount of Charge to be transferred - must be <= particle charge
-     */
-//    function _transferCharge(address _from, uint256 _fromTokenId, uint256 _toTokenId, uint256 _amount) internal {
-//        uint256 currentCharge = currentParticleCharge(_fromTokenId); // In Funding Token
-//        require(currentCharge > 0, "E403");
-//        require(currentCharge >= _amount, "E409");
-//
-//        // Verify Tokens are NFTs
-//        require(_fromTokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E410");
-//        require(_toTokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E410");
-//
-//        // Move Chai (already held in contract, just need to swap balances)
-//        uint256 _chaiAmount = chai.chai(_amount);
-//        interestTokenBalance[_fromTokenId] = interestTokenBalance[_fromTokenId].sub(_chaiAmount);
-//        interestTokenBalance[_toTokenId] = interestTokenBalance[_toTokenId].add(_chaiAmount);
-//
-//        // Emit event
-//        emit TransferCharge(_from, _fromTokenId, _toTokenId, _amount);
-//    }
-
+        uint256 _userAssetBalance = _assetToken.balanceOf(_from);
+        require(_assetAmount <= _userAssetBalance, "Insufficient Asset Token funds");
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "Failed to transfer Asset Token"); // Be sure to Approve this Contract to transfer your Asset Token
+    }
 }

@@ -35,7 +35,10 @@ contract IChargedParticlesEscrow {
     function getInterestTokenAddress(bytes16 _assetPairId) public view returns (address);
 
     function getTokenUUID(address _contractAddress, uint256 _tokenId) public pure returns (uint256);
+    function getAssetMinDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256);
+    function getAssetMaxDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256);
     function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256);
+
     function baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public view returns (uint256);
     function currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public returns (uint256);
 
@@ -52,12 +55,13 @@ contract IChargedParticlesEscrow {
     function registerParticleSettingMaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public;
 
     function withdrawCustomFees(address _contractAddress, address _receiver) public;
+    function withdrawReserveFees(address _reserveAddress) public;
 
     /***********************************|
     |          Particle Charge          |
     |__________________________________*/
 
-    function energizeParticle(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256);
+    function energizeParticle(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount, address _reserveAddress, uint256 _reserveFee) external returns (uint256);
 
     function dischargeParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external returns (uint256, uint256);
     function dischargeParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256, uint256);

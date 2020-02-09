@@ -48,6 +48,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
     uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 5e3; // 5000   (50%)
+    uint256 constant internal MIN_DEPOSIT_FEE = 1e6;        // 1000000 (0.000000000001 ETH  or  1000000 WEI)
 
     uint256 constant internal TYPE_NF_BIT = 1 << 255; // ERC1155 Common Non-fungible Token Bit
 
@@ -77,7 +78,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //      Contract =>    Asset-Pair-ID => Deposit Fees earned for Contract Owner
     mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositFee;
 
-    //      Contract => Allowed Limit of Asset Token [min, max]
+    //      Contract =>    Asset-Pair-ID => Allowed Limit of Asset Token [min, max]
     mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositMin;
     mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositMax;
 
@@ -106,8 +107,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     mapping (uint256 => mapping (bytes16 => uint256)) internal interestTokenBalance;     // Current Balance in Interest Token
     mapping (uint256 => mapping (bytes16 => uint256)) internal assetTokenDeposited;      // Original Amount Deposited in Asset Token
 
-    //     TokenUUID =>    Asset-Pair-ID => To Be Released?
-    mapping (uint256 => bool) internal assetToBeReleased;
+    //     TokenUUID => Token Release Operator
+    mapping (uint256 => address) internal assetToBeReleased;
 
     // Asset-Pair-ID => Deposit Fees earned by Contract
     // (collected in Interest-bearing Token, paid out in Asset Token)
@@ -115,6 +116,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     //      Contract =>    Asset-Pair-ID => Deposit Fees earned for External Contract
     mapping (address => mapping (bytes16 => uint256)) internal custom_collectedDepositFees;
+
+    //  Type Creator =>    Asset-Pair-ID => Deposit Fees earned for External Particle Type Creator
+    mapping (address => mapping (bytes16 => uint256)) internal reserve_collectedDepositFees;
 
     // To "Energize" Particles of any Type, there is a Deposit Fee, which is
     //  a small percentage of the Interest-bearing Asset of the token immediately after deposit.
@@ -185,11 +189,28 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return uint256(keccak256(abi.encodePacked(_contractAddress, _tokenId)));
     }
 
+    function getAssetMinDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256) {
+        return custom_assetDepositMin[_contractAddress][_assetPairId];
+    }
+
+    function getAssetMaxDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256) {
+        return custom_assetDepositMax[_contractAddress][_assetPairId];
+    }
+
     /**
      * @dev Calculates the amount of Fees to be paid for a specific deposit amount
      * @return  The amount of base fees and the amount of creator fees
      */
-    function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256) {
+    function getFeeForDeposit(
+        address _contractAddress,
+        uint256 _interestTokenAmount,
+        bytes16 _assetPairId,
+        uint256 _reserveFee
+    )
+        public
+        view
+        returns (uint256, uint256, uint256)
+    {
         uint256 _depositFee;
         if (depositFee > 0) {
             _depositFee = _interestTokenAmount.mul(depositFee).div(DEPOSIT_FEE_MODIFIER);
@@ -200,7 +221,13 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         if (_customFeeSetting > 0) {
             _customFee = _interestTokenAmount.mul(_customFeeSetting).div(DEPOSIT_FEE_MODIFIER);
         }
-        return (_depositFee, _customFee);
+
+        uint256 _creatorReserveFee;
+        if (_reserveFee > 0) {
+            _creatorReserveFee = _interestTokenAmount.mul(_reserveFee).div(DEPOSIT_FEE_MODIFIER);
+        }
+
+        return (_depositFee, _customFee, _creatorReserveFee);
     }
 
     /**
@@ -279,6 +306,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function registerParticleSettingMinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
         require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "Minimum deposit is not high enough");
 
         custom_assetDepositMin[_contractAddress][_assetPairId] = _minDeposit;
     }
@@ -309,6 +337,19 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Allows Particle Type Creators to withdraw any Fees earned
+     */
+    function withdrawReserveFees(address _reserveAddress) public nonReentrant {
+        for (uint i = 0; i < assetPairs.length; i++) {
+            bytes16 _assetPairId = assetPairs[i];
+            uint256 _interestAmount = reserve_collectedDepositFees[_reserveAddress][_assetPairId];
+            if (_interestAmount > 0) {
+                _withdrawFees(_reserveAddress, _assetPairId, _interestAmount);
+            }
+        }
+    }
+
     /***********************************|
     |        Energize Particles         |
     |__________________________________*/
@@ -326,7 +367,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         address _contractAddress,
         uint256 _tokenId,
         bytes16 _assetPairId,
-        uint256 _assetAmount
+        uint256 _assetAmount,
+        address _reserveAddress,
+        uint256 _reserveFee
     )
         external
         nonReentrant
@@ -339,6 +382,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         uint256 _existingBalance = assetTokenDeposited[_tokenUuid][_assetPairId];
         uint256 _newBalance = _assetAmount.add(_existingBalance);
+
+        // Validate Minimum-Required Balance
+        require(_newBalance >= MIN_DEPOSIT_FEE, "Token Balance is lower than required limit");
 
         // Validate Custom Settings?
         bool hasCustomSettings = custom_registeredContract[_contractAddress];
@@ -365,7 +411,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
         // Tokenize Interest
-        uint256 _interestAmount = _tokenizeInterest(_contractAddress, _assetPairId, _assetAmount);
+        uint256 _interestAmount = _tokenizeInterest(_contractAddress, _assetPairId, _assetAmount, _reserveAddress, _reserveFee);
 
         // Track Asset Token Balance
         assetTokenDeposited[_tokenUuid][_assetPairId] = _assetAmount.add(assetTokenDeposited[_tokenUuid][_assetPairId]);
@@ -446,7 +492,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         if (hasCustomSettings) {
             // Does Release Require Token Burn first?
             if (custom_releaseRequiresBurn[_contractAddress]) {
-                assetToBeReleased[_tokenUuid] = true;
+                assetToBeReleased[_tokenUuid] = msg.sender;
                 return 0; // Need to call "finalizeRelease" next, in order to prove token-burn
             }
         }
@@ -462,20 +508,24 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         bytes16 _assetPairId
     )
         external
-        nonReentrant
         returns (uint256)
     {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
+        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
+        address releaser = assetToBeReleased[_tokenUuid];
 
         // Validate Prepared Release
-        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
-        require(assetToBeReleased[_tokenUuid], "Token not prepared for release");
+        require(releaser != address(0x0), "Token not prepared for release");
+
+        // Validate Release Operator
+        require(releaser == msg.sender, "Unapproved releaser");
 
         // Validate Token Burn
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
         require(_tokenOwner == address(0x0), "Token requires burning before release");
 
         // Release Particle to Receiver
+        assetToBeReleased[_tokenUuid] = address(0x0);
         return _payoutFull(_receiver, _tokenUuid, _assetPairId);
     }
 
@@ -544,26 +594,47 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @dev Calculates the amount of Interest-bearing Tokens are held within a Particle after Fees
      * @return  The actual amount of Interest-bearing Tokens used to fund the Particle minus fees
      */
-    function _getMassByDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _interestTokenAmount) internal returns (uint256) {
+    function _getMassByDeposit(
+        address _contractAddress,
+        bytes16 _assetPairId,
+        uint256 _interestTokenAmount,
+        address _reserveAddress,
+        uint256 _reserveFee
+    )
+        internal
+        returns (uint256)
+    {
         // Internal Fees
-        (uint256 _depositFee, uint256 _customFee) = getFeeForDeposit(_contractAddress, _interestTokenAmount, _assetPairId);
+        (uint256 _depositFee, uint256 _customFee, uint256 _creatorReserveFee) = getFeeForDeposit(_contractAddress, _interestTokenAmount, _assetPairId, _reserveFee);
         collectedFees[_assetPairId] = _depositFee.add(collectedFees[_assetPairId]);
 
         // Custom Fees for External Contract
         custom_collectedDepositFees[_contractAddress][_assetPairId] = _customFee.add(custom_collectedDepositFees[_contractAddress][_assetPairId]);
 
+        // Reserve Fees for Particle Creators
+        reserve_collectedDepositFees[_reserveAddress][_assetPairId] = _creatorReserveFee.add(reserve_collectedDepositFees[_reserveAddress][_assetPairId]);
+
         // Total Deposit
-        return _interestTokenAmount.sub(_depositFee).sub(_customFee);
+        return _interestTokenAmount.sub(_depositFee).sub(_customFee).sub(_creatorReserveFee);
     }
 
 
-    function _tokenizeInterest(address _contractAddress, bytes16 _assetPairId, uint256 _assetAmount) internal returns (uint256) {
+    function _tokenizeInterest(
+        address _contractAddress,
+        bytes16 _assetPairId,
+        uint256 _assetAmount,
+        address _reserveAddress,
+        uint256 _reserveFee
+    )
+        internal
+        returns (uint256)
+    {
         address _self = address(this);
         INucleus _interestToken = interestToken[_assetPairId];
         uint256 _preBalance = _interestToken.interestBalance(_self);
         _interestToken.depositAsset(_self, _assetAmount);
         uint256 _postBalance = _interestToken.interestBalance(_self);
-        return _getMassByDeposit(_contractAddress, _assetPairId, _postBalance.sub(_preBalance));
+        return _getMassByDeposit(_contractAddress, _assetPairId, _postBalance.sub(_preBalance), _reserveAddress, _reserveFee);
     }
 
     function _discharge(
