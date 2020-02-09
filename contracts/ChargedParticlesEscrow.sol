@@ -156,7 +156,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.1.3";
+        version = "v0.1.4";
     }
 
     /***********************************|

@@ -485,7 +485,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
         ERC1155.initialize();
-        version = "v0.1.3";
+        version = "v0.1.4";
     }
 
     /***********************************|
