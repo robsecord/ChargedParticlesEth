@@ -51,11 +51,11 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721Metadata.sol";
-import "../../assets/chai/IChai.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/token/ERC721/ERC721Metadata.sol";
+import "../assets/chai/IChai.sol";
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs

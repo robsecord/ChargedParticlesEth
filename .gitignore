@@ -13,5 +13,8 @@ resources.txt
 .env
 .versionFilesList.json
 build/
-.openzeppelin/.session
 notes.txt
+
+# OpenZeppelin
+.openzeppelin/dev-*.json
+.openzeppelin/.session

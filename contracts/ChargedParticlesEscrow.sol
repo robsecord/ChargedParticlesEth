@@ -141,12 +141,13 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     // Events
     //
 
-    // TODO:
-
-//    event DepositAsset();
-//    event WithdrawAsset();
-//    event TransferCharge(address indexed _ownerOrOperator, uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _amount, bytes16 _assetPairId);
-
+    event RegisterParticleContract(address indexed _contractAddress);
+    event CustomFeesWithdrawn(address indexed _contractAddress);
+    event ReserveFeesWithdrawn(address indexed _reserveAddress);
+    event EnergizedParticle(address indexed _contractAddress, uint256 indexed _tokenId, bytes16 _assetPairId, uint256 _interestAmount);
+    event DischargedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
+    event ReleasedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
+    event ContractFeesWithdrawn();
 
     /***********************************|
     |          Initialization           |
@@ -275,6 +276,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
+
+        emit RegisterParticleContract(_contractAddress);
     }
 
     function registerParticleSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public {
@@ -335,6 +338,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
                 _withdrawFees(_receiver, _assetPairId, _interestAmount);
             }
         }
+
+        emit CustomFeesWithdrawn(_contractAddress);
     }
 
     /**
@@ -348,6 +353,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
                 _withdrawFees(_reserveAddress, _assetPairId, _interestAmount);
             }
         }
+
+        emit ReserveFeesWithdrawn(_reserveAddress);
     }
 
     /***********************************|
@@ -419,6 +426,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         // Track Interest-bearing Token Balance (Mass of each Particle)
         interestTokenBalance[_tokenUuid][_assetPairId] = _interestAmount.add(interestTokenBalance[_tokenUuid][_assetPairId]);
 
+        emit EnergizedParticle(_contractAddress, _tokenId, _assetPairId, _interestAmount);
+
         // Return amount of Interest-bearing Token stored
         return _interestAmount;
     }
@@ -481,7 +490,6 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         returns (uint256)
     {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
-        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
@@ -492,13 +500,14 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         if (hasCustomSettings) {
             // Does Release Require Token Burn first?
             if (custom_releaseRequiresBurn[_contractAddress]) {
+                uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
                 assetToBeReleased[_tokenUuid] = msg.sender;
                 return 0; // Need to call "finalizeRelease" next, in order to prove token-burn
             }
         }
 
         // Release Particle to Receiver
-        return _payoutFull(_receiver, _tokenUuid, _assetPairId);
+        return _payoutFull(_contractAddress, _tokenId, _receiver, _assetPairId);
     }
 
     function finalizeRelease(
@@ -526,7 +535,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Release Particle to Receiver
         assetToBeReleased[_tokenUuid] = address(0x0);
-        return _payoutFull(_receiver, _tokenUuid, _assetPairId);
+        return _payoutFull(_contractAddress, _tokenId, _receiver, _assetPairId);
     }
 
 
@@ -575,6 +584,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
                 _withdrawFees(_receiver, _assetPairId, _interestAmount);
             }
         }
+
+        emit ContractFeesWithdrawn();
     }
 
     /***********************************|
@@ -664,6 +675,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         interestTokenBalance[_tokenUuid][_assetPairId] = interestTokenBalance[_tokenUuid][_assetPairId].sub(_interestAmount);
 
+        emit DischargedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount);
+
         // AmountReceived, Remaining charge
         return (_receivedAmount, _currentCharge.sub(_receivedAmount));
     }
@@ -691,8 +704,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return (_interestAmount, _receivedAmount);
     }
 
-    function _payoutFull(address _receiver, uint256 _tokenUuid, bytes16 _assetPairId) internal returns (uint256) {
+    function _payoutFull(address _contractAddress, uint256 _tokenId, address _receiver, bytes16 _assetPairId) internal returns (uint256) {
         address _self = address(this);
+        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         IERC20 _assetToken = assetToken[_assetPairId];
         INucleus _interestToken = interestToken[_assetPairId];
 
@@ -710,6 +724,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Reset Interest-bearing Token Balance (Mass of each Particle)
         interestTokenBalance[_tokenUuid][_assetPairId] = 0;
+
+        emit ReleasedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount);
         return _receivedAmount;
     }
 

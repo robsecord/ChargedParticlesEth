@@ -105,8 +105,7 @@ contract ERC1155 is Initializable, IERC165 {
     }
 
     function uri(uint256 _tokenId) public view returns (string memory) {
-        uint256 _type = _tokenId & TYPE_MASK;
-        return string(abi.encodePacked(tokenUri[_type], _uint2str(_tokenId), ".json"));
+        return tokenUri[_tokenId];
     }
 
     function supportsInterface(bytes4 _interfaceID) external view returns (bool) {
@@ -241,7 +240,7 @@ contract ERC1155 is Initializable, IERC165 {
         emit URI(_uri, _type);
     }
 
-    function _mint(address _to, uint256 _type, uint256 _amount, bytes memory _data) internal returns (uint256) {
+    function _mint(address _to, uint256 _type, uint256 _amount, string memory _URI, bytes memory _data) internal returns (uint256) {
         uint256 _tokenId;
 
         // Non-fungible
@@ -251,6 +250,7 @@ contract ERC1155 is Initializable, IERC165 {
 
             _tokenId  = _type | index;
             nfOwners[_tokenId] = _to;
+            tokenUri[_tokenId] = _URI;
             _amount = 1;
         }
 
@@ -267,7 +267,7 @@ contract ERC1155 is Initializable, IERC165 {
         return _tokenId;
     }
 
-    function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, bytes memory _data) internal returns (uint256[] memory) {
+    function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, string[] memory _URIs, bytes memory _data) internal returns (uint256[] memory) {
         require(_types.length == _amounts.length, "E303");
         uint256 _type;
         uint256 _amount;
@@ -289,6 +289,7 @@ contract ERC1155 is Initializable, IERC165 {
                 _tokenId  = _type | _index;
                 nfOwners[_tokenId] = _to;
                 _tokenIds[i] = _tokenId;
+                tokenUri[_tokenId] = _URIs[i];
                 _amounts[i] = 1;
             }
 
@@ -312,6 +313,7 @@ contract ERC1155 is Initializable, IERC165 {
             address _tokenOwner = ownerOf(_tokenId);
             require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
             nfOwners[_tokenId] = address(0x0);
+            tokenUri[_tokenId] = "";
             _amount = 1;
         }
 
@@ -341,6 +343,7 @@ contract ERC1155 is Initializable, IERC165 {
                 _tokenOwner = ownerOf(_tokenId);
                 require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
                 nfOwners[_tokenId] = address(0x0);
+                tokenUri[_tokenId] = "";
                 _amounts[i] = 1;
             }
 
@@ -470,7 +473,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event TransferCharge(address indexed _ownerOrOperator, uint256 indexed _fromTokenId, uint256 indexed _toTokenId, uint256 _amount, bytes16 _assetPairId);
+    event ParticleTypeCreated(uint256 indexed _particleTypeId, string _uri, bool _isNF, bool _isPrivate, uint256 _assetPairId, uint256 _maxSupply);
+    event ParticleMinted(uint256 indexed _tokenId, uint256 _amount, string _uri);
+    event ParticleBurned(uint256 indexed _tokenId, uint256 _amount);
 
     /***********************************|
     |          Initialization           |
@@ -656,6 +661,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         uint256 _type,
         uint256 _amount,
         uint256 _assetAmount,
+        string memory _uri,
         bytes memory _data
     )
         public
@@ -664,7 +670,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         require(canMint(_type, _amount), "E407");
 
         // Mint Token
-        uint256 _tokenId = _mint(_to, _type, _amount, _data);
+        uint256 _tokenId = _mint(_to, _type, _amount, _uri, _data);
+        emit ParticleMinted(_tokenId, _amount, _uri);
 
         // Energize NFT Particles
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
@@ -708,6 +715,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
             // Release Particle (Payout Asset + Interest)
             escrow.finalizeRelease(_tokenOwner, _self, _tokenId, _assetPairId);
         }
+
+        emit ParticleBurned(_tokenId, _amount);
     }
 
     /***********************************|
@@ -822,7 +831,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         );
 
         // Mint ION Tokens to Contract Owner
-        _mint(contractOwner, ionTokenId, _amount, "");
+        _mint(contractOwner, ionTokenId, _amount, "", "");
 
         // Remove owner of ION token to prevent further minting
         typeCreator[ionTokenId] = address(0x0);
@@ -893,6 +902,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         // The Deposit Fee for Creators
         typeCreatorDepositFee[_particleTypeId] = _creatorFee;
+
+        emit ParticleTypeCreated(_particleTypeId, _uri, _isNF, _isPrivate, _assetPairId, _maxSupply);
     }
 
     /**

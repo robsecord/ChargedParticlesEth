@@ -57,13 +57,13 @@
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/introspection/IERC165.sol";
-import "../../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
-import "../../../node_modules/multi-token-standard/contracts/interfaces/IERC1155.sol";
-import "../../../node_modules/multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
-import "../../assets/chai/IChai.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/utils/Address.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/introspection/IERC165.sol";
+import "../../node_modules/openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "../../node_modules/multi-token-standard/contracts/interfaces/IERC1155.sol";
+import "../../node_modules/multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
+import "../assets/chai/IChai.sol";
 
 /**
  * @dev Implementation of ERC1155 Multi-Token Standard contract

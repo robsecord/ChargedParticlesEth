@@ -82,17 +82,10 @@ contract GemLike {
 
 contract ChaiNucleus is INucleus {
     // --- Data ---
-    // Mainnet:
-    // VatLike  public vat = VatLike( 0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);         // MCD_VAT
-    // PotLike  public pot = PotLike( 0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7);         // MCD_POT
-    // JoinLike public daiJoin = JoinLike( 0x9759A6Ac90977b93B58547b4A71c78317f391A28);    // MCD_JOIN_DAI
-    // GemLike  public daiToken = GemLike( 0x6B175474E89094C44Da98b954EedeAC495271d0F);    // MCD_DAI
-
-    // Kovan:
-    VatLike  public vat = VatLike( 0xbA987bDB501d131f766fEe8180Da5d81b34b69d9);         // MCD_VAT
-    PotLike  public pot = PotLike( 0xEA190DBDC7adF265260ec4dA6e9675Fd4f5A78bb);         // MCD_POT
-    JoinLike public daiJoin = JoinLike( 0x5AA71a3ae1C0bd6ac27A1f28e1415fFFB6F15B8c);    // MCD_JOIN_DAI
-    GemLike  public daiToken = GemLike( 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);    // MCD_DAI
+    VatLike  public vat;
+    PotLike  public pot;
+    JoinLike public daiJoin;
+    GemLike  public daiToken;
 
     // --- ERC20 Data ---
     string  public constant name     = "ParticleChai";
@@ -130,11 +123,29 @@ contract ChaiNucleus is INucleus {
         z = add(mul(x, RAY), sub(y, 1)) / y;
     }
 
-    constructor() public {
+    function initialize() public {
         vat.hope(address(daiJoin));
         vat.hope(address(pot));
 
         daiToken.approve(address(daiJoin), uint(-1));
+    }
+
+    function initKovan() public {
+        vat = VatLike(0xbA987bDB501d131f766fEe8180Da5d81b34b69d9);         // MCD_VAT
+        pot = PotLike(0xEA190DBDC7adF265260ec4dA6e9675Fd4f5A78bb);         // MCD_POT
+        daiJoin = JoinLike(0x5AA71a3ae1C0bd6ac27A1f28e1415fFFB6F15B8c);    // MCD_JOIN_DAI
+        daiToken = GemLike(0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);    // MCD_DAI
+
+        initialize();
+    }
+
+    function initMainnet() public {
+        vat = VatLike(0x35D1b3F3D7966A1DFe207aa4514C12a259A0492B);         // MCD_VAT
+        pot = PotLike(0x197E90f9FAD81970bA7976f33CbD77088E5D7cf7);         // MCD_POT
+        daiJoin = JoinLike(0x9759A6Ac90977b93B58547b4A71c78317f391A28);    // MCD_JOIN_DAI
+        daiToken = GemLike(0x6B175474E89094C44Da98b954EedeAC495271d0F);    // MCD_DAI
+
+        initialize();
     }
 
     /**
