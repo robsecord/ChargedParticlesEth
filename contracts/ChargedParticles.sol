@@ -560,7 +560,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E402");
 
         bytes16 _assetPairId = typeCreatorAssetPairId[_type];
-        return escrow.baseParticleMass(address(this), _tokenId, _assetPairId);
+        return escrow.currentParticleCharge(address(this), _tokenId, _assetPairId);
     }
 
     /***********************************|
