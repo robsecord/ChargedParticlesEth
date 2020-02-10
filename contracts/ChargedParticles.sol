@@ -554,7 +554,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     /**
      * @notice Gets the amount of Charge the Particle has generated (it's accumulated interest)
      */
-    function currentParticleCharge(uint256 _tokenId) public view returns (uint256) {
+    function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
         uint256 _type = _tokenId & TYPE_MASK;
         require(registeredTypes[_type] > 0, "E402");
         require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E402");
