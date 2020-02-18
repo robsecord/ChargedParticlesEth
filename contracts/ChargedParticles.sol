@@ -473,7 +473,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event ParticleTypeCreated(uint256 indexed _particleTypeId, string _uri, bool _isNF, bool _isPrivate, bytes16 _assetPairId, uint256 _maxSupply);
+    event ParticleTypeUpdated(uint256 indexed _typeId, string _uri, bool _isNF, bool _isPrivate, string _assetPairId, uint256 _maxSupply, uint16 _creatorFee); // find latest in logs for full record
     event ParticleMinted(uint256 indexed _tokenId, uint256 _amount, string _uri);
     event ParticleBurned(uint256 indexed _tokenId, uint256 _amount);
 
@@ -485,7 +485,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
         ERC1155.initialize();
-        version = "v0.1.4";
+        version = "v0.1.5";
     }
 
     /***********************************|
@@ -576,7 +576,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         string memory _uri,
         bool _isNF,
         bool _isPrivate,
-        bytes16 _assetPairId,
+        string memory _assetPairId,
         uint256 _maxSupply,
         uint16 _creatorFee
     )
@@ -616,7 +616,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         string memory _uri,
         bool _isNF,
         bool _isPrivate,
-        bytes16 _assetPairId,
+        string memory _assetPairId,
         uint256 _maxSupply,
         uint16 _creatorFee
     )
@@ -793,23 +793,25 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Register Escrow with this contract
         escrow = IChargedParticlesEscrow(_escrowAddress);
 
-        // Register this contract with the Escrow and set Rules
-        address _self = address(this);
-        escrow.registerParticleType(_self);
-        escrow.registerParticleSettingReleaseBurn(_self, true);
+//        // Register this contract with the Escrow and set Rules
+//        address _self = address(this);
+//        escrow.registerParticleType(_self);
+//        escrow.registerParticleSettingReleaseBurn(_self, true);
     }
 
-    function registerAssetPair(bytes16 _assetPairId) public onlyOwner {
-        require(escrow.isAssetPairEnabled(_assetPairId), "Asset-Pair not enabled in Escrow");
+    function registerAssetPair(string memory _assetPairId) public onlyOwner {
+        bytes16 _assetPair = _toBytes16(_assetPairId);
+        require(escrow.isAssetPairEnabled(_assetPair), "Asset-Pair not enabled in Escrow");
 
         // Allow Escrow to Transfer Assets from this Contract
-        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPairId);
+        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPair);
         IERC20(_assetTokenAddress).approve(address(escrow), uint(-1));
-        assetPairEnabled[_assetPairId] = true;
+        assetPairEnabled[_assetPair] = true;
     }
 
-    function disableAssetPair(bytes16 _assetPairId) public onlyOwner {
-        assetPairEnabled[_assetPairId] = false;
+    function disableAssetPair(string memory _assetPairId) public onlyOwner {
+        bytes16 _assetPair = _toBytes16(_assetPairId);
+        assetPairEnabled[_assetPair] = false;
     }
 
     /**
@@ -873,16 +875,17 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         string memory _uri,
         bool _isNF,
         bool _isPrivate,
-        bytes16 _assetPairId,
+        string memory _assetPairId,
         uint256 _maxSupply,
         uint16 _creatorFee
     )
         internal
         returns (uint256 _particleTypeId)
     {
+        bytes16 _assetPair = _toBytes16(_assetPairId);
         require(_creatorFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
         if (_isNF) {
-            require(assetPairEnabled[_assetPairId], "E414");
+            require(assetPairEnabled[_assetPair], "E414");
         }
 
         // Create Type
@@ -895,7 +898,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         typeCreator[_particleTypeId] = _creator;
 
         // Type Asset-Pair
-        typeCreatorAssetPairId[_particleTypeId] = _assetPairId;
+        typeCreatorAssetPairId[_particleTypeId] = _assetPair;
 
         // Max Supply of Token; 0 = No Max
         typeCreatorSupply[_particleTypeId] = _maxSupply;
@@ -903,7 +906,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // The Deposit Fee for Creators
         typeCreatorDepositFee[_particleTypeId] = _creatorFee;
 
-        emit ParticleTypeCreated(_particleTypeId, _uri, _isNF, _isPrivate, _assetPairId, _maxSupply);
+        emit ParticleTypeUpdated(_particleTypeId, _uri, _isNF, _isPrivate, _assetPairId, _maxSupply, _creatorFee);
     }
 
     /**
@@ -926,5 +929,16 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "Insufficient Asset Token funds");
         require(_assetToken.transferFrom(_from, address(this), _assetAmount), "Failed to transfer Asset Token"); // Be sure to Approve this Contract to transfer your Asset Token
+    }
+
+    function _toBytes16(string memory source) private pure returns (bytes16 result) {
+        bytes memory tmp = bytes(source);
+        if (tmp.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 16))
+        }
     }
 }

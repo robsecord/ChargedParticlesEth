@@ -1,7 +1,14 @@
-## Charged Particles - Solidity Contracts v0.1.4
+## Charged Particles - Solidity Contracts v0.1.5
 
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with **DAI** and accrue interest via **CHAI** 
 giving the Token a "Charge". 
+
+#### Pre-production Site
+https://charged-particles.netlify.com/
+
+#### Staging Site
+https://charged-particles-stage.netlify.com/
+
 
 #### Value
 ```text

@@ -42,9 +42,11 @@ deployFresh() {
         echo "Compiling contracts.."
         npx oz compile
     elif [[ "$networkName" == "kovan" ]]; then
-        ownerAccount="$KOVAN_OWNER_ACCOUNT"
+        ownerAccount="$KOVAN_OWNER_ADDRESS"
+    elif [[ "$networkName" == "ropsten" ]]; then
+        ownerAccount="$ROPSTEN_OWNER_ADDRESS"
     elif [[ "$networkName" == "mainnet" ]]; then
-        ownerAccount="$MAINNET_OWNER_ACCOUNT"
+        ownerAccount="$MAINNET_OWNER_ADDRESS"
     fi
 
     echo " "

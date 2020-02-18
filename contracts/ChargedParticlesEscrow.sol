@@ -144,8 +144,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     event RegisterParticleContract(address indexed _contractAddress);
     event CustomFeesWithdrawn(address indexed _contractAddress);
     event ReserveFeesWithdrawn(address indexed _reserveAddress);
-    event EnergizedParticle(address indexed _contractAddress, uint256 indexed _tokenId, bytes16 _assetPairId, uint256 _interestAmount);
-    event DischargedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
+    event EnergizedParticle(address indexed _contractAddress, uint256 indexed _tokenId, bytes16 _assetPairId, uint256 _assetBalance, uint256 _interestBalance);
+    event DischargedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount, uint256 _interestBalance);
     event ReleasedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
     event ContractFeesWithdrawn();
 
@@ -156,7 +156,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.1.4";
+        version = "v0.1.5";
     }
 
     /***********************************|
@@ -421,14 +421,16 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _interestAmount = _tokenizeInterest(_contractAddress, _assetPairId, _assetAmount, _reserveAddress, _reserveFee);
 
         // Track Asset Token Balance
-        assetTokenDeposited[_tokenUuid][_assetPairId] = _assetAmount.add(assetTokenDeposited[_tokenUuid][_assetPairId]);
+        uint256 _assetBalance = _assetAmount.add(assetTokenDeposited[_tokenUuid][_assetPairId]);
+        assetTokenDeposited[_tokenUuid][_assetPairId] = _assetBalance;
 
         // Track Interest-bearing Token Balance (Mass of each Particle)
-        interestTokenBalance[_tokenUuid][_assetPairId] = _interestAmount.add(interestTokenBalance[_tokenUuid][_assetPairId]);
+        uint256 _interestBalance = _interestAmount.add(interestTokenBalance[_tokenUuid][_assetPairId]);
+        interestTokenBalance[_tokenUuid][_assetPairId] = _interestBalance;
 
-        emit EnergizedParticle(_contractAddress, _tokenId, _assetPairId, _interestAmount);
+        emit EnergizedParticle(_contractAddress, _tokenId, _assetPairId, _assetBalance, _interestBalance);
 
-        // Return amount of Interest-bearing Token stored
+        // Return amount of Interest-bearing Token energized
         return _interestAmount;
     }
 
@@ -553,19 +555,20 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     /**
      * @dev Register Contracts for Asset/Interest Pairs
      */
-    function registerAssetPair(bytes16 _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
-        require(address(interestToken[_assetPairId]) == address(0x0), "Asset-Pair has already been registered");
+    function registerAssetPair(string memory _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
+        bytes16 _assetPair = _toBytes16(_assetPairId);
+        require(address(interestToken[_assetPair]) == address(0x0), "Asset-Pair has already been registered");
         require(_assetTokenAddress != address(0x0), "Invalid Asset Token address");
         require(_interestTokenAddress != address(0x0), "Invalid Interest Token address");
 
         // Register Pair
-        assetPairs.push(_assetPairId);
-        assetPairEnabled[_assetPairId] = true;
-        assetToken[_assetPairId] = IERC20(_assetTokenAddress);
-        interestToken[_assetPairId] = INucleus(_interestTokenAddress);
+        assetPairs.push(_assetPair);
+        assetPairEnabled[_assetPair] = true;
+        assetToken[_assetPair] = IERC20(_assetTokenAddress);
+        interestToken[_assetPair] = INucleus(_interestTokenAddress);
 
         // Allow this contract to Tokenize Interest of Asset
-        assetToken[_assetPairId].approve(_interestTokenAddress, uint(-1));
+        assetToken[_assetPair].approve(_interestTokenAddress, uint(-1));
     }
 
     function toggleAssetPair(bytes16 _assetPairId, bool _isEnabled) public onlyOwner {
@@ -673,9 +676,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Track Interest-bearing Token Balance (Mass of each Particle)
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
-        interestTokenBalance[_tokenUuid][_assetPairId] = interestTokenBalance[_tokenUuid][_assetPairId].sub(_interestAmount);
+        uint256 _interestBalance = interestTokenBalance[_tokenUuid][_assetPairId].sub(_interestAmount);
+        interestTokenBalance[_tokenUuid][_assetPairId] = _interestBalance;
 
-        emit DischargedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount);
+        emit DischargedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount, _interestBalance);
 
         // AmountReceived, Remaining charge
         return (_receivedAmount, _currentCharge.sub(_receivedAmount));
@@ -764,4 +768,14 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 //        return (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT);
 //    }
 
+    function _toBytes16(string memory source) private pure returns (bytes16 result) {
+        bytes memory tmp = bytes(source);
+        if (tmp.length == 0) {
+            return 0x0;
+        }
+
+        assembly {
+            result := mload(add(source, 16))
+        }
+    }
 }
