@@ -1,6 +1,6 @@
 pragma solidity 0.5.16;
 
-contract RopstenDaiVat {
+contract DaiVat {
     event Hoped(address who);
 
     function hope(address who) external {

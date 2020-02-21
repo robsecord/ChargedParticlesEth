@@ -1,6 +1,6 @@
 pragma solidity 0.5.16;
 
-contract RopstenDaiGem {
+contract DaiGem {
     event Transfer(address indexed from, address to, uint amount);
     event Approve(address indexed spender, uint amount);
 

@@ -56,6 +56,7 @@ Also being researched; Zapped NFTs (combining NFTs with DeFiZaps)
  - Fully-decentralized Public Particle Minting Station
  - Work-in-progress 
  - Repo: https://github.com/robsecord/ChargedParticlesWeb
+ - Stage Site: https://charged-particles-stage.netlify.com/
 
 #### Feedback & Contributions
 Feel free to fork and/or use in your own projects!
@@ -68,31 +69,68 @@ Join our community, share ideas and help support the project in anyway you want!
 **Discord**: https://discord.gg/Syh3gjz
 
 ### Frameworks/Software used:
- - Truffle **v5.1.11** (core: 5.1.11)
- - Ganache **2.1.0**
- - Solidity  **v0.5.13** (solc-js)
- - NodeJS **v12.14.1**
- - Web3.js **v1.2.1**
+ - Main Repo:
+    - OpenZeppelin CLI **v2.6.0**
+    - OpenZeppelin Ethereum Contracts **v2.4.0**
+    - OpenZeppelin Upgrades **v2.6.0**
+ - Variations folder:
+    - Truffle **v5.1.11** (core: 5.1.11)
+    - Ganache **2.1.0**
+    - OpenZeppelin Solidity Contracts **v2.4.0**
+ - Both:
+    - Solidity  **v0.5.13** (solc-js)
+    - NodeJS **v12.14.1**
+    - Web3.js **v1.2.1**
 
-### To run Locally:
+### Prepare environment:
     
- 1. Create a local .env file with the following (replace ... with your keys):
+ Create a local .env file with the following (replace ... with your keys):
  
 ```bash
-    INFURA_API_KEY="..."
+    INFURA_API_KEY="__api_key_only_no_url__"
     
-    LOCAL_OWNER_ACCOUNT="..."
-    KOVAN_OWNER_ACCOUNT="..."
-    MAINNET_OWNER_ACCOUNT="..."
+    KOVAN_PROXY_ADDRESS="__public_address__"
+    KOVAN_PROXY_MNEMONIC="__12-word_mnemonic__"
     
-    LOCAL_WALLET_MNEMONIC="..."
-    KOVAN_WALLET_MNEMONIC="..."
-    MAINNET_WALLET_MNEMONIC="..."
+    KOVAN_OWNER_ADDRESS="__public_address__"
+    KOVAN_OWNER_MNEMONIC="__12-word_mnemonic__"
+    
+    ROPSTEN_PROXY_ADDRESS="__public_address__"
+    ROPSTEN_PROXY_MNEMONIC="__12-word_mnemonic__"
+    
+    ROPSTEN_OWNER_ADDRESS="__public_address__"
+    ROPSTEN_OWNER_MNEMONIC="__12-word_mnemonic__"
+    
+    MAINNET_PROXY_ADDRESS="__public_address__"
+    MAINNET_PROXY_MNEMONIC="__12-word_mnemonic__"
+    
+    MAINNET_OWNER_ADDRESS="__public_address__"
+    MAINNET_OWNER_MNEMONIC="__12-word_mnemonic__"
 ```
- 2. Fire up a local Test RPC (Ganache)
- 3. npm install
- 4. npm run deploy-local
+
+### To run the Main Repo (Testnet or Mainnet only):
+    
+ 1. npm install
+ 2. npm run deploy-kovan
+
  
+### To run the Variations Folders Locally:
+    
+ 1. Fire up a local Test RPC (Ganache)
+    - npx ganache-cli --deterministic
+ 2. npm install
+ 3. manually deploy contracts: 
+    - deploy: variations/assets/dai/*.sol
+      - Get deploy addresses and copy to "variations/assets/chai/Chai.sol"
+    - deploy: variations/assets/chai/Chai.sol
+    - deploy: variations/erc721/ChargedParticlesCHAI.sol
+      - OR
+    - deploy: variations/erc1155/ChargedParticlesCHAI.sol
+ 4. run **setup()** on ChargedParticles contract
+    - _daiAddress param should point to deployed address of "variations/assets/dai/DaiGem.sol"
+    - _chaiAddress param should point to deployed address of "variations/assets/chai/Chai.sol"
+        
+
 See package.json for more scripts
 
 ~~__________________________________~~

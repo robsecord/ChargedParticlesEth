@@ -23,8 +23,6 @@
 // ~~~~~~~~~~
 // https://github.com/dapphub/chai/blob/master/src/chai.sol
 // https://github.com/makerdao/developerguides/blob/master/dai/dsr-integration-guide/dsr-integration-guide-01.md#smart-contract-addresses-and-abis
-// https://github.com/mattlockyer/composables-998/blob/master/contracts/ComposableTopDown.sol
-// https://kauri.io/gamifying-crypto-assets-with-the-erc998-composables-token-standard/436178ce670d4a9e9ffbd9cb7a8476fd/a
 //
 // Contract Addresses/ABI:
 //   https://changelog.makerdao.com/releases/mainnet/1.0.0/index.html
@@ -67,6 +65,12 @@ contract Chai {
     PotLike  public pot = PotLike( 0xEA190DBDC7adF265260ec4dA6e9675Fd4f5A78bb);         // MCD_POT
     JoinLike public daiJoin = JoinLike( 0x5AA71a3ae1C0bd6ac27A1f28e1415fFFB6F15B8c);    // MCD_JOIN_DAI
     GemLike  public daiToken = GemLike( 0x4F96Fe3b7A6Cf9725f59d353F723c1bDb64CA6Aa);    // MCD_DAI
+
+    // Local:
+    // VatLike  public vat = VatLike( ... );         // Must deploy and point to: variations/assets/dai/DaiVat.sol
+    // PotLike  public pot = PotLike( ... );         // Must deploy and point to: variations/assets/dai/DaiPot.sol
+    // JoinLike public daiJoin = JoinLike( ... );    // Must deploy and point to: variations/assets/dai/DaiJoin.sol
+    // GemLike  public daiToken = GemLike( ... );    // Must deploy and point to: variations/assets/dai/DaiGem.sol
 
     // --- ERC20 Data ---
     string  public constant name     = "ParticleChai";

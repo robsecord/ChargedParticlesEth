@@ -7,7 +7,11 @@
     "non-fungible",
     "defi"
   ],
-  "scripts": {},
+  "scripts": {
+    "deploy-kovan": "./deploy.sh -n kovan",
+    "deploy-ropsten": "./deploy.sh -n ropsten",
+    "deploy-mainnet": "./deploy.sh -n mainnet",
+  },
   "dependencies": {
   },
   "devDependencies": {

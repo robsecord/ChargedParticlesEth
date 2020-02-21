@@ -1,6 +1,6 @@
 pragma solidity 0.5.16;
 
-contract RopstenDaiJoin {
+contract DaiJoin {
     event Joined(address who, uint wad);
     event Exited(address who, uint wad);
 

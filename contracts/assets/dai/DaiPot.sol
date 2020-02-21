@@ -1,6 +1,6 @@
 pragma solidity 0.5.16;
 
-contract RopstenDaiPot {
+contract DaiPot {
     event Joined(uint256 wad);
     event Exited(uint256 wad);
 
