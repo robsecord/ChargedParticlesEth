@@ -272,7 +272,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Check Contract Owner to prevent random people from setting Limits
         address _contractOwner = IOwnable(_contractAddress).owner();
-        require(_contractOwner == msg.sender, "Invalid Contract Owner");
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
@@ -282,6 +282,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     function registerParticleSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
+
         require(custom_assetPairId[_contractAddress].length > 0, "Requires setting a Single Custom Asset-Pair");
 
         custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
@@ -289,6 +292,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     function registerParticleSettingAssetPair(address _contractAddress, bytes16 _assetPairId) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
+
         if (_assetPairId.length > 0) {
             require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
         } else {
@@ -300,6 +306,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     function registerParticleSettingDepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
+
         require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
         require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "Deposit Fee is too high");
 
@@ -308,6 +317,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     function registerParticleSettingMinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
+
         require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
         require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "Minimum deposit is not high enough");
 
@@ -316,6 +328,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     function registerParticleSettingMaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public {
         require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        address _contractOwner = IOwnable(_contractAddress).owner();
+        require(_contractOwner == msg.sender || owner() == msg.sender, "Invalid Contract Operator");
+
         require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
 
         custom_assetDepositMax[_contractAddress][_assetPairId] = _maxDeposit;
@@ -433,6 +448,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         // Return amount of Interest-bearing Token energized
         return _interestAmount;
     }
+
+    // Add Asset; convert to Interest-Token to increase Charge, but not Mass
+//    function rechargeParticle() public {
+//        // TODO..
+//    }
 
 
     /***********************************|
@@ -557,7 +577,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      */
     function registerAssetPair(string memory _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
         bytes16 _assetPair = _toBytes16(_assetPairId);
-        require(address(interestToken[_assetPair]) == address(0x0), "Asset-Pair has already been registered");
+//        require(address(interestToken[_assetPair]) == address(0x0), "Asset-Pair has already been registered");
         require(_assetTokenAddress != address(0x0), "Invalid Asset Token address");
         require(_interestTokenAddress != address(0x0), "Invalid Interest Token address");
 
