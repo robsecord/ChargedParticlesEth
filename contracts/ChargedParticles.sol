@@ -452,7 +452,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     //
 
     event ParticleTypeUpdated(uint256 indexed _particleTypeId, string _uri, bool _isPrivate, string _assetPairId, uint256 _maxSupply, uint256 _creatorFee); // find latest in logs for full record
-    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, address indexed _receiver, string _uri, bool _isPrivate, uint256 _maxSupply, uint256 _ethPerToken, uint256 _initialMint, address _mintReceiver);
+    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string _uri, bool _isPrivate, uint256 _maxSupply, uint256 _ethPerToken, uint256 _initialMint, address _mintReceiver);
     event ParticleMinted(address indexed _sender, address indexed _receiver, uint256 indexed _tokenId, string _uri);
     event ParticleBurned(address indexed _from, uint256 indexed _tokenId);
     event PlasmaMinted(address indexed _sender, address indexed _receiver, uint256 indexed _typeId, uint256 _amount);
@@ -868,7 +868,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     /**
      * @dev Toggle the "Paused" state of the contract
      */
-    function setPausedState(bool _paused) public onllyOwner {
+    function setPausedState(bool _paused) public onlyOwner {
         isPaused = _paused;
     }
 
