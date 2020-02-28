@@ -37,31 +37,45 @@ contract IChargedParticlesEscrow {
     function getTokenUUID(address _contractAddress, uint256 _tokenId) public pure returns (uint256);
     function getAssetMinDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256);
     function getAssetMaxDeposit(address _contractAddress, bytes16 _assetPairId) public view returns (uint256);
-    function getFeeForDeposit(address _contractAddress, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256);
+    function getFeesForDeposit(address _contractAddress, uint256 _typeId, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256, uint256, uint256);
+    function getFeeForDeposit(address _contractAddress, uint256 _typeId, uint256 _interestTokenAmount, bytes16 _assetPairId) public view returns (uint256);
 
     function baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public view returns (uint256);
     function currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public returns (uint256);
 
     /***********************************|
-    |     Register Particle Types       |
+    |     Register Contract Settings    |
     |(For External Contract Integration)|
     |__________________________________*/
 
-    function registerParticleType(address _contractAddress) public;
-    function registerParticleSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public;
-    function registerParticleSettingAssetPair(address _contractAddress, bytes16 _assetPairId) public;
-    function registerParticleSettingDepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public;
-    function registerParticleSettingMinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public;
-    function registerParticleSettingMaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public;
+    function isContractOwnerOperator(address _account, address _contract) public returns (bool);
+    function registerContractType(address _contractAddress) public;
+    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public;
+    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) public;
+    function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public;
+    function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public;
+    function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public;
 
-    function withdrawCustomFees(address _contractAddress, address _receiver) public;
-    function withdrawReserveFees(address _reserveAddress) public;
+    function withdrawContractFees(address _contractAddress, address _receiver) public;
+
+    /***********************************|
+    |     Register Creator Settings     |
+    |__________________________________*/
+
+    function isTypeCreator(address _account, uint256 _typeId) public returns (bool);
+    function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) public;
+    function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) public;
+    function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) public;
+    function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) public;
+    function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) public;
+
+    function withdrawCreatorFees(address _sender, uint256 _typeId) public;
 
     /***********************************|
     |          Particle Charge          |
     |__________________________________*/
 
-    function energizeParticle(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount, address _reserveAddress, uint256 _reserveFee) external returns (uint256);
+    function energizeParticle(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256);
 
     function dischargeParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external returns (uint256, uint256);
     function dischargeParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256, uint256);
