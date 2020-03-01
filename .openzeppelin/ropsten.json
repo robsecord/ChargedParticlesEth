@@ -1,11 +1,93 @@
 {
   "contracts": {
+    "ChaiNucleus": {
+      "address": "0x79F009fd5c66A939120529f13EDf62cDD90534f0",
+      "constructorCode": "608060405234801561001057600080fd5b506115ab806100206000396000f3fe",
+      "bodyBytecodeHash": "2d4ca84e6711ae039aa7ab22ac4767088c1b0ac0bc316f6578163b3dd0642c10",
+      "localBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
+      "deployedBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
+      "types": {
+        "t_address": {
+          "id": "t_address",
+          "kind": "elementary",
+          "label": "address"
+        },
+        "t_uint256": {
+          "id": "t_uint256",
+          "kind": "elementary",
+          "label": "uint256"
+        },
+        "t_mapping<t_uint256>": {
+          "id": "t_mapping<t_uint256>",
+          "valueType": "t_uint256",
+          "label": "mapping(key => uint256)",
+          "kind": "mapping"
+        }
+      },
+      "storage": [
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "vat",
+          "astId": 6010,
+          "type": "t_address",
+          "src": "3324:19:5"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "pot",
+          "astId": 6012,
+          "type": "t_address",
+          "src": "3349:19:5"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "daiJoin",
+          "astId": 6014,
+          "type": "t_address",
+          "src": "3374:23:5"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "daiToken",
+          "astId": 6016,
+          "type": "t_address",
+          "src": "3403:24:5"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "totalSupply",
+          "astId": 6030,
+          "type": "t_uint256",
+          "src": "3650:26:5"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "balanceOf",
+          "astId": 6034,
+          "type": "t_mapping<t_uint256>",
+          "src": "3683:43:5"
+        }
+      ],
+      "warnings": {
+        "hasConstructor": false,
+        "hasSelfDestruct": false,
+        "hasDelegateCall": false,
+        "hasInitialValuesInDeclarations": false,
+        "uninitializedBaseContracts": []
+      }
+    },
     "ChargedParticlesEscrow": {
-      "address": "0xDa60dB78B1c7210971c74876b305E231b634c71a",
-      "constructorCode": "6080604052614835806100136000396000f3fe",
-      "bodyBytecodeHash": "e84cf5a457c0f736feedcd45b8ee9d932fd6b35077c2c4b7923e69bd0b122939",
-      "localBytecodeHash": "4ca22691eb5a7049bd0feac9e76220ab85da392f6943f9dee5dcb7571373c45d",
-      "deployedBytecodeHash": "4ca22691eb5a7049bd0feac9e76220ab85da392f6943f9dee5dcb7571373c45d",
+      "address": "0xF284E4B62f0e238C435aB2BF72F85538FA979D82",
+      "constructorCode": "6080604052614852806100136000396000f3fe",
+      "bodyBytecodeHash": "2c2dfad07e0508aa94115f2890ffb116fb4f411683238f3aca16c6bbb24cb92b",
+      "localBytecodeHash": "cf6c855dd561c491dd2a8ac35ea3f60f8e6d36697d3ab7c9cb269b7998d68781",
+      "deployedBytecodeHash": "cf6c855dd561c491dd2a8ac35ea3f60f8e6d36697d3ab7c9cb269b7998d68781",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -95,7 +177,7 @@
           "contract": "Ownable",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "_owner",
-          "astId": 7018,
+          "astId": 7025,
           "type": "t_address",
           "src": "526:22:13"
         },
@@ -103,7 +185,7 @@
           "contract": "Ownable",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "______gap",
-          "astId": 7131,
+          "astId": 7138,
           "type": "t_array:50<t_uint256>",
           "src": "2471:29:13"
         },
@@ -111,7 +193,7 @@
           "contract": "ReentrancyGuard",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "_guardCounter",
-          "astId": 7283,
+          "astId": 7290,
           "type": "t_uint256",
           "src": "733:29:16"
         },
@@ -119,7 +201,7 @@
           "contract": "ReentrancyGuard",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "______gap",
-          "astId": 7316,
+          "astId": 7323,
           "type": "t_array:50<t_uint256>",
           "src": "1563:29:16"
         },
@@ -324,94 +406,12 @@
         "uninitializedBaseContracts": []
       }
     },
-    "ChaiNucleus": {
-      "address": "0xC504235eA51BD30C5d54a31D37b4eE93FFf7846B",
-      "constructorCode": "608060405234801561001057600080fd5b506115ab806100206000396000f3fe",
-      "bodyBytecodeHash": "2d4ca84e6711ae039aa7ab22ac4767088c1b0ac0bc316f6578163b3dd0642c10",
-      "localBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
-      "deployedBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
-      "types": {
-        "t_address": {
-          "id": "t_address",
-          "kind": "elementary",
-          "label": "address"
-        },
-        "t_uint256": {
-          "id": "t_uint256",
-          "kind": "elementary",
-          "label": "uint256"
-        },
-        "t_mapping<t_uint256>": {
-          "id": "t_mapping<t_uint256>",
-          "valueType": "t_uint256",
-          "label": "mapping(key => uint256)",
-          "kind": "mapping"
-        }
-      },
-      "storage": [
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "vat",
-          "astId": 6003,
-          "type": "t_address",
-          "src": "3324:19:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "pot",
-          "astId": 6005,
-          "type": "t_address",
-          "src": "3349:19:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "daiJoin",
-          "astId": 6007,
-          "type": "t_address",
-          "src": "3374:23:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "daiToken",
-          "astId": 6009,
-          "type": "t_address",
-          "src": "3403:24:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "totalSupply",
-          "astId": 6023,
-          "type": "t_uint256",
-          "src": "3650:26:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "balanceOf",
-          "astId": 6027,
-          "type": "t_mapping<t_uint256>",
-          "src": "3683:43:5"
-        }
-      ],
-      "warnings": {
-        "hasConstructor": false,
-        "hasSelfDestruct": false,
-        "hasDelegateCall": false,
-        "hasInitialValuesInDeclarations": false,
-        "uninitializedBaseContracts": []
-      }
-    },
     "ChargedParticles": {
-      "address": "0x81cEc0956513Ae6DFF148cA33A8c93a287bB431f",
-      "constructorCode": "60806040526146e1806100136000396000f3fe",
-      "bodyBytecodeHash": "cdae4e0743d6221c351c109109cb93df8d6b197f8264c9c28662a6053f9f5626",
-      "localBytecodeHash": "5bf3cb03780a03e44748730c68584eeea73632b48b23d8ab3226d9d6e884aa16",
-      "deployedBytecodeHash": "5bf3cb03780a03e44748730c68584eeea73632b48b23d8ab3226d9d6e884aa16",
+      "address": "0x4Ff0c92381a6de7762E343eee24d18B08FD364C8",
+      "constructorCode": "608060405261469c806100136000396000f3fe",
+      "bodyBytecodeHash": "bc9e5aab6192761609adeeeb6ed4176407373c551ab602186eea754dc4f342c5",
+      "localBytecodeHash": "4f023cd19cb967f06025b0ff28219aceb223ed1c9dbb5f6ff29503e39d6168b0",
+      "deployedBytecodeHash": "4f023cd19cb967f06025b0ff28219aceb223ed1c9dbb5f6ff29503e39d6168b0",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -516,7 +516,7 @@
           "contract": "Ownable",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "_owner",
-          "astId": 7018,
+          "astId": 7025,
           "type": "t_address",
           "src": "526:22:13"
         },
@@ -524,7 +524,7 @@
           "contract": "Ownable",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "______gap",
-          "astId": 7131,
+          "astId": 7138,
           "type": "t_array:50<t_uint256>",
           "src": "2471:29:13"
         },
@@ -532,7 +532,7 @@
           "contract": "ReentrancyGuard",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "_guardCounter",
-          "astId": 7283,
+          "astId": 7290,
           "type": "t_uint256",
           "src": "733:29:16"
         },
@@ -540,7 +540,7 @@
           "contract": "ReentrancyGuard",
           "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "______gap",
-          "astId": 7316,
+          "astId": 7323,
           "type": "t_array:50<t_uint256>",
           "src": "1563:29:16"
         },
@@ -708,30 +708,30 @@
   },
   "solidityLibs": {},
   "proxies": {
+    "charged-particles/ChaiNucleus": [
+      {
+        "address": "0x0941C8B530230884fc6dd9d12EB68fE36824f0BE",
+        "version": "0.1.1",
+        "implementation": "0x79F009fd5c66A939120529f13EDf62cDD90534f0",
+        "admin": "0x4712674755Cb3F3b78D17D3e485d090A9A0a202e",
+        "kind": "Upgradeable"
+      }
+    ],
     "charged-particles/ChargedParticlesEscrow": [
       {
-        "address": "0x27Fc4a74Fe76d5C36507957f5050d30f1C30f8C2",
+        "address": "0x2235B33e1bdAfE5f929a42475fe1F785DA657280",
         "version": "0.1.1",
-        "implementation": "0xDa60dB78B1c7210971c74876b305E231b634c71a",
-        "admin": "0xE55BBBC09E6108B9a95D796a79e2215b3812f25E",
+        "implementation": "0xF284E4B62f0e238C435aB2BF72F85538FA979D82",
+        "admin": "0x4712674755Cb3F3b78D17D3e485d090A9A0a202e",
         "kind": "Upgradeable"
       }
     ],
     "charged-particles/ChargedParticles": [
       {
-        "address": "0x4A26Af17c65e5de3b8f6f8EF88f06388789B5392",
+        "address": "0x9E243ACE864FD8061F07faA484F35c8732378294",
         "version": "0.1.1",
-        "implementation": "0x81cEc0956513Ae6DFF148cA33A8c93a287bB431f",
-        "admin": "0xE55BBBC09E6108B9a95D796a79e2215b3812f25E",
-        "kind": "Upgradeable"
-      }
-    ],
-    "charged-particles/ChaiNucleus": [
-      {
-        "address": "0x7207CF6d24998A5Fd0d7089b3A0bE24738732e03",
-        "version": "0.1.1",
-        "implementation": "0xC504235eA51BD30C5d54a31D37b4eE93FFf7846B",
-        "admin": "0xE55BBBC09E6108B9a95D796a79e2215b3812f25E",
+        "implementation": "0x4Ff0c92381a6de7762E343eee24d18B08FD364C8",
+        "admin": "0x4712674755Cb3F3b78D17D3e485d090A9A0a202e",
         "kind": "Upgradeable"
       }
     ]
@@ -745,6 +745,6 @@
     }
   },
   "proxyAdmin": {
-    "address": "0xE55BBBC09E6108B9a95D796a79e2215b3812f25E"
+    "address": "0x4712674755Cb3F3b78D17D3e485d090A9A0a202e"
   }
 }

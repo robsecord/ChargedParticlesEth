@@ -19,6 +19,8 @@
         "enabled": true,
         "runs": "200"
       }
-    }
+    },
+    "artifactsDir": "build/contracts",
+    "contractsDir": "contracts"
   }
 }
