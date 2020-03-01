@@ -5,6 +5,9 @@
 
 requireFields='{fileName: .fileName, contractName: .contractName, abi: .abi, compiler: .compiler, networks: .networks}'
 
+rm -f ./ChargedParticles.json
+rm -f ./ChargedParticlesEscrow.json
+
 echo "Generating JSON file for ChargedParticles"
 cat ./build/contracts/ChargedParticles.json | jq -r "$requireFields" > ./ChargedParticles.json
 

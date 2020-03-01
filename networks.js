@@ -4,14 +4,14 @@ require('dotenv').config();
 
 const mnemonic = {
   // PROXY
-  // kovan: process.env.KOVAN_PROXY_MNEMONIC,
-  // ropsten: process.env.ROPSTEN_PROXY_MNEMONIC,
-  // mainnet: process.env.MAINNET_PROXY_MNEMONIC,
+  // kovan: `${process.env.KOVAN_PROXY_MNEMONIC}`.replace(/_/g, ' '),
+  // ropsten: `${process.env.ROPSTEN_PROXY_MNEMONIC}`.replace(/_/g, ' '),
+  // mainnet: `${process.env.MAINNET_PROXY_MNEMONIC}`.replace(/_/g, ' '),
 
   // OWNER
-  kovan: process.env.KOVAN_OWNER_MNEMONIC,
-  ropsten: process.env.ROPSTEN_OWNER_MNEMONIC,
-  mainnet: process.env.MAINNET_OWNER_MNEMONIC,
+  kovan: `${process.env.KOVAN_OWNER_MNEMONIC}`.replace(/_/g, ' '),
+  ropsten: `${process.env.ROPSTEN_OWNER_MNEMONIC}`.replace(/_/g, ' '),
+  mainnet: `${process.env.MAINNET_OWNER_MNEMONIC}`.replace(/_/g, ' '),
 };
 
 module.exports = {
@@ -33,7 +33,7 @@ module.exports = {
     },
     ropsten: {
       provider: () => new HDWalletProvider(
-          mnemonic.kovan, `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
+        mnemonic.ropsten, `https://ropsten.infura.io/v3/${process.env.INFURA_API_KEY}`
       ),
       networkId: 3,
       gasPrice: 10e9
