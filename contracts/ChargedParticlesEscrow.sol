@@ -394,6 +394,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |__________________________________*/
 
     function isTypeCreator(address _account, uint256 _typeId) public view returns (bool) {
+        if (_account == chargedParticles) { return true; }
         address _typeCreator = IChargedParticles(chargedParticles).getTypeCreator(_typeId);
         return _typeCreator == _account;
     }

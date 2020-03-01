@@ -90,13 +90,13 @@ contract ERC1155 is Initializable, IERC165 {
     event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _amount);
     event TransferBatch(address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _amounts);
     event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
-    event URI(string _uri, uint256 indexed _type);
+    event URI(uint256 indexed _id, string _uri); // ID = Type or Token ID
 
     function initialize() public initializer {
     }
 
-    function uri(uint256 _tokenId) public view returns (string memory) {
-        return tokenUri[_tokenId];
+    function uri(uint256 _id) public view returns (string memory) {
+        return tokenUri[_id];
     }
 
     function supportsInterface(bytes4 _interfaceID) external view returns (bool) {
@@ -228,7 +228,7 @@ contract ERC1155 is Initializable, IERC165 {
 
         // emit a Transfer event with Create semantic to help with discovery.
         emit TransferSingle(msg.sender, address(0x0), address(0x0), _type, 0);
-        emit URI(_uri, _type);
+        emit URI(_type, _uri);
     }
 
     function _mint(address _to, uint256 _type, uint256 _amount, string memory _URI, bytes memory _data) internal returns (uint256) {
@@ -408,7 +408,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     mapping (uint256 => uint256) internal typeSupply;
 
     //        TypeID => Eth-to-Token Price of Plasma set by Type Creator
-    mapping (uint256 => uint256) internal typePlasmaPrice;
+    mapping (uint256 => uint256) internal plasmaPrice;
 
     //        TypeID => Specific Asset-Pair to be used for this Type
     mapping (uint256 => bytes16) internal typeAssetPairId;
@@ -451,8 +451,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event ParticleTypeUpdated(uint256 indexed _particleTypeId, string _uri, bool _isPrivate, string _assetPairId, uint256 _maxSupply, uint256 _creatorFee); // find latest in logs for full record
-    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string _uri, bool _isPrivate, uint256 _maxSupply, uint256 _ethPerToken, uint256 _initialMint, address _mintReceiver);
+    event ParticleTypeUpdated(uint256 indexed _particleTypeId, bool indexed _isPrivate, string _assetPairId, uint256 _maxSupply, uint256 _creatorFee, string _uri); // find latest in logs for full record
+    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, bool indexed _isPrivate, uint256 _maxSupply, uint256 _ethPerToken, uint256 _initialMint, address _mintReceiver, string _uri);
     event ParticleMinted(address indexed _sender, address indexed _receiver, uint256 indexed _tokenId, string _uri);
     event ParticleBurned(address indexed _from, uint256 indexed _tokenId);
     event PlasmaMinted(address indexed _sender, address indexed _receiver, uint256 indexed _typeId, uint256 _amount);
@@ -561,7 +561,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         bool _isPrivate,
         string memory _assetPairId,
         uint256 _maxSupply,
-        uint16 _creatorFee,
+        uint256 _creatorFee,
         bool _payWithIons
     )
         public
@@ -680,6 +680,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         // Mint Token
         uint256 _tokenId = _mint(_to, _type, 1, _uri, _data);
+        typeCreator[_tokenId] = msg.sender;
 
         // Energize NFT Particles
         energizeParticle(_tokenId, _assetAmount);
@@ -714,7 +715,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         // Check Token Price
         if (msg.sender != creator) {
-            ethPerToken = typePlasmaPrice[_type];
+            ethPerToken = plasmaPrice[_type];
             totalEth = _amount.mul(ethPerToken);
             require(msg.value >= totalEth, "E404");
         }
@@ -832,8 +833,21 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
 
     /***********************************|
-    |        Type Creator Fees          |
+    |           Type Creator            |
     |__________________________________*/
+
+
+    /**
+     * @dev Allows the Creator of a Type to update the URI
+     *   Note: Individual Tokens cannot have their URI updated
+     */
+    function setURI(uint256 _id, string _uri) public {
+        address creator = typeCreator[_id];
+        require(msg.sender == creator, "E305");
+
+        tokenUri[_id] = _uri;
+        emit URI(_id, _uri);
+    }
 
     /**
      * @dev Allows contract owner to withdraw any fees earned
@@ -976,6 +990,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Type Access (Public or Private minting)
         registeredTypes[_particleTypeId] = _isPrivate ? 2 : 1;
 
+        // Max Supply of Token; 0 = No Max
+        typeSupply[_particleTypeId] = _maxSupply;
+
         // Creator of Type
         typeCreator[_particleTypeId] = _creator;
         escrow.registerCreatorSetting_FeeCollector(_particleTypeId, _creator);
@@ -984,13 +1001,10 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         typeAssetPairId[_particleTypeId] = _assetPair;
         escrow.registerCreatorSetting_AssetPair(_particleTypeId, _assetPair);
 
-        // Max Supply of Token; 0 = No Max
-        typeSupply[_particleTypeId] = _maxSupply;
-
         // The Deposit Fee for Creators
         escrow.registerCreatorSetting_DepositFee(_particleTypeId, _assetPair, _creatorFee);
 
-        emit ParticleTypeUpdated(_particleTypeId, _uri, _isPrivate, _assetPairId, _maxSupply, _creatorFee);
+        emit ParticleTypeUpdated(_particleTypeId, _isPrivate, _assetPairId, _maxSupply, _creatorFee, _uri);
     }
 
     /**
@@ -1031,14 +1045,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         typeSupply[_plasmaTypeId] = _maxSupply;
 
         // The Eth-per-Token Fee for Minting
-        typePlasmaPrice[_plasmaTypeId] = _ethPerToken;
+        plasmaPrice[_plasmaTypeId] = _ethPerToken;
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
             _mint(_mintReceiver, _plasmaTypeId, _initialMint, "", "");
         }
 
-        emit PlasmaTypeUpdated(_plasmaTypeId, _uri, _isPrivate, _maxSupply, _ethPerToken, _initialMint, _mintReceiver);
+        emit PlasmaTypeUpdated(_plasmaTypeId, _isPrivate, _maxSupply, _ethPerToken, _initialMint, _mintReceiver, _uri);
     }
 
     /**
