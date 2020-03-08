@@ -311,7 +311,7 @@ contract ERC1155 is Initializable, IERC165 {
         // Fungible
         else {
             require(balanceOf(_from, _tokenId) >= _amount, "E306");
-            maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
+//            maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
             balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
         }
 
@@ -341,7 +341,7 @@ contract ERC1155 is Initializable, IERC165 {
             // Fungible
             else {
                 require(balanceOf(_from, _tokenId) >= _amount, "E306");
-                maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
+//                maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
                 balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
             }
         }
@@ -397,8 +397,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     //   Particle Creators can also set restrictions on who can "mint" their particles, the max supply and
     //     how much of the underlying asset is required to mint a particle (1 DAI maybe?).
     //   These values are all optional, and can be left at 0 (zero) to specify no-limits.
+    // Non-Fungible Tokens can be either a Series or a Collection.
+    //   A series is a Single, Unique Item with Multiple Copies. NFTs that minted of this type are numbered
+    //     in series, and use the same metadata as the Original Item.
+    //   A collection is a group of Unique Items with only one copy of each.  NFTs that are minted of this type
+    //     are Unique and require their own metadata for each.
 
-    //        TypeID => Access Type (1=Public / 2=Private)
+    //        TypeID => Access Type (BITS: 1=Public, 2=Private, 4=Series, 8=Collection)
     mapping (uint256 => uint8) internal registeredTypes;
 
     //        TypeID => Type Creator
@@ -451,8 +456,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event ParticleTypeUpdated(uint256 indexed _particleTypeId, bool indexed _isPrivate, string _assetPairId, uint256 _maxSupply, uint256 _creatorFee, string _uri); // find latest in logs for full record
-    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, bool indexed _isPrivate, uint256 _maxSupply, uint256 _ethPerToken, uint256 _initialMint, address _mintReceiver, string _uri);
+    event ParticleTypeUpdated(uint256 indexed _particleTypeId, string indexed _symbol, bool indexed _isPrivate, bool _isSeries, string _assetPairId, uint256 _creatorFee, string _uri); // find latest in logs for full record
+    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string indexed _symbol, bool indexed _isPrivate, uint256 _ethPerToken, uint256 _initialMint, string _uri);
     event ParticleMinted(address indexed _sender, address indexed _receiver, uint256 indexed _tokenId, string _uri);
     event ParticleBurned(address indexed _from, uint256 indexed _tokenId);
     event PlasmaMinted(address indexed _sender, address indexed _receiver, uint256 indexed _typeId, uint256 _amount);
@@ -468,7 +473,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
         ERC1155.initialize();
-        version = "v0.2.0";
+        version = "v0.2.2";
     }
 
     /***********************************|
@@ -492,7 +497,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      */
     function canMint(uint256 _type, uint256 _amount) public view returns (bool) {
         // Public
-        if (registeredTypes[_type] == 1) {
+        if (registeredTypes[_type] & 1 == 1) {
             // Has Max
             if (typeSupply[_type] > 0) {
                 return maxIndex[_type].add(_amount) <= typeSupply[_type];
@@ -520,6 +525,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     function getCreationPrice(bool _isNF) public view returns (uint256 eth, uint256 ion) {
         eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
         ion = _isNF ? (createFeeIon.mul(2)) : createFeeIon;
+    }
+
+    /**
+     * @notice Gets the Number of this Particle in the Series/Collection
+     */
+    function getSeriesNumber(uint256 _tokenId) public pure returns (uint256) {
+        return _tokenId & NF_INDEX_MASK;
     }
 
     /***********************************|
@@ -558,7 +570,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      */
     function createParticle(
         string memory _uri,
+        string memory _symbol,
         bool _isPrivate,
+        bool _isSeries,
         string memory _assetPairId,
         uint256 _maxSupply,
         uint256 _creatorFee,
@@ -582,7 +596,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         _particleTypeId = _createParticle(
             msg.sender,     // Token Creator
             _uri,           // Token Metadata URI
+            _symbol,        // Token Symbol
             _isPrivate,     // is Private?
+            _isSeries,      // is Series?
             _assetPairId,   // Asset Pair for Type
             _maxSupply,     // Max Supply
             _creatorFee     // Deposit Fee for Creator
@@ -606,11 +622,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     function createPlasma(
         address _creator,
         string memory _uri,
+        string memory _symbol,
         bool _isPrivate,
         uint256 _maxSupply,
         uint256 _ethPerToken,
         uint256 _initialMint,
-        address _mintReceiver,
         bool _payWithIons
     )
         public
@@ -631,11 +647,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         _plasmaTypeId = _createPlasma(
             _creator,       // Token Creator
             _uri,           // Token Metadata URI
+            _symbol,        // Token Symbol
             _isPrivate,     // is Private?
             _maxSupply,     // Max Supply
             _ethPerToken,   // Initial Price per Token in ETH
-            _initialMint,   // Initial Amount to Mint
-            _mintReceiver   // Address to Mint to
+            _initialMint    // Initial Amount to Mint
         );
 
         // Refund over-payment
@@ -677,6 +693,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     {
         require((_type & TYPE_NF_BIT == TYPE_NF_BIT) && (_type & NF_INDEX_MASK == 0), "E304");
         require(canMint(_type, 1), "E407");
+
+        // Series-Particles use the Metadata of their Type
+        if (registeredTypes[_type] & 4 == 4) {
+            _uri = tokenUri[_type];
+        }
 
         // Mint Token
         uint256 _tokenId = _mint(_to, _type, 1, _uri, _data);
@@ -836,19 +857,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     |           Type Creator            |
     |__________________________________*/
 
-
-    /**
-     * @dev Allows the Creator of a Type to update the URI
-     *   Note: Individual Tokens cannot have their URI updated
-     */
-    function setURI(uint256 _id, string _uri) public {
-        address creator = typeCreator[_id];
-        require(msg.sender == creator, "E305");
-
-        tokenUri[_id] = _uri;
-        emit URI(_id, _uri);
-    }
-
     /**
      * @dev Allows contract owner to withdraw any fees earned
      */
@@ -927,11 +935,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         ionTokenId = _createPlasma(
             contractOwner,  // Contract Owner
             _uri,           // Token Metadata URI
+            "IONs",         // Token Symbol
             false,          // is Private?
             _maxSupply,     // Max Supply
             _ethPerToken,   // Initial Price per Token (~ $0.10)
-            _amount,        // Initial amount to mint
-            contractOwner   // Mint to
+            _amount         // Initial amount to mint
         );
 
         return ionTokenId;
@@ -972,7 +980,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     function _createParticle(
         address _creator,
         string memory _uri,
+        string memory _symbol,
         bool _isPrivate,
+        bool _isSeries,
         string memory _assetPairId,
         uint256 _maxSupply,
         uint256 _creatorFee
@@ -987,8 +997,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Create Type
         _particleTypeId = _createType(_uri, true); // ERC-1155 Non-Fungible
 
-        // Type Access (Public or Private minting)
-        registeredTypes[_particleTypeId] = _isPrivate ? 2 : 1;
+        // Type Access (Public or Private, Series or Collection)
+        registeredTypes[_particleTypeId] = (_isPrivate ? 2 : 1) & (_isSeries ? 4 : 8);
 
         // Max Supply of Token; 0 = No Max
         typeSupply[_particleTypeId] = _maxSupply;
@@ -1004,7 +1014,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // The Deposit Fee for Creators
         escrow.registerCreatorSetting_DepositFee(_particleTypeId, _assetPair, _creatorFee);
 
-        emit ParticleTypeUpdated(_particleTypeId, _isPrivate, _assetPairId, _maxSupply, _creatorFee, _uri);
+        emit ParticleTypeUpdated(_particleTypeId, _symbol, _isPrivate, _isSeries, _assetPairId, _creatorFee, _uri);
     }
 
     /**
@@ -1016,18 +1026,17 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      *                          Provide a value of 0 for no limit
      * @param _ethPerToken      The ETH Price of each Token when sold to public
      * @param _initialMint      The amount of tokens to initially mint
-     * @param _mintReceiver     The receiver of the initially minted tokens
      * @return The ID of the newly created Plasma Type
      *         Use this ID when Minting Plasma of this Type
      */
     function _createPlasma(
         address _creator,
         string memory _uri,
+        string memory _symbol,
         bool _isPrivate,
         uint256 _maxSupply,
         uint256 _ethPerToken,
-        uint256 _initialMint,
-        address _mintReceiver
+        uint256 _initialMint
     )
         internal
         returns (uint256 _plasmaTypeId)
@@ -1049,10 +1058,10 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
-            _mint(_mintReceiver, _plasmaTypeId, _initialMint, "", "");
+            _mint(_creator, _plasmaTypeId, _initialMint, "", "");
         }
 
-        emit PlasmaTypeUpdated(_plasmaTypeId, _isPrivate, _maxSupply, _ethPerToken, _initialMint, _mintReceiver, _uri);
+        emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _ethPerToken, _initialMint, _uri);
     }
 
     /**

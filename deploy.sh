@@ -5,15 +5,14 @@ export $(egrep -v '^#' .env | xargs)
 
 ownerAccount=
 networkName="development"
-verbose=
 silent=
 init=
 update=
 
 
-addrChaiNucleus="0x0941C8B530230884fc6dd9d12EB68fE36824f0BE"
-addrChargedParticles="0x9E243ACE864FD8061F07faA484F35c8732378294"
-addrChargedParticlesEscrow="0x2235B33e1bdAfE5f929a42475fe1F785DA657280"
+addrChaiNucleus="0x6D458E5a64F04BFDCd6560B9Ce44213D901FB9F2"
+addrChargedParticles="0x94EA50510C391C3D068AD4f1c83fb0203d305E17"
+addrChargedParticlesEscrow="0x2b8fB0804fFFd1F944a28bF12161d6b8b9043E85"
 
 depositFee="50000000000000000000"
 assetPair="chai"
@@ -27,11 +26,10 @@ ionPrice="570000000000000"
 
 
 usage() {
-    echo "usage: ./deploy.sh [[-n [development|kovan|mainnet] [-f] [-v]] | [-h]]"
+    echo "usage: ./deploy.sh [[-n [development|kovan|mainnet] [-i] [-u] [-v] [-s]] | [-h]]"
     echo "  -n    | --network [development|kovan|mainnet]  Deploys contracts to the specified network (default is local)"
     echo "  -i    | --init                                 Initialize contracts after deployment"
     echo "  -u    | --update                               Push updates to deployments"
-    echo "  -v    | --verbose                              Outputs verbose logging"
     echo "  -s    | --silent                               Suppresses the Beep at the end of the script"
     echo "  -h    | --help                                 Displays this help screen"
 }
@@ -61,41 +59,46 @@ getOwnerAccount() {
     fi
 
     oz session --no-interactive --from "$ownerAccount" -n "$networkName"
+    oz balance --from "$ownerAccount" -n "$networkName" --no-interactives
+    oz balance --no-interactive --from "$ownerAccount" -n "$networkName" --erc20 "$daiAddress"
 }
 
 deployFresh() {
     getOwnerAccount
 
-    if [[ "$networkName" == "development" ]]; then
+    if [[ "$networkName" != "mainnet" ]]; then
         echoHeader
         echo "Clearing previous build..."
         rm -rf build/
         rm -f "./.openzeppelin/$networkName.json"
-
-        echo "Compiling contracts.."
-        oz compile
     fi
+
+    echo "Compiling contracts.."
+    oz compile
 
     echoHeader
     echo "Creating Contract: ChaiNucleus"
+    oz add ChaiNucleus --push --skip-compile
     addressChaiNucleus=$(oz create ChaiNucleus --init initRopsten --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
     echo "Creating Contract: ChargedParticlesEscrow"
+    oz add ChargedParticlesEscrow --push --skip-compile
     addressChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
     echo "Creating Contract: ChargedParticles"
+    oz add ChargedParticles --push --skip-compile
     addressChargedParticles=$(oz create ChargedParticles --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
     echo "Contract Addresses: "
     echo " - ChaiNucleus:            $addressChaiNucleus"
-    echo " - ChargedParticlesEscrow: $addressChargedParticlesEscrow"
     echo " - ChargedParticles:       $addressChargedParticles"
+    echo " - ChargedParticlesEscrow: $addressChargedParticlesEscrow"
 
     echoHeader
     echo "Contract Deployment Complete!"
@@ -172,8 +175,6 @@ while [[ "$1" != "" ]]; do
         -i | --init )           init="yes"
                                 ;;
         -u | --update )         update="yes"
-                                ;;
-        -v | --verbose )        verbose="yes"
                                 ;;
         -s | --silent )         silent="yes"
                                 ;;
