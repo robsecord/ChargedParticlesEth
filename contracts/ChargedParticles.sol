@@ -935,7 +935,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         ionTokenId = _createPlasma(
             contractOwner,  // Contract Owner
             _uri,           // Token Metadata URI
-            "IONs",         // Token Symbol
+            "ION",          // Token Symbol
             false,          // is Private?
             _maxSupply,     // Max Supply
             _ethPerToken,   // Initial Price per Token (~ $0.10)
