@@ -22,14 +22,6 @@
 
 // Reduce deployment gas costs by limiting the size of text used in error messages
 // ERROR CODES:
-//  300:        ERC1155
-//      301         Invalid Recipient
-//      302         Invalid on-received message
-//      303         Invalid arrays length
-//      304         Invalid type
-//      305         Invalid owner/operator
-//      306         Insufficient balance
-//      307         Invalid URI for Type
 //  400:        ChargedParticles
 //      401         Invalid Method
 //      402         Unregistered Type
@@ -48,6 +40,8 @@
 //      415         Asset-Pair not enabled in Escrow
 //      416         ION Token already created
 //      417         Contract paused
+//      418         Insufficient Asset Token funds
+//      419         Failed to transfer Asset Token
 
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
@@ -56,325 +50,16 @@ import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "../node_modules/multi-token-standard/contracts/interfaces/IERC1155.sol";
-import "../node_modules/multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
-import "./IChargedParticlesEscrow.sol";
+import "./lib/BridgedERC1155.sol";
 import "./assets/INucleus.sol";
-
-/**
- * @dev Implementation of ERC1155 Multi-Token Standard contract
- * @dev see node_modules/multi-token-standard/contracts/tokens/ERC1155/ERC1155.sol
- */
-contract ERC1155 is Initializable, IERC165 {
-    using Address for address;
-    using SafeMath for uint256;
-
-    uint256 constant internal TYPE_MASK = uint256(uint128(~0)) << 128;
-    uint256 constant internal NF_INDEX_MASK = uint128(~0);
-    uint256 constant internal TYPE_NF_BIT = 1 << 255;
-    bytes32 constant internal ACCOUNT_HASH = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
-    bytes4 constant internal INTERFACE_SIGNATURE_ERC165 = 0x01ffc9a7;
-    bytes4 constant internal INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
-    bytes4 constant internal ERC1155_RECEIVED_VALUE = 0xf23a6e61;
-    bytes4 constant internal ERC1155_BATCH_RECEIVED_VALUE = 0xbc197c81;
-
-    uint256 internal nonce;
-    mapping (address => mapping(uint256 => uint256)) internal balances;
-    mapping (address => mapping(address => bool)) internal operators;
-    mapping (uint256 => address) internal nfOwners;
-    mapping (uint256 => uint256) internal maxIndex;
-    mapping (uint256 => string) internal tokenUri;
-
-    event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _amount);
-    event TransferBatch(address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _amounts);
-    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
-    event URI(uint256 indexed _id, string _uri); // ID = Type or Token ID
-
-    function initialize() public initializer {
-    }
-
-    function uri(uint256 _id) public view returns (string memory) {
-        return tokenUri[_id];
-    }
-
-    function supportsInterface(bytes4 _interfaceID) external view returns (bool) {
-        if (_interfaceID == INTERFACE_SIGNATURE_ERC165 ||
-        _interfaceID == INTERFACE_SIGNATURE_ERC1155) {
-            return true;
-        }
-        return false;
-    }
-
-    function ownerOf(uint256 _tokenId) public view returns (address) {
-        require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E304");
-        return nfOwners[_tokenId];
-    }
-
-    function balanceOf(address _tokenOwner, uint256 _tokenId) public view returns (uint256) {
-        if ((_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) && (_tokenId & NF_INDEX_MASK != 0)) {  // Non-Fungible Item
-            return nfOwners[_tokenId] == _tokenOwner ? 1 : 0;
-        }
-        return balances[_tokenOwner][_tokenId];
-    }
-
-    function balanceOfBatch(address[] memory _owners, uint256[] memory _tokenIds) public view returns (uint256[] memory) {
-        require(_owners.length == _tokenIds.length, "E303");
-
-        uint256[] memory _balances = new uint256[](_owners.length);
-        for (uint256 i = 0; i < _owners.length; ++i) {
-            uint256 id = _tokenIds[i];
-            if ((id & TYPE_NF_BIT == TYPE_NF_BIT) && (id & NF_INDEX_MASK != 0)) { // Non-Fungible Item
-                _balances[i] = nfOwners[id] == _owners[i] ? 1 : 0;
-            } else {
-                _balances[i] = balances[_owners[i]][id];
-            }
-        }
-
-        return _balances;
-    }
-
-    function setApprovalForAll(address _operator, bool _approved) external {
-        operators[msg.sender][_operator] = _approved;
-        emit ApprovalForAll(msg.sender, _operator, _approved);
-    }
-
-    function isApprovedForAll(address _tokenOwner, address _operator) public view returns (bool isOperator) {
-        return operators[_tokenOwner][_operator];
-    }
-
-    function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) public {
-        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
-        require(_to != address(0),"E301");
-
-        _safeTransferFrom(_from, _to, _id, _amount);
-        _callonERC1155Received(_from, _to, _id, _amount, _data);
-    }
-
-    function safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) public {
-        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E305");
-        require(_to != address(0),"E301");
-
-        _safeBatchTransferFrom(_from, _to, _ids, _amounts);
-        _callonERC1155BatchReceived(_from, _to, _ids, _amounts, _data);
-    }
-
-    function _safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount) internal {
-        // Non-Fungible
-        if (_id & TYPE_NF_BIT == TYPE_NF_BIT) {
-            require(nfOwners[_id] == _from);
-            nfOwners[_id] = _to;
-            _amount = 1;
-        }
-        // Fungible
-        else {
-            require(_amount <= balances[_from][_id]);
-            balances[_from][_id] = balances[_from][_id].sub(_amount); // Subtract amount
-            balances[_to][_id] = balances[_to][_id].add(_amount);     // Add amount
-        }
-
-        // Emit event
-        emit TransferSingle(msg.sender, _from, _to, _id, _amount);
-    }
-
-    function _safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts) internal {
-        require(_ids.length == _amounts.length, "E303");
-
-        uint256 id;
-        uint256 amount;
-        uint256 nTransfer = _ids.length;
-        for (uint256 i = 0; i < nTransfer; ++i) {
-            id = _ids[i];
-            amount = _amounts[i];
-
-            if (id & TYPE_NF_BIT == TYPE_NF_BIT) { // Non-Fungible
-                require(nfOwners[id] == _from);
-                nfOwners[id] = _to;
-            } else {
-                require(amount <= balances[_from][id]);
-                balances[_from][id] = balances[_from][id].sub(amount);
-                balances[_to][id] = balances[_to][id].add(amount);
-            }
-        }
-
-        emit TransferBatch(msg.sender, _from, _to, _ids, _amounts);
-    }
-
-    function _callonERC1155Received(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) internal {
-        // Check if recipient is contract
-        if (_to.isContract()) {
-            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _amount, _data);
-            require(retval == ERC1155_RECEIVED_VALUE, "E302");
-        }
-    }
-
-    function _callonERC1155BatchReceived(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) internal {
-        // Pass data if recipient is contract
-        if (_to.isContract()) {
-            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _amounts, _data);
-            require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E302");
-        }
-    }
-
-    function _createType(string memory _uri, bool _isNF) internal returns (uint256 _type) {
-        require(bytes(_uri).length > 0, "E307");
-
-        _type = (++nonce << 128);
-        if (_isNF) {
-            _type = _type | TYPE_NF_BIT;
-        }
-        tokenUri[_type] = _uri;
-
-        // emit a Transfer event with Create semantic to help with discovery.
-        emit TransferSingle(msg.sender, address(0x0), address(0x0), _type, 0);
-        emit URI(_type, _uri);
-    }
-
-    function _mint(address _to, uint256 _type, uint256 _amount, string memory _URI, bytes memory _data) internal returns (uint256) {
-        uint256 _tokenId;
-
-        // Non-fungible
-        if (_type & TYPE_NF_BIT == TYPE_NF_BIT) {
-            uint256 index = maxIndex[_type].add(1);
-            maxIndex[_type] = index;
-
-            _tokenId  = _type | index;
-            nfOwners[_tokenId] = _to;
-            tokenUri[_tokenId] = _URI;
-            _amount = 1;
-        }
-
-        // Fungible
-        else {
-            _tokenId = _type;
-            maxIndex[_type] = maxIndex[_type].add(_amount);
-            balances[_to][_type] = balances[_to][_type].add(_amount);
-        }
-
-        emit TransferSingle(msg.sender, address(0x0), _to, _tokenId, _amount);
-        _callonERC1155Received(address(0x0), _to, _tokenId, _amount, _data);
-
-        return _tokenId;
-    }
-
-    function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, string[] memory _URIs, bytes memory _data) internal returns (uint256[] memory) {
-        require(_types.length == _amounts.length, "E303");
-        uint256 _type;
-        uint256 _amount;
-        uint256 _index;
-        uint256 _tokenId;
-        uint256 _count = _types.length;
-
-        uint256[] memory _tokenIds = new uint256[](_count);
-
-        for (uint256 i = 0; i < _count; i++) {
-            _type = _types[i];
-            _amount = _amounts[i];
-
-            // Non-fungible
-            if (_type & TYPE_NF_BIT == TYPE_NF_BIT) {
-                _index = maxIndex[_type].add(1);
-                maxIndex[_type] = _index;
-
-                _tokenId  = _type | _index;
-                nfOwners[_tokenId] = _to;
-                _tokenIds[i] = _tokenId;
-                tokenUri[_tokenId] = _URIs[i];
-                _amounts[i] = 1;
-            }
-
-            // Fungible
-            else {
-                _tokenIds[i] = _type;
-                maxIndex[_type] = maxIndex[_type].add(_amount);
-                balances[_to][_type] = balances[_to][_type].add(_amount);
-            }
-        }
-
-        emit TransferBatch(msg.sender, address(0x0), _to, _tokenIds, _amounts);
-        _callonERC1155BatchReceived(address(0x0), _to, _tokenIds, _amounts, _data);
-
-        return _tokenIds;
-    }
-
-    function _burn(address _from, uint256 _tokenId, uint256 _amount) internal {
-        // Non-fungible
-        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            address _tokenOwner = ownerOf(_tokenId);
-            require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
-            nfOwners[_tokenId] = address(0x0);
-            tokenUri[_tokenId] = "";
-            _amount = 1;
-        }
-
-        // Fungible
-        else {
-            require(balanceOf(_from, _tokenId) >= _amount, "E306");
-//            maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
-            balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
-        }
-
-        emit TransferSingle(msg.sender, _from, address(0x0), _tokenId, _amount);
-    }
-
-    function _burnBatch(address _from, uint256[] memory _tokenIds, uint256[] memory _amounts) internal {
-        require(_tokenIds.length == _amounts.length, "E303");
-
-        uint256 _amount;
-        uint256 _tokenId;
-        address _tokenOwner;
-        uint256 _count = _tokenIds.length;
-        for (uint256 i = 0; i < _count; i++) {
-            _tokenId = _tokenIds[i];
-            _amount = _amounts[i];
-
-            // Non-fungible
-            if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
-                _tokenOwner = ownerOf(_tokenId);
-                require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E305");
-                nfOwners[_tokenId] = address(0x0);
-                tokenUri[_tokenId] = "";
-                _amounts[i] = 1;
-            }
-
-            // Fungible
-            else {
-                require(balanceOf(_from, _tokenId) >= _amount, "E306");
-//                maxIndex[_tokenId] = maxIndex[_tokenId].sub(_amount);
-                balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amount);
-            }
-        }
-
-        emit TransferBatch(msg.sender, _from, address(0x0), _tokenIds, _amounts);
-    }
-
-    //    function isNonFungible(uint256 _id) public pure returns(bool) {
-    //        return _id & TYPE_NF_BIT == TYPE_NF_BIT;
-    //    }
-    //    function isFungible(uint256 _id) public pure returns(bool) {
-    //        return _id & TYPE_NF_BIT == 0;
-    //    }
-    //    function getNonFungibleIndex(uint256 _id) public pure returns(uint256) {
-    //        return _id & NF_INDEX_MASK;
-    //    }
-    //    function getNonFungibleBaseType(uint256 _id) public pure returns(uint256) {
-    //        return _id & TYPE_MASK;
-    //    }
-    //    function isNonFungibleBaseType(uint256 _id) public pure returns(bool) {
-    //        // A base type has the NF bit but does not have an index.
-    //        return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK == 0);
-    //    }
-    //    function isNonFungibleItem(uint256 _id) public pure returns(bool) {
-    //        return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK != 0);
-    //    }
-}
+import "./IChargedParticlesEscrow.sol";
 
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
+contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC1155 {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -384,6 +69,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
     uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 2e3; // 2000   (20%)
+    uint32 constant internal ION_SPECIAL_BIT = 1073741824;  // 31st BIT
 
     IChargedParticlesEscrow escrow;
 
@@ -412,11 +98,17 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     //        TypeID => Max Supply
     mapping (uint256 => uint256) internal typeSupply;
 
-    //        TypeID => Eth-to-Token Price of Plasma set by Type Creator
-    mapping (uint256 => uint256) internal plasmaPrice;
+    //        TypeID => Eth Price for Minting set by Type Creator
+    mapping (uint256 => uint256) internal mintFee;
 
     //        TypeID => Specific Asset-Pair to be used for this Type
     mapping (uint256 => bytes16) internal typeAssetPairId;
+
+    //        TypeID => Special bit-markings for this Type
+    mapping (uint256 => uint32) internal typeSpecialBits;
+
+    //        TypeID => Token-Bridge for ERC20/ERC721
+    mapping (uint256 => address) internal typeTokenBridge;
 
     // Allowed Asset-Pairs
     mapping (bytes16 => bool) internal assetPairEnabled;
@@ -456,8 +148,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     // Events
     //
 
-    event ParticleTypeUpdated(uint256 indexed _particleTypeId, string indexed _symbol, bool indexed _isPrivate, bool _isSeries, string _assetPairId, uint256 _creatorFee, string _uri); // find latest in logs for full record
-    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string indexed _symbol, bool indexed _isPrivate, uint256 _ethPerToken, uint256 _initialMint, string _uri);
+    event ParticleTypeUpdated(uint256 indexed _particleTypeId, string indexed _symbol, bool indexed _isPrivate, bool _isSeries, string _assetPairId, uint256 _energizeFee, string _uri); // find latest in logs for full record
+    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string indexed _symbol, bool indexed _isPrivate, uint256 _initialMint, string _uri);
     event ParticleMinted(address indexed _sender, address indexed _receiver, uint256 indexed _tokenId, string _uri);
     event ParticleBurned(address indexed _from, uint256 indexed _tokenId);
     event PlasmaMinted(address indexed _sender, address indexed _receiver, uint256 indexed _typeId, uint256 _amount);
@@ -472,8 +164,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        ERC1155.initialize();
-        version = "v0.2.2";
+        BridgedERC1155.initialize();
+        version = "v0.2.4";
     }
 
     /***********************************|
@@ -482,36 +174,48 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     /**
      * @notice Gets the Creator of a Token Type
-     * @param _type     The Type ID of the Token
+     * @param _typeId     The Type ID of the Token
      * @return  The Creator Address
      */
-    function getTypeCreator(uint256 _type) public view returns (address) {
-        return typeCreator[_type];
+    function getTypeCreator(uint256 _typeId) public view returns (address) {
+        return typeCreator[_typeId];
+    }
+
+    /**
+     * @notice Gets the Compatibility Bridge for the Token
+     * @param _typeId     The Token ID or the Type ID of the Token
+     * @return  The Token-Bridge Address
+     */
+    function getTypeTokenBridge(uint256 _typeId) public view returns (address) {
+        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _typeId = _typeId & TYPE_MASK;
+        }
+        return typeTokenBridge[_typeId];
     }
 
     /**
      * @notice Checks if a user is allowed to mint a Token by Type ID
-     * @param _type     The Type ID of the Token
+     * @param _typeId     The Type ID of the Token
      * @param _amount   The amount of tokens to mint
      * @return  True if the user can mint the token type
      */
-    function canMint(uint256 _type, uint256 _amount) public view returns (bool) {
+    function canMint(uint256 _typeId, uint256 _amount) public view returns (bool) {
         // Public
-        if (registeredTypes[_type] & 1 == 1) {
+        if (registeredTypes[_typeId] & 1 == 1) {
             // Has Max
-            if (typeSupply[_type] > 0) {
-                return maxIndex[_type].add(_amount) <= typeSupply[_type];
+            if (typeSupply[_typeId] > 0) {
+                return maxIndex[_typeId].add(_amount) <= typeSupply[_typeId];
             }
             // No Max
             return true;
         }
         // Private
-        if (typeCreator[_type] != msg.sender) {
+        if (typeCreator[_typeId] != msg.sender) {
             return false;
         }
         // Has Max
-        if (typeSupply[_type] > 0) {
-            return maxIndex[_type].add(_amount) <= typeSupply[_type];
+        if (typeSupply[_typeId] > 0) {
+            return maxIndex[_typeId].add(_amount) <= typeSupply[_typeId];
         }
         // No Max
         return true;
@@ -534,6 +238,40 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         return _tokenId & NF_INDEX_MASK;
     }
 
+    /**
+     * @notice Gets the ETH price to mint a Token of a specific Type
+     * @param _typeId     The Token ID or the Type ID of the Token
+     * @return  The ETH price to mint the Token
+     */
+    function getMintingFee(uint256 _typeId) public view returns (uint256) {
+        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _typeId = _typeId & TYPE_MASK;
+        }
+        return mintFee[_typeId];
+    }
+
+    /**
+     * @notice Gets the Max-Supply of the Particle Type (0 for infinite)
+     * @param _typeId   The Token ID or the Type ID of the Token
+     */
+    function getMaxSupply(uint256 _typeId) public view returns (uint256) {
+        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _typeId = _typeId & TYPE_MASK;
+        }
+        return typeSupply[_typeId];
+    }
+
+    /**
+     * @notice Gets the Number of Minted Particles
+     * @param _typeId   The Token ID or the Type ID of the Token
+     */
+    function getTotalMinted(uint256 _typeId) public view returns (uint256) {
+        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _typeId = _typeId & TYPE_MASK;
+        }
+        return maxIndex[_typeId];
+    }
+
     /***********************************|
     |         Particle Physics          |
     |__________________________________*/
@@ -542,8 +280,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      * @notice Gets the Amount of Base DAI held in the Token (amount token was minted with)
      */
     function baseParticleMass(uint256 _tokenId) public view returns (uint256) {
-        uint256 _type = _tokenId & TYPE_MASK;
-        bytes16 _assetPairId = typeAssetPairId[_type];
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         return escrow.baseParticleMass(address(this), _tokenId, _assetPairId);
     }
 
@@ -551,11 +289,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      * @notice Gets the amount of Charge the Particle has generated (it's accumulated interest)
      */
     function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
-        uint256 _type = _tokenId & TYPE_MASK;
-        require(registeredTypes[_type] > 0, "E402");
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        require(registeredTypes[_typeId] > 0, "E402");
         require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E402");
 
-        bytes16 _assetPairId = typeAssetPairId[_type];
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         return escrow.currentParticleCharge(address(this), _tokenId, _assetPairId);
     }
 
@@ -569,13 +307,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      @ @dev see _createParticle()
      */
     function createParticle(
+        string memory _name,
         string memory _uri,
         string memory _symbol,
-        bool _isPrivate,
-        bool _isSeries,
+        uint8 _accessType,
         string memory _assetPairId,
         uint256 _maxSupply,
-        uint256 _creatorFee,
+        uint256 _mintFee,
+        uint256 _energizeFee,
         bool _payWithIons
     )
         public
@@ -583,49 +322,57 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         whenNotPaused
         returns (uint256 _particleTypeId)
     {
-        address _self = address(this);
+        address contractOwner = owner();
         (uint256 ethPrice, uint256 ionPrice) = getCreationPrice(true);
 
         if (_payWithIons) {
             _collectIons(msg.sender, ionPrice);
+            ethPrice = 0;
         } else {
             require(msg.value >= ethPrice, "E404");
         }
 
         // Create Particle Type
         _particleTypeId = _createParticle(
-            msg.sender,     // Token Creator
+            _name,          // Token Name
             _uri,           // Token Metadata URI
             _symbol,        // Token Symbol
-            _isPrivate,     // is Private?
-            _isSeries,      // is Series?
+            _accessType,    // Token Access Type
             _assetPairId,   // Asset Pair for Type
             _maxSupply,     // Max Supply
-            _creatorFee     // Deposit Fee for Creator
+            _mintFee,       // Price-per-Token in ETH
+            _energizeFee    // Energize Fee for Creator
         );
 
+        // Mark ION-Generated Particles
+        if (_payWithIons) {
+            typeSpecialBits[_particleTypeId] = typeSpecialBits[_particleTypeId] | ION_SPECIAL_BIT;
+        }
+
+        // Collect Fees
+        else {
+            collectedFees[contractOwner] = ethPrice.add(collectedFees[contractOwner]);
+        }
+
         // Refund over-payment
-        if (!_payWithIons) {
-            collectedFees[_self] = ethPrice.add(collectedFees[_self]);
-            uint256 overage = msg.value.sub(ethPrice);
-            if (overage > 0) {
-                msg.sender.sendValue(overage);
-            }
+        uint256 overage = msg.value.sub(ethPrice);
+        if (overage > 0) {
+            msg.sender.sendValue(overage);
         }
     }
 
-    /**
+    /**`
      * @notice Creates a new Plasma Type (FT/ERC20) which can later be minted/burned
      *         NOTE: Requires payment in ETH or IONs
      @ @dev see _createPlasma()
      */
     function createPlasma(
-        address _creator,
+        string memory _name,
         string memory _uri,
         string memory _symbol,
         bool _isPrivate,
         uint256 _maxSupply,
-        uint256 _ethPerToken,
+        uint256 _mintFee,
         uint256 _initialMint,
         bool _payWithIons
     )
@@ -639,28 +386,36 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         if (_payWithIons) {
             _collectIons(msg.sender, ionPrice);
+            ethPrice = 0;
         } else {
             require(msg.value >= ethPrice, "E404");
         }
 
         // Create Plasma Type
         _plasmaTypeId = _createPlasma(
-            _creator,       // Token Creator
+            _name,          // Token Name
             _uri,           // Token Metadata URI
             _symbol,        // Token Symbol
             _isPrivate,     // is Private?
             _maxSupply,     // Max Supply
-            _ethPerToken,   // Initial Price per Token in ETH
+            _mintFee,       // Price per Token in ETH
             _initialMint    // Initial Amount to Mint
         );
 
-        // Refund over-payment
-        if (!_payWithIons) {
+        // Mark ION-Generated Particles
+        if (_payWithIons) {
+            typeSpecialBits[_plasmaTypeId] = typeSpecialBits[_plasmaTypeId] | ION_SPECIAL_BIT;
+        }
+
+        // Collect Fees
+        else {
             collectedFees[contractOwner] = ethPrice.add(collectedFees[contractOwner]);
-            uint256 overage = msg.value.sub(ethPrice);
-            if (overage > 0) {
-                msg.sender.sendValue(overage);
-            }
+        }
+
+        // Refund over-payment
+        uint256 overage = msg.value.sub(ethPrice);
+        if (overage > 0) {
+            msg.sender.sendValue(overage);
         }
     }
 
@@ -672,7 +427,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      * @notice Mints a new Particle of the specified Type
      *          Note: Requires Asset-Token to mint
      * @param _to           The owner address to assign the new token to
-     * @param _type         The Type ID of the new token to mint
+     * @param _typeId         The Type ID of the new token to mint
      * @param _assetAmount  The amount of Asset-Tokens to deposit
      * @param _uri          The Unique URI to the Token Metadata
      * @param _data         Custom data used for transferring tokens into contracts
@@ -682,44 +437,66 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      */
     function mintParticle(
         address _to,
-        uint256 _type,
+        uint256 _typeId,
         uint256 _assetAmount,
         string memory _uri,
         bytes memory _data
     )
         public
         whenNotPaused
+        payable
         returns (uint256)
     {
-        require((_type & TYPE_NF_BIT == TYPE_NF_BIT) && (_type & NF_INDEX_MASK == 0), "E304");
-        require(canMint(_type, 1), "E407");
+        require((_typeId & TYPE_NF_BIT == TYPE_NF_BIT) && (_typeId & NF_INDEX_MASK == 0), "E304");
+        require(canMint(_typeId, 1), "E407");
+
+        address creator = typeCreator[_typeId];
+        uint256 ethPerToken;
+
+        // Check Token Price
+        if (msg.sender != creator) {
+            ethPerToken = mintFee[_typeId];
+            require(msg.value >= ethPerToken, "E404");
+        }
 
         // Series-Particles use the Metadata of their Type
-        if (registeredTypes[_type] & 4 == 4) {
-            _uri = tokenUri[_type];
+        if (registeredTypes[_typeId] & 4 == 4) {
+            _uri = tokenUri[_typeId];
         }
 
         // Mint Token
-        uint256 _tokenId = _mint(_to, _type, 1, _uri, _data);
-        typeCreator[_tokenId] = msg.sender;
+        uint256 _tokenId = _mint(_to, _typeId, 1, _uri, _data);
+//        typeCreator[_tokenId] = msg.sender;    // This is the TOKEN creator, not TYPE
 
         // Energize NFT Particles
         energizeParticle(_tokenId, _assetAmount);
 
+        // Log Event
         emit ParticleMinted(msg.sender, _to, _tokenId, _uri);
+
+        // Track Collected Fees
+        if (msg.sender != creator) {
+            collectedFees[creator] = ethPerToken.add(collectedFees[creator]);
+        }
+
+        // Refund overpayment
+        uint256 overage = msg.value.sub(ethPerToken);
+        if (overage > 0) {
+            msg.sender.sendValue(overage);
+        }
         return _tokenId;
     }
 
     /**
      * @notice Mints new Plasma of the specified Type
      * @param _to      The owner address to assign the new tokens to
-     * @param _type    The Type ID of the tokens to mint
+     * @param _typeId    The Type ID of the tokens to mint
      * @param _amount  The amount of tokens to mint
      * @param _data    Custom data used for transferring tokens into contracts
      */
     function mintPlasma(
         address _to,
-        uint256 _type,
+        uint256 _typeId,
         uint256 _amount,
         bytes memory _data
     )
@@ -727,33 +504,33 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         whenNotPaused
         payable
     {
-        require(_type & TYPE_NF_BIT == 0, "E304");
-        require(canMint(_type, _amount), "E407");
+        require(_typeId & TYPE_NF_BIT == 0, "E304");
+        require(canMint(_typeId, _amount), "E407");
 
-        address creator = (_type == ionTokenId) ? owner() : typeCreator[_type];
+        address creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
         uint256 totalEth;
         uint256 ethPerToken;
 
         // Check Token Price
         if (msg.sender != creator) {
-            ethPerToken = plasmaPrice[_type];
+            ethPerToken = mintFee[_typeId];
             totalEth = _amount.mul(ethPerToken);
             require(msg.value >= totalEth, "E404");
         }
 
         // Mint Token
-        _mint(_to, _type, _amount, "", _data);
-        emit PlasmaMinted(msg.sender, _to, _type, _amount);
+        _mint(_to, _typeId, _amount, "", _data);
+        emit PlasmaMinted(msg.sender, _to, _typeId, _amount);
 
         if (msg.sender != creator) {
             // Track Collected Fees
             collectedFees[creator] = totalEth.add(collectedFees[creator]);
+        }
 
-            // Refund overpayment
-            uint256 overage = msg.value.sub(totalEth);
-            if (overage > 0) {
-                msg.sender.sendValue(overage);
-            }
+        // Refund overpayment
+        uint256 overage = msg.value.sub(totalEth);
+        if (overage > 0) {
+            msg.sender.sendValue(overage);
         }
     }
 
@@ -772,12 +549,12 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
         // Verify Token
         require((_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) && (_tokenId & NF_INDEX_MASK == 0), "E304");
-        uint256 _type = _tokenId & TYPE_MASK;
-        require(registeredTypes[_type] > 0, "E402");
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        require(registeredTypes[_typeId] > 0, "E402");
 
         // Prepare Particle Release
         _tokenOwner = ownerOf(_tokenId);
-        _assetPairId = typeAssetPairId[_type];
+        _assetPairId = typeAssetPairId[_typeId];
         escrow.releaseParticle(_tokenOwner, _self, _tokenId, _assetPairId);
 
         // Burn Token
@@ -817,8 +594,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         whenNotPaused
         returns (uint256)
     {
-        uint256 _type = _tokenId & TYPE_MASK;
-        bytes16 _assetPairId = typeAssetPairId[_type];
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         require((_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) && (_tokenId & NF_INDEX_MASK == 0), "E304");
 
         // Transfer Asset Token from User to Contract
@@ -837,8 +614,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      *  from the token without removing the underlying Asset that is held in the token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
-        uint256 _type = _tokenId & TYPE_MASK;
-        bytes16 _assetPairId = typeAssetPairId[_type];
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
     }
 
@@ -847,8 +624,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
      *  the interest generated from the token without removing the underlying Asset that is held in the token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId, uint256 _assetAmount) public returns (uint256, uint256) {
-        uint256 _type = _tokenId & TYPE_MASK;
-        bytes16 _assetPairId = typeAssetPairId[_type];
+        uint256 _typeId = _tokenId & TYPE_MASK;
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId, _assetAmount);
     }
 
@@ -926,20 +703,19 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
     /**
      * @dev Setup internal ION Token
      */
-    function mintIons(string memory _uri, uint256 _maxSupply, uint256 _amount, uint256 _ethPerToken) public onlyOwner returns (uint256) {
-        address contractOwner = owner();
+    function mintIons(string memory _uri, uint256 _maxSupply, uint256 _amount, uint256 _mintFee) public onlyOwner returns (uint256) {
         require(ionTokenId == 0, "E416");
 
         // Create ION Token Type;
         //  ERC20, Private, Limited
         ionTokenId = _createPlasma(
-            contractOwner,  // Contract Owner
-            _uri,           // Token Metadata URI
-            "ION",          // Token Symbol
-            false,          // is Private?
-            _maxSupply,     // Max Supply
-            _ethPerToken,   // Initial Price per Token (~ $0.10)
-            _amount         // Initial amount to mint
+            "Charged Atoms", // Token Name
+            _uri,            // Token Metadata URI
+            "ION",           // Token Symbol
+            false,           // is Private?
+            _maxSupply,      // Max Supply
+            _mintFee,        // Price per Token in ETH
+            _amount          // Initial amount to mint
         );
 
         return ionTokenId;
@@ -966,76 +742,91 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
 
     /**
      * @notice Creates a new Particle Type (NFT) which can later be minted/burned
-     * @param _creator          The address of the Creator of this Type
+     * @param _name             The Name of the Particle
      * @param _uri              A unique URI for the Token Type which will serve the JSON metadata
-     * @param _isPrivate        True if the Type is Private and can only be minted by the creator; otherwise anyone can mint
+     * @param _accessType       A bit indicating the Access Type; Private/Public, Series/Collection
      * @param _assetPairId      The ID of the Asset-Pair that the Particle will use for the Underlying Assets
      * @param _maxSupply        The Max Supply of Tokens that can be minted
      *                          Provide a value of 0 for no limit
-     * @param _creatorFee       The Fee that is collected for each Particle and paid to the Particle Type Creator
-     *                          Collected when the Particle is Minted or Energized
+     * @param _mintFee          The "Mint" Fee that is collected for each Particle and paid to the Particle Type Creator
+     * @param _energizeFee      The "Energize" Fee that is collected upon Asset Deposit for each Particle and paid to the Particle Type Creator
+     *                          Collected when the Particle is Energized
      * @return The ID of the newly created Particle Type
      *         Use this ID when Minting Particles of this Type
      */
     function _createParticle(
-        address _creator,
+        string memory _name,
         string memory _uri,
         string memory _symbol,
-        bool _isPrivate,
-        bool _isSeries,
+        uint8 _accessType,
         string memory _assetPairId,
         uint256 _maxSupply,
-        uint256 _creatorFee
+        uint256 _mintFee,
+        uint256 _energizeFee
     )
         internal
         returns (uint256 _particleTypeId)
     {
         bytes16 _assetPair = _toBytes16(_assetPairId);
-        require(_creatorFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
+        require(_energizeFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
         require(assetPairEnabled[_assetPair], "E414");
 
         // Create Type
         _particleTypeId = _createType(_uri, true); // ERC-1155 Non-Fungible
 
+        // Create Token-Bridge
+        typeTokenBridge[_particleTypeId] = _createErc721Bridge(_particleTypeId, _name, _symbol);
+
         // Type Access (Public or Private, Series or Collection)
-        registeredTypes[_particleTypeId] = (_isPrivate ? 2 : 1) & (_isSeries ? 4 : 8);
+        registeredTypes[_particleTypeId] = _accessType; // (_isPrivate ? 2 : 1) & (_isSeries ? 4 : 8);
 
         // Max Supply of Token; 0 = No Max
         typeSupply[_particleTypeId] = _maxSupply;
 
+        // The Eth-per-Token Fee for Minting
+        mintFee[_particleTypeId] = _mintFee;
+
         // Creator of Type
-        typeCreator[_particleTypeId] = _creator;
-        escrow.registerCreatorSetting_FeeCollector(_particleTypeId, _creator);
+        typeCreator[_particleTypeId] = msg.sender;
+        escrow.registerCreatorSetting_FeeCollector(_particleTypeId, msg.sender);
 
         // Type Asset-Pair
         typeAssetPairId[_particleTypeId] = _assetPair;
         escrow.registerCreatorSetting_AssetPair(_particleTypeId, _assetPair);
 
         // The Deposit Fee for Creators
-        escrow.registerCreatorSetting_DepositFee(_particleTypeId, _assetPair, _creatorFee);
+        escrow.registerCreatorSetting_DepositFee(_particleTypeId, _assetPair, _energizeFee);
 
-        emit ParticleTypeUpdated(_particleTypeId, _symbol, _isPrivate, _isSeries, _assetPairId, _creatorFee, _uri);
+        emit ParticleTypeUpdated(
+            _particleTypeId,
+            _symbol,
+            (_accessType & 2 == 2),     // isPrivate
+            (_accessType & 4 == 4),     // isSeries
+            _assetPairId,
+            _energizeFee,
+            _uri
+        );
     }
 
     /**
      * @notice Creates a new Plasma Type (FT) which can later be minted/burned
-     * @param _creator          The address of the Creator of this Type
+     * @param _name             The Name of the Particle
      * @param _uri              A unique URI for the Token Type which will serve the JSON metadata
      * @param _isPrivate        True if the Type is Private and can only be minted by the creator; otherwise anyone can mint
      * @param _maxSupply        The Max Supply of Tokens that can be minted
      *                          Provide a value of 0 for no limit
-     * @param _ethPerToken      The ETH Price of each Token when sold to public
+     * @param _mintFee          The ETH Price of each Token when sold to public
      * @param _initialMint      The amount of tokens to initially mint
      * @return The ID of the newly created Plasma Type
      *         Use this ID when Minting Plasma of this Type
      */
     function _createPlasma(
-        address _creator,
+        string memory _name,
         string memory _uri,
         string memory _symbol,
         bool _isPrivate,
         uint256 _maxSupply,
-        uint256 _ethPerToken,
+        uint256 _mintFee,
         uint256 _initialMint
     )
         internal
@@ -1044,24 +835,27 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         // Create Type
         _plasmaTypeId = _createType(_uri, false); // ERC-1155 Fungible
 
+        // Create Token-Bridge
+        typeTokenBridge[_plasmaTypeId] = _createErc20Bridge(_plasmaTypeId, _name, _symbol, 18);
+
         // Type Access (Public or Private minting)
         registeredTypes[_plasmaTypeId] = _isPrivate ? 2 : 1;
 
         // Creator of Type
-        typeCreator[_plasmaTypeId] = _creator;
+        typeCreator[_plasmaTypeId] = msg.sender;
 
         // Max Supply of Token; 0 = No Max
         typeSupply[_plasmaTypeId] = _maxSupply;
 
         // The Eth-per-Token Fee for Minting
-        plasmaPrice[_plasmaTypeId] = _ethPerToken;
+        mintFee[_plasmaTypeId] = _mintFee;
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
-            _mint(_creator, _plasmaTypeId, _initialMint, "", "");
+            _mint(msg.sender, _plasmaTypeId, _initialMint, "", "");
         }
 
-        emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _ethPerToken, _initialMint, _uri);
+        emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri);
     }
 
     /**
@@ -1082,8 +876,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, ERC1155 {
         IERC20 _assetToken = IERC20(_assetTokenAddress);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
-        require(_assetAmount <= _userAssetBalance, "Insufficient Asset Token funds");
-        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "Failed to transfer Asset Token"); // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetAmount <= _userAssetBalance, "E418");
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "E419"); // Be sure to Approve this Contract to transfer your Asset Token
     }
 
     /**

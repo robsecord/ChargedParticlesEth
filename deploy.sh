@@ -10,20 +10,24 @@ init=
 update=
 
 
-addrChaiNucleus="0x6D458E5a64F04BFDCd6560B9Ce44213D901FB9F2"
-addrChargedParticles="0x94EA50510C391C3D068AD4f1c83fb0203d305E17"
-addrChargedParticlesEscrow="0x2b8fB0804fFFd1F944a28bF12161d6b8b9043E85"
+addrChaiNucleus=
+addrChargedParticles=
+addrChargedParticlesEscrow=
 
 depositFee="50000000000000000000"
 assetPair="chai"
 daiAddress="0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6"
-ethFee="380000000000000"
+ethFee="1100000000000000"
 ionFee="1000000000000000000"
-ionUrl="https://ipfs.io/ipfs/QmQ98oeXhZRVEMuo5gyYCLF5kmaqhsGPFUPm4WrMVJuJ5c"
-ionSupply="2000000000000000000000000"
-ionMint="1000000000000000000000000"
-ionPrice="570000000000000"
+ionUrl="https://ipfs.io/ipfs/QmbNDYSzPUuEKa8ppv1W11fVJVZdGBUku2ZDKBqmUmyQdT"
+ionSupply="7000000000000000000000000"
+ionMint="3000000000000000000000000"   # reserves
+ionPrice="750000000000000"
 
+# ETH Fee:
+#      NFT:    $0.25   or  2 IONs
+#       FT:    $0.15   or  1 ION
+#      ION:    $0.10
 
 usage() {
     echo "usage: ./deploy.sh [[-n [development|kovan|mainnet] [-i] [-u] [-v] [-s]] | [-h]]"
@@ -59,7 +63,7 @@ getOwnerAccount() {
     fi
 
     oz session --no-interactive --from "$ownerAccount" -n "$networkName"
-    oz balance --from "$ownerAccount" -n "$networkName" --no-interactives
+    oz balance --from "$ownerAccount" -n "$networkName" --no-interactive
     oz balance --no-interactive --from "$ownerAccount" -n "$networkName" --erc20 "$daiAddress"
 }
 
@@ -79,35 +83,29 @@ deployFresh() {
     echoHeader
     echo "Creating Contract: ChaiNucleus"
     oz add ChaiNucleus --push --skip-compile
-    addressChaiNucleus=$(oz create ChaiNucleus --init initRopsten --no-interactive | tail -n 1)
-    sleep 1s
-
-    echoHeader
-    echo "Creating Contract: ChargedParticlesEscrow"
-    oz add ChargedParticlesEscrow --push --skip-compile
-    addressChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    addrChaiNucleus=$(oz create ChaiNucleus --init initRopsten --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
     echo "Creating Contract: ChargedParticles"
     oz add ChargedParticles --push --skip-compile
-    addressChargedParticles=$(oz create ChargedParticles --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    addrChargedParticles=$(oz create ChargedParticles --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    sleep 1s
+
+    echoHeader
+    echo "Creating Contract: ChargedParticlesEscrow"
+    oz add ChargedParticlesEscrow --push --skip-compile
+    addrChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
     echo "Contract Addresses: "
-    echo " - ChaiNucleus:            $addressChaiNucleus"
-    echo " - ChargedParticles:       $addressChargedParticles"
-    echo " - ChargedParticlesEscrow: $addressChargedParticlesEscrow"
+    echo " - ChaiNucleus:            $addrChaiNucleus"
+    echo " - ChargedParticles:       $addrChargedParticles"
+    echo " - ChargedParticlesEscrow: $addrChargedParticlesEscrow"
 
     echoHeader
     echo "Contract Deployment Complete!"
-    echo " "
-    echoBeep
-}
-
-initialize() {
-    getOwnerAccount
 
     echoHeader
     echo "Initializing ChargedParticlesEscrow.."
@@ -172,8 +170,6 @@ while [[ "$1" != "" ]]; do
         -n | --network )        shift
                                 networkName=$1
                                 ;;
-        -i | --init )           init="yes"
-                                ;;
         -u | --update )         update="yes"
                                 ;;
         -s | --silent )         silent="yes"
@@ -187,9 +183,7 @@ while [[ "$1" != "" ]]; do
     shift
 done
 
-if [[ -n "$init" ]]; then
-    initialize
-elif [[ -n "$update" ]]; then
+if [[ -n "$update" ]]; then
     deployUpdate
 else
     deployFresh

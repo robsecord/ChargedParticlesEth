@@ -20,6 +20,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Reduce deployment gas costs by limiting the size of text used in error messages
+// ERROR CODES:
+//  300:        ChargedParticlesEscrow
+//      301         Asset-Pair is not enabled
+//      302         Asset-Pair is not allowed
+//      303         Asset-Pair has not been registered
+//      304         Contract is not registered
+//      305         Invalid Contract Operator
+//      306         Must be creator of type
+//      307         Invalid address
+//      308         Invalid Asset Token address
+//      309         Invalid Interest Token address
+//      310         Invalid owner/operator
+//      311         Index out-of-bounds
+//      312         Invalid Token-Type Interface
+//      313         Requires setting a Single Custom Asset-Pair
+//      314         Setting releaseRequiresBurn cannot be true for Multi-Asset Particles
+//      315         Deposit Fee is too high
+//      316         Minimum deposit is not high enough
+//      317         Caller is not Contract Owner
+//      318         Token must be Non-fungible
+//      319         Token Balance is lower than required limit
+//      320         Token Balance is lower than allowed limit
+//      321         Token Balance is higher than allowed limit
+//      322         Token not prepared for release or unapproved operator
+//      323         Token requires burning before release
+//      324         Insufficient Asset Token funds
+//      325         Failed to transfer Asset Token
+//      326         Particle has Insufficient Charge
+//      327         Transfer Failed
+
+
 pragma solidity ^0.5.16;
 pragma experimental ABIEncoderV2;
 
@@ -182,7 +214,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.2.2";
+        version = "v0.2.4";
     }
 
     /***********************************|
@@ -198,17 +230,17 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     function getAssetPairByIndex(uint _index) public view returns (bytes16) {
-        require(_index >= 0 && _index < assetPairs.length, "Index out-of-bounds");
+        require(_index >= 0 && _index < assetPairs.length, "E311");
         return assetPairs[_index];
     }
 
     function getAssetTokenAddress(bytes16 _assetPairId) public view returns (address) {
-        require(isAssetPairEnabled(_assetPairId), "Asset-Pair is not enabled");
+        require(isAssetPairEnabled(_assetPairId), "E301");
         return address(assetToken[_assetPairId]);
     }
 
     function getInterestTokenAddress(bytes16 _assetPairId) public view returns (address) {
-        require(isAssetPairEnabled(_assetPairId), "Asset-Pair is not enabled");
+        require(isAssetPairEnabled(_assetPairId), "E301");
         return address(interestToken[_assetPairId]);
     }
 
@@ -326,10 +358,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         IERC165 _tokenInterface = IERC165(_contractAddress);
         bool _is721 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC721);
         bool _is1155 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC1155);
-        require(_is721 || _is1155, "Invalid Token-Type Interface");
+        require(_is721 || _is1155, "E312");
 
         // Check Contract Owner to prevent random people from setting Limits
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
@@ -338,52 +370,52 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(custom_registeredContract[_contractAddress], "E304");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
-        require(custom_assetPairId[_contractAddress].length > 0, "Requires setting a Single Custom Asset-Pair");
+        require(custom_assetPairId[_contractAddress].length > 0, "E313");
 
         custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
 
     function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) public {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(custom_registeredContract[_contractAddress], "E304");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
         if (_assetPairId.length > 0) {
-            require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+            require(assetPairEnabled[_assetPairId], "E301");
         } else {
-            require(custom_releaseRequiresBurn[_contractAddress] != true, "Setting releaseRequiresBurn cannot be true for Multi-Asset Particles");
+            require(custom_releaseRequiresBurn[_contractAddress] != true, "E314");
         }
 
         custom_assetPairId[_contractAddress] = _assetPairId;
     }
 
     function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(custom_registeredContract[_contractAddress], "E304");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
-        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "Deposit Fee is too high");
+        require(assetPairEnabled[_assetPairId], "E301");
+        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "E315");
 
         custom_assetDepositFee[_contractAddress][_assetPairId] = _depositFee;
     }
 
     function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(custom_registeredContract[_contractAddress], "E304");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
-        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "Minimum deposit is not high enough");
+        require(assetPairEnabled[_assetPairId], "E301");
+        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "E316");
 
         custom_assetDepositMin[_contractAddress][_assetPairId] = _minDeposit;
     }
 
     function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "Invalid Contract Operator");
+        require(custom_registeredContract[_contractAddress], "E304");
+        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+        require(assetPairEnabled[_assetPairId], "E301");
 
         custom_assetDepositMax[_contractAddress][_assetPairId] = _maxDeposit;
     }
@@ -400,42 +432,42 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) public {
-        require(isTypeCreator(msg.sender, _typeId), "Must be creator of type");
+        require(isTypeCreator(msg.sender, _typeId), "E306");
         creator_feeCollector[_typeId] = _feeCollector;
     }
 
     function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) public {
-        require(isTypeCreator(msg.sender, _typeId), "Must be creator of type");
+        require(isTypeCreator(msg.sender, _typeId), "E306");
 
         if (_assetPairId.length > 0) {
-            require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+            require(assetPairEnabled[_assetPairId], "E301");
         }
 
         creator_assetPairId[_typeId] = _assetPairId;
     }
 
     function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) public {
-        require(isTypeCreator(msg.sender, _typeId), "Must be creator of type");
+        require(isTypeCreator(msg.sender, _typeId), "E306");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
-        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "Deposit Fee is too high");
+        require(assetPairEnabled[_assetPairId], "E301");
+        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "E315");
 
         creator_assetDepositFee[_typeId][_assetPairId] = _depositFee;
     }
 
     function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) public {
-        require(isTypeCreator(msg.sender, _typeId), "Must be creator of type");
+        require(isTypeCreator(msg.sender, _typeId), "E306");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
-        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "Minimum deposit is not high enough");
+        require(assetPairEnabled[_assetPairId], "E301");
+        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "E316");
 
         creator_assetDepositMin[_typeId][_assetPairId] = _minDeposit;
     }
 
     function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) public {
-        require(isTypeCreator(msg.sender, _typeId), "Must be creator of type");
+        require(isTypeCreator(msg.sender, _typeId), "E306");
 
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+        require(assetPairEnabled[_assetPairId], "E301");
 
         creator_assetDepositMax[_typeId][_assetPairId] = _maxDeposit;
     }
@@ -448,11 +480,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @dev Allows External Contract Owners to withdraw any Custom Fees earned
      */
     function withdrawContractFees(address _contractAddress, address _receiver) public nonReentrant {
-        require(custom_registeredContract[_contractAddress], "Contract is not registered");
+        require(custom_registeredContract[_contractAddress], "E304");
 
         // Validate Contract Owner
         address _contractOwner = IOwnable(_contractAddress).owner();
-        require(_contractOwner == msg.sender, "Caller is not Contract Owner");
+        require(_contractOwner == msg.sender, "E317");
 
         bool withdrawn;
         for (uint i = 0; i < assetPairs.length; i++) {
@@ -511,8 +543,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         nonReentrant
         returns (uint256)
     {
-//        require(_isNonFungibleToken(_contractAddress, _tokenId), "Token must be Non-fungible");
-        require(assetPairEnabled[_assetPairId], "Asset-Pair is not enabled");
+//        require(_isNonFungibleToken(_contractAddress, _tokenId), "E318");
+        require(assetPairEnabled[_assetPairId], "E301");
 
         // Get Token UUID & Balance
         uint256 typeId;
@@ -521,7 +553,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _newBalance = _assetAmount.add(_existingBalance);
 
         // Validate Minimum-Required Balance
-        require(_newBalance >= MIN_DEPOSIT_FEE, "Token Balance is lower than required limit");
+        require(_newBalance >= MIN_DEPOSIT_FEE, "E319");
 
         // Validate Type-Creator Settings
         if (_contractAddress == chargedParticles) {
@@ -529,15 +561,15 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
             // Valid Asset-Pair?
             if (creator_assetPairId[typeId].length > 0) {
-                require(_assetPairId == creator_assetPairId[typeId], "Asset-Pair is not allowed");
+                require(_assetPairId == creator_assetPairId[typeId], "E302");
             }
 
             // Valid Amount?
             if (creator_assetDepositMin[typeId][_assetPairId] > 0) {
-                require(_newBalance >= creator_assetDepositMin[typeId][_assetPairId], "Token Balance is lower than allowed limit");
+                require(_newBalance >= creator_assetDepositMin[typeId][_assetPairId], "E320");
             }
             if (creator_assetDepositMax[typeId][_assetPairId] > 0) {
-                require(_newBalance <= creator_assetDepositMax[typeId][_assetPairId], "Token Balance is higher than allowed limit");
+                require(_newBalance <= creator_assetDepositMax[typeId][_assetPairId], "E321");
             }
         }
 
@@ -547,15 +579,15 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
             if (hasCustomSettings) {
                 // Valid Asset-Pair?
                 if (custom_assetPairId[_contractAddress].length > 0) {
-                    require(_assetPairId == custom_assetPairId[_contractAddress], "Asset-Pair is not allowed");
+                    require(_assetPairId == custom_assetPairId[_contractAddress], "E302");
                 }
 
                 // Valid Amount?
                 if (custom_assetDepositMin[_contractAddress][_assetPairId] > 0) {
-                    require(_newBalance >= custom_assetDepositMin[_contractAddress][_assetPairId], "Token Balance is lower than allowed limit");
+                    require(_newBalance >= custom_assetDepositMin[_contractAddress][_assetPairId], "E320");
                 }
                 if (custom_assetDepositMax[_contractAddress][_assetPairId] > 0) {
-                    require(_newBalance <= custom_assetDepositMax[_contractAddress][_assetPairId], "Token Balance is higher than allowed limit");
+                    require(_newBalance <= custom_assetDepositMax[_contractAddress][_assetPairId], "E321");
                 }
             }
         }
@@ -570,11 +602,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         // Tokenize Interest
         uint256 _interestAmount = _tokenizeInterest(_contractAddress, typeId, _assetPairId, _assetAmount);
 
-        // Track Asset Token Balance
+        // Track Asset Token Balance (Mass of each Particle)
         uint256 _assetBalance = _assetAmount.add(assetTokenDeposited[_tokenUuid][_assetPairId]);
         assetTokenDeposited[_tokenUuid][_assetPairId] = _assetBalance;
 
-        // Track Interest-bearing Token Balance (Mass of each Particle)
+        // Track Interest-bearing Token Balance (Charge of each Particle)
         uint256 _interestBalance = _interestAmount.add(interestTokenBalance[_tokenUuid][_assetPairId]);
         interestTokenBalance[_tokenUuid][_assetPairId] = _interestBalance;
 
@@ -650,7 +682,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "Unapproved owner or operator");
+        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "E310");
 
         // Validate Token Burn before Release
         bool requiresBurn = (_contractAddress == chargedParticles);
@@ -685,11 +717,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         address releaser = assetToBeReleased[_tokenUuid];
 
         // Validate Release Operator
-        require(releaser == msg.sender, "Token not prepared for release or unapproved operator");
+        require(releaser == msg.sender, "E322");
 
         // Validate Token Burn
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require(_tokenOwner == address(0x0), "Token requires burning before release");
+        require(_tokenOwner == address(0x0), "E323");
 
         // Release Particle to Receiver
         assetToBeReleased[_tokenUuid] = address(0x0);
@@ -712,7 +744,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @dev Register the Charged Particles ERC1155 Token Contract
      */
     function registerChargedParticles(address _chargedParticles) public onlyOwner {
-        require(_chargedParticles != address(0x0), "Invalid address");
+        require(_chargedParticles != address(0x0), "E307");
         chargedParticles = _chargedParticles;
     }
 
@@ -722,8 +754,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function registerAssetPair(string memory _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
         bytes16 _assetPair = _toBytes16(_assetPairId);
 //        require(address(interestToken[_assetPair]) == address(0x0), "Asset-Pair has already been registered");
-        require(_assetTokenAddress != address(0x0), "Invalid Asset Token address");
-        require(_interestTokenAddress != address(0x0), "Invalid Interest Token address");
+        require(_assetTokenAddress != address(0x0), "E308");
+        require(_interestTokenAddress != address(0x0), "E309");
 
         // Register Pair
         assetPairs.push(_assetPair);
@@ -739,7 +771,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @dev Enable/Disable a specific Asset-Pair
      */
     function toggleAssetPair(bytes16 _assetPairId, bool _isEnabled) public onlyOwner {
-        require(address(interestToken[_assetPairId]) != address(0x0), "Asset-Pair has not been registered");
+        require(address(interestToken[_assetPairId]) != address(0x0), "E303");
         assetPairEnabled[_assetPairId] = _isEnabled;
     }
 
@@ -767,8 +799,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      */
     function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
         uint256 _userAssetBalance = assetToken[_assetPairId].balanceOf(_from);
-        require(_assetAmount <= _userAssetBalance, "Insufficient Asset Token funds");
-        require(assetToken[_assetPairId].transferFrom(_from, address(this), _assetAmount), "Failed to transfer Asset Token"); // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetAmount <= _userAssetBalance, "E324");
+        require(assetToken[_assetPairId].transferFrom(_from, address(this), _assetAmount), "E325"); // Be sure to Approve this Contract to transfer your Asset Token
     }
 
     /**
@@ -834,11 +866,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "Unapproved owner or operator");
+        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "E310");
 
         // Validate Discharge Amount
         uint256 _currentCharge = currentParticleCharge(_contractAddress, _tokenId, _assetPairId);
-        require(_currentCharge <= _assetAmount, "Particle has Insufficient Charge");
+        require(_currentCharge <= _assetAmount, "E326");
 
         // Discharge Particle to Receiver
         (uint256 _interestAmount, uint256 _receivedAmount) = _payoutCharge(_receiver, _assetPairId, _assetAmount);
@@ -873,7 +905,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
 
         // Transfer Interest
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "Transfer Failed");
+        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
         return (_interestAmount, _receivedAmount);
     }
 
@@ -893,7 +925,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
 
         // Transfer Asset + Interest
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "Transfer Failed");
+        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
 
         // Reset Interest-bearing Token Balance (Mass of each Particle)
         interestTokenBalance[_tokenUuid][_assetPairId] = 0;
@@ -914,7 +946,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
 
         // Transfer Fees in Asset Tokens
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "Transfer Failed");
+        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
     }
 
     //
