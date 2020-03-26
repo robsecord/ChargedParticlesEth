@@ -1,4 +1,4 @@
-// ChargedParticlesEscrow.sol -- Interest-bearing NFTs
+// ChargedParticlesEscrow.sol -- Charged Particles
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
@@ -53,7 +53,6 @@
 
 
 pragma solidity ^0.5.16;
-pragma experimental ABIEncoderV2;
 
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
@@ -138,7 +137,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     mapping (uint256 => mapping (bytes16 => uint256)) internal creator_assetDepositMax;
 
     /***********************************|
-    |       Internal Vars/Events        |
+    |     Variables/Events/Modifiers    |
     |__________________________________*/
 
     // The Charged Particles ERC1155 Token Contract
@@ -214,7 +213,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.2.4";
+        version = "v0.3.1";
     }
 
     /***********************************|

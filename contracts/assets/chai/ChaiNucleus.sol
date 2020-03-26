@@ -1,4 +1,4 @@
-// ChaiNucleus.sol -- Interest-bearing NFTs
+// ChaiNucleus.sol -- Charged Particles
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //

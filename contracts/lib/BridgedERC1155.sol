@@ -1,4 +1,4 @@
-// BridgedERC1155.sol
+// BridgedERC1155.sol - Charged Particles
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
@@ -39,24 +39,48 @@
 
 pragma solidity ^0.5.16;
 
-
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
+import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/IERC721Receiver.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "./ERC1155.sol";
 
 
 contract BridgedERC1155 is Initializable, ERC1155 {
+
+    /***********************************|
+    |     Variables/Events/Modifiers    |
+    |__________________________________*/
+
     bytes4 constant internal ERC1155_TOKEN_RECEIVER = 0x4e2312e0;
 
-    //       TypeID => Bridge Address
-    mapping(uint256 => address) internal bridge;
+    mapping (uint256 => address) internal bridge;
 
     address internal templateErc20;
     address internal templateErc721;
 
+    //
+    // Events
+    //
+
     event NewBridge(uint256 indexed _typeId, address indexed _bridge);
+
+    //
+    // Modifiers
+    //
+
+    /**
+     * @dev Throws if called by any account other than the Charged PArticles contract.
+     */
+    modifier onlyBridge(uint256 _typeId) {
+        require(bridge[_typeId] == msg.sender, "E201");
+        _;
+    }
+
+
+    /***********************************|
+    |          Initialization           |
+    |__________________________________*/
 
     function initialize() public initializer {
         ERC1155.initialize();
@@ -64,9 +88,20 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         templateErc721 = address(new ERC721Bridge());
     }
 
-    function approveBridged(uint256 _typeId, address _from, address _operator, uint256 _tokenId) public {
-        require(bridge[_typeId] == msg.sender, "E201");
 
+    /***********************************|
+    |            Only Bridge            |
+    |__________________________________*/
+
+    function approveBridged(
+        uint256 _typeId,
+        address _from,
+        address _operator,
+        uint256 _tokenId
+    )
+        public
+        onlyBridge(_typeId)
+    {
         uint256 _tokenTypeId = _tokenId & TYPE_MASK;
         require(_tokenTypeId == _typeId, "E203");
 
@@ -78,16 +113,30 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         emit Approval(_owner, _operator, _tokenId);
     }
 
-    function setApprovalForAllBridged(uint256 _typeId, address _from, address _operator, bool _approved) public {
-        require(bridge[_typeId] == msg.sender, "E201");
-
+    function setApprovalForAllBridged(
+        uint256 _typeId,
+        address _from,
+        address _operator,
+        bool _approved
+    )
+        public
+        onlyBridge(_typeId)
+    {
         operators[_from][_operator] = _approved;
         emit ApprovalForAll(_from, _operator, _approved);
     }
 
-
-    function transferFromBridged(uint256 _typeId, address _from, address _to, uint256 _tokenId, uint256 _value) public returns (bool) {
-        require(bridge[_typeId] == msg.sender, "E201");
+    function transferFromBridged(
+        uint256 _typeId,
+        address _from,
+        address _to,
+        uint256 _tokenId,
+        uint256 _value
+    )
+        public
+        onlyBridge(_typeId)
+        returns (bool)
+    {
         require(_to != address(0x0), "E301");
 
         uint256 _tokenTypeId = _tokenId & TYPE_MASK;
@@ -97,7 +146,20 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         return true;
     }
 
-    function _createErc20Bridge(uint256 _typeId, string memory _name, string memory _symbol, uint8 _decimals) internal returns (address) {
+
+    /***********************************|
+    |         Private Functions         |
+    |__________________________________*/
+
+    function _createErc20Bridge(
+        uint256 _typeId,
+        string memory _name,
+        string memory _symbol,
+        uint8 _decimals
+    )
+        internal
+        returns (address)
+    {
         require(bridge[_typeId] == address(0), "E202");
 
         address newBridge = _createClone(templateErc20);
@@ -108,7 +170,14 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         return newBridge;
     }
 
-    function _createErc721Bridge(uint256 _typeId, string memory _name, string memory _symbol) internal returns (address) {
+    function _createErc721Bridge(
+        uint256 _typeId,
+        string memory _name,
+        string memory _symbol
+    )
+        internal
+        returns (address)
+    {
         require(bridge[_typeId] == address(0), "E202");
 
         address newBridge = _createClone(templateErc721);
@@ -132,6 +201,10 @@ contract BridgedERC1155 is Initializable, ERC1155 {
     }
 }
 
+
+/**
+ * @notice ERC20 Token Bridge
+ */
 contract ERC20Bridge {
     using SafeMath for uint256;
 
@@ -188,6 +261,10 @@ contract ERC20Bridge {
     }
 }
 
+
+/**
+ * @notice ERC721 Token Bridge
+ */
 contract ERC721Bridge {
     BridgedERC1155 public entity;
 

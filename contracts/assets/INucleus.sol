@@ -1,4 +1,4 @@
-// INucleus.sol -- Interest-bearing NFTs
+// INucleus.sol -- Charged Particles
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //

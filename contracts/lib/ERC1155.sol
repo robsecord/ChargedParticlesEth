@@ -1,4 +1,4 @@
-// ChargedParticles.sol -- Interest-bearing NFTs
+// ERC1155.sol - Charged Particles
 // MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
@@ -37,7 +37,6 @@
 //      112         Approved query for nonexistent token
 
 pragma solidity ^0.5.16;
-pragma experimental ABIEncoderV2;
 
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
@@ -53,6 +52,10 @@ import "../../node_modules/multi-token-standard/contracts/interfaces/IERC1155Tok
 contract ERC1155 is Initializable, IERC165 {
     using Address for address;
     using SafeMath for uint256;
+
+    /***********************************|
+    |     Variables/Events/Modifiers    |
+    |__________________________________*/
 
     uint256 constant internal TYPE_MASK = uint256(uint128(~0)) << 128;
     uint256 constant internal NF_INDEX_MASK = uint128(~0);
@@ -77,14 +80,53 @@ contract ERC1155 is Initializable, IERC165 {
     mapping (uint256 => mapping (address => uint256[])) internal ownedTokensByType;
     mapping (uint256 => uint256[]) internal allTokensByType; // NFT Circulating Supply
 
-    event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _amount);
-    event TransferBatch(address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _amounts);
-    event Approval(address indexed _owner, address indexed _operator, uint256 indexed _tokenId);
-    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
-    event URI(uint256 indexed _id, string _uri); // ID = Type or Token ID
+    //
+    // Events
+    //
+
+    event TransferSingle(
+        address indexed _operator,
+        address indexed _from,
+        address indexed _to,
+        uint256 _id,
+        uint256 _amount
+    );
+
+    event TransferBatch(
+        address indexed _operator,
+        address indexed _from,
+        address indexed _to,
+        uint256[] _ids,
+        uint256[] _amounts
+    );
+
+    event Approval(
+        address indexed _owner,
+        address indexed _operator,
+        uint256 indexed _tokenId
+    );
+
+    event ApprovalForAll(
+        address indexed _owner,
+        address indexed _operator,
+        bool _approved
+    );
+
+    event URI(
+        uint256 indexed _id, // ID = Type or Token ID
+        string _uri
+    );
+
+    /***********************************|
+    |          Initialization           |
+    |__________________________________*/
 
     function initialize() public initializer {
     }
+
+    /***********************************|
+    |            Public Read            |
+    |__________________________________*/
 
     function uri(uint256 _id) public view returns (string memory) {
         return tokenUri[_id];
@@ -103,6 +145,10 @@ contract ERC1155 is Initializable, IERC165 {
             return allTokensByType[_typeId].length;
         }
         return supplyByType[_typeId];
+    }
+
+    function totalMinted(uint256 _typeId) public view returns (uint256) {
+        return maxIndex[_typeId];
     }
 
     function ownerOf(uint256 _tokenId) public view returns (address) {
@@ -189,6 +235,10 @@ contract ERC1155 is Initializable, IERC165 {
         _callonERC1155BatchReceived(_from, _to, _ids, _amounts, _data);
     }
 
+    /***********************************|
+    |         Private Functions         |
+    |__________________________________*/
+
     function _safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount) internal {
         // Non-Fungible
         if (_id & TYPE_NF_BIT == TYPE_NF_BIT) {
@@ -217,14 +267,19 @@ contract ERC1155 is Initializable, IERC165 {
 
         uint256 id;
         uint256 amount;
+        uint256 typeId;
         uint256 nTransfer = _ids.length;
         for (uint256 i = 0; i < nTransfer; ++i) {
             id = _ids[i];
             amount = _amounts[i];
 
             if (id & TYPE_NF_BIT == TYPE_NF_BIT) { // Non-Fungible
+                typeId = id & TYPE_MASK;
                 require(nfOwners[id] == _from);
                 nfOwners[id] = _to;
+
+                _removeTokenFromOwnerEnumeration(typeId, _from, id);
+                _addTokenToOwnerEnumeration(typeId, _to, id);
             } else {
 //                require(amount <= balances[_from][id]); // SafeMath will throw if balance is negative
                 balances[_from][id] = balances[_from][id].sub(amount);
@@ -440,25 +495,5 @@ contract ERC1155 is Initializable, IERC165 {
         allTokensByType[_typeId].length--;
         allTokensByTypeIndex[_typeId][_tokenId] = 0;
     }
-
-    //    function isNonFungible(uint256 _id) public pure returns(bool) {
-    //        return _id & TYPE_NF_BIT == TYPE_NF_BIT;
-    //    }
-    //    function isFungible(uint256 _id) public pure returns(bool) {
-    //        return _id & TYPE_NF_BIT == 0;
-    //    }
-    //    function getNonFungibleIndex(uint256 _id) public pure returns(uint256) {
-    //        return _id & NF_INDEX_MASK;
-    //    }
-    //    function getNonFungibleBaseType(uint256 _id) public pure returns(uint256) {
-    //        return _id & TYPE_MASK;
-    //    }
-    //    function isNonFungibleBaseType(uint256 _id) public pure returns(bool) {
-    //        // A base type has the NF bit but does not have an index.
-    //        return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK == 0);
-    //    }
-    //    function isNonFungibleItem(uint256 _id) public pure returns(bool) {
-    //        return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK != 0);
-    //    }
 }
 

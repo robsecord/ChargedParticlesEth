@@ -44,33 +44,32 @@
 //      419         Failed to transfer Asset Token
 
 pragma solidity ^0.5.16;
-pragma experimental ABIEncoderV2;
 
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "./lib/BridgedERC1155.sol";
-import "./assets/INucleus.sol";
+import "./IChargedParticlesERC1155.sol";
 import "./IChargedParticlesEscrow.sol";
 
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC1155 {
+contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address payable;
 
     /***********************************|
-    |        Variables and Events       |
+    |     Variables/Events/Modifiers    |
     |__________________________________*/
 
     uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
     uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 2e3; // 2000   (20%)
     uint32 constant internal ION_SPECIAL_BIT = 1073741824;  // 31st BIT
 
+    IChargedParticlesERC1155 tokenMgr;
     IChargedParticlesEscrow escrow;
 
     // Particles come in many "Types" created by Public Users.
@@ -148,14 +147,60 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
     // Events
     //
 
-    event ParticleTypeUpdated(uint256 indexed _particleTypeId, string indexed _symbol, bool indexed _isPrivate, bool _isSeries, string _assetPairId, uint256 _energizeFee, string _uri); // find latest in logs for full record
-    event PlasmaTypeUpdated(uint256 indexed _plasmaTypeId, string indexed _symbol, bool indexed _isPrivate, uint256 _initialMint, string _uri);
-    event ParticleMinted(address indexed _sender, address indexed _receiver, uint256 indexed _tokenId, string _uri);
-    event ParticleBurned(address indexed _from, uint256 indexed _tokenId);
-    event PlasmaMinted(address indexed _sender, address indexed _receiver, uint256 indexed _typeId, uint256 _amount);
-    event PlasmaBurned(address indexed _from, uint256 indexed _typeId, uint256 _amount);
-    event CreatorFeesWithdrawn(address indexed _sender, address indexed _receiver, uint256 _amount);
-    event ContractFeesWithdrawn(address indexed _sender, address indexed _receiver, uint256 _amount);
+    event ParticleTypeUpdated(
+        uint256 indexed _particleTypeId,
+        string indexed _symbol,
+        bool indexed _isPrivate,
+        bool _isSeries,
+        string _assetPairId,
+        uint256 _energizeFee,
+        string _uri
+    );
+
+    event PlasmaTypeUpdated(
+        uint256 indexed _plasmaTypeId,
+        string indexed _symbol,
+        bool indexed _isPrivate,
+        uint256 _initialMint,
+        string _uri
+    );
+
+    event ParticleMinted(
+        address indexed _sender,
+        address indexed _receiver,
+        uint256 indexed _tokenId,
+        string _uri
+    );
+
+    event ParticleBurned(
+        address indexed _from,
+        uint256 indexed _tokenId
+    );
+
+    event PlasmaMinted(
+        address indexed _sender,
+        address indexed _receiver,
+        uint256 indexed _typeId,
+        uint256 _amount
+    );
+
+    event PlasmaBurned(
+        address indexed _from,
+        uint256 indexed _typeId,
+        uint256 _amount
+    );
+
+    event CreatorFeesWithdrawn(
+        address indexed _sender,
+        address indexed _receiver,
+        uint256 _amount
+    );
+
+    event ContractFeesWithdrawn(
+        address indexed _sender,
+        address indexed _receiver,
+        uint256 _amount
+    );
 
     /***********************************|
     |          Initialization           |
@@ -164,8 +209,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        BridgedERC1155.initialize();
-        version = "v0.2.4";
+        version = "v0.3.1";
     }
 
     /***********************************|
@@ -187,9 +231,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @return  The Token-Bridge Address
      */
     function getTypeTokenBridge(uint256 _typeId) public view returns (address) {
-        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            _typeId = _typeId & TYPE_MASK;
-        }
+        _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return typeTokenBridge[_typeId];
     }
 
@@ -204,7 +246,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         if (registeredTypes[_typeId] & 1 == 1) {
             // Has Max
             if (typeSupply[_typeId] > 0) {
-                return maxIndex[_typeId].add(_amount) <= typeSupply[_typeId];
+                return tokenMgr.totalMinted(_typeId).add(_amount) <= typeSupply[_typeId];
             }
             // No Max
             return true;
@@ -215,7 +257,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         }
         // Has Max
         if (typeSupply[_typeId] > 0) {
-            return maxIndex[_typeId].add(_amount) <= typeSupply[_typeId];
+            return tokenMgr.totalMinted(_typeId).add(_amount) <= typeSupply[_typeId];
         }
         // No Max
         return true;
@@ -234,8 +276,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
     /**
      * @notice Gets the Number of this Particle in the Series/Collection
      */
-    function getSeriesNumber(uint256 _tokenId) public pure returns (uint256) {
-        return _tokenId & NF_INDEX_MASK;
+    function getSeriesNumber(uint256 _tokenId) public view returns (uint256) {
+        return tokenMgr.getNonFungibleIndex(_tokenId);
     }
 
     /**
@@ -244,9 +286,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @return  The ETH price to mint the Token
      */
     function getMintingFee(uint256 _typeId) public view returns (uint256) {
-        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            _typeId = _typeId & TYPE_MASK;
-        }
+        _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return mintFee[_typeId];
     }
 
@@ -255,9 +295,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @param _typeId   The Token ID or the Type ID of the Token
      */
     function getMaxSupply(uint256 _typeId) public view returns (uint256) {
-        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            _typeId = _typeId & TYPE_MASK;
-        }
+        _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return typeSupply[_typeId];
     }
 
@@ -266,10 +304,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @param _typeId   The Token ID or the Type ID of the Token
      */
     function getTotalMinted(uint256 _typeId) public view returns (uint256) {
-        if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
-            _typeId = _typeId & TYPE_MASK;
-        }
-        return maxIndex[_typeId];
+        _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
+        return tokenMgr.totalMinted(_typeId);
     }
 
     /***********************************|
@@ -280,21 +316,21 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @notice Gets the Amount of Base DAI held in the Token (amount token was minted with)
      */
     function baseParticleMass(uint256 _tokenId) public view returns (uint256) {
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.baseParticleMass(address(this), _tokenId, _assetPairId);
+        return escrow.baseParticleMass(address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /**
      * @notice Gets the amount of Charge the Particle has generated (it's accumulated interest)
      */
     function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         require(registeredTypes[_typeId] > 0, "E402");
-        require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E402");
+        require(tokenMgr.isNonFungible(_tokenId), "E402");
 
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.currentParticleCharge(address(this), _tokenId, _assetPairId);
+        return escrow.currentParticleCharge(address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /***********************************|
@@ -447,7 +483,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         payable
         returns (uint256)
     {
-        require((_typeId & TYPE_NF_BIT == TYPE_NF_BIT) && (_typeId & NF_INDEX_MASK == 0), "E304");
+        require(tokenMgr.isNonFungibleBaseType(_typeId), "E304");
         require(canMint(_typeId, 1), "E407");
 
         address creator = typeCreator[_typeId];
@@ -461,12 +497,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
 
         // Series-Particles use the Metadata of their Type
         if (registeredTypes[_typeId] & 4 == 4) {
-            _uri = tokenUri[_typeId];
+            _uri = tokenMgr.uri(_typeId);
         }
 
         // Mint Token
-        uint256 _tokenId = _mint(_to, _typeId, 1, _uri, _data);
-//        typeCreator[_tokenId] = msg.sender;    // This is the TOKEN creator, not TYPE
+        uint256 _tokenId = tokenMgr.mint(_to, _typeId, 1, _uri, _data);
 
         // Energize NFT Particles
         energizeParticle(_tokenId, _assetAmount);
@@ -504,7 +539,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         whenNotPaused
         payable
     {
-        require(_typeId & TYPE_NF_BIT == 0, "E304");
+        require(tokenMgr.isFungible(_typeId), "E304");
         require(canMint(_typeId, _amount), "E407");
 
         address creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
@@ -519,7 +554,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         }
 
         // Mint Token
-        _mint(_to, _typeId, _amount, "", _data);
+        tokenMgr.mint(_to, _typeId, _amount, "", _data);
         emit PlasmaMinted(msg.sender, _to, _typeId, _amount);
 
         if (msg.sender != creator) {
@@ -543,25 +578,25 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      * @param _tokenId  The ID of the token to burn
      */
     function burnParticle(uint256 _tokenId) public {
-        address _self = address(this);
+        address _tokenContract = address(tokenMgr);
         address _tokenOwner;
         bytes16 _assetPairId;
 
         // Verify Token
-        require((_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) && (_tokenId & NF_INDEX_MASK == 0), "E304");
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E304");
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         require(registeredTypes[_typeId] > 0, "E402");
 
         // Prepare Particle Release
-        _tokenOwner = ownerOf(_tokenId);
+        _tokenOwner = tokenMgr.ownerOf(_tokenId);
         _assetPairId = typeAssetPairId[_typeId];
-        escrow.releaseParticle(_tokenOwner, _self, _tokenId, _assetPairId);
+        escrow.releaseParticle(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
         // Burn Token
-        _burn(msg.sender, _tokenId, 1);
+        tokenMgr.burn(msg.sender, _tokenId, 1);
 
         // Release Particle (Payout Asset + Interest)
-        escrow.finalizeRelease(_tokenOwner, _self, _tokenId, _assetPairId);
+        escrow.finalizeRelease(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
         emit ParticleBurned(msg.sender, _tokenId);
     }
@@ -573,11 +608,11 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      */
     function burnPlasma(uint256 _typeId, uint256 _amount) public {
         // Verify Token
-        require(_typeId & TYPE_NF_BIT == 0, "E304");
+        require(tokenMgr.isFungible(_typeId), "E304");
         require(registeredTypes[_typeId] > 0, "E402");
 
         // Burn Token
-        _burn(msg.sender, _typeId, _amount);
+        tokenMgr.burn(msg.sender, _typeId, _amount);
 
         emit PlasmaBurned(msg.sender, _typeId, _amount);
     }
@@ -594,15 +629,15 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         whenNotPaused
         returns (uint256)
     {
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        require((_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) && (_tokenId & NF_INDEX_MASK == 0), "E304");
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E304");
 
         // Transfer Asset Token from User to Contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
         // Energize Particle
-        return escrow.energizeParticle(address(this), _tokenId, _assetPairId, _assetAmount);
+        return escrow.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
     }
 
     /***********************************|
@@ -614,9 +649,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      *  from the token without removing the underlying Asset that is held in the token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
+        return escrow.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /**
@@ -624,9 +659,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      *  the interest generated from the token without removing the underlying Asset that is held in the token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId, uint256 _assetAmount) public returns (uint256, uint256) {
-        uint256 _typeId = _tokenId & TYPE_MASK;
+        uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId, _assetAmount);
+        return escrow.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
     }
 
 
@@ -669,6 +704,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      */
     function setPausedState(bool _paused) public onlyOwner {
         isPaused = _paused;
+    }
+
+    /**
+     * @dev Register the address of the token manager contract
+     */
+    function registerTokenManager(address _tokenMgr) public onlyOwner {
+        require(_tokenMgr != address(0x0), "E412");
+        tokenMgr = IChargedParticlesERC1155(_tokenMgr);
     }
 
     /**
@@ -772,13 +815,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         require(assetPairEnabled[_assetPair], "E414");
 
         // Create Type
-        _particleTypeId = _createType(_uri, true); // ERC-1155 Non-Fungible
+        _particleTypeId = tokenMgr.createType(_uri, true); // ERC-1155 Non-Fungible
 
         // Create Token-Bridge
-        typeTokenBridge[_particleTypeId] = _createErc721Bridge(_particleTypeId, _name, _symbol);
+        typeTokenBridge[_particleTypeId] = tokenMgr.createErc721Bridge(_particleTypeId, _name, _symbol);
 
         // Type Access (Public or Private, Series or Collection)
-        registeredTypes[_particleTypeId] = _accessType; // (_isPrivate ? 2 : 1) & (_isSeries ? 4 : 8);
+        registeredTypes[_particleTypeId] = _accessType;
 
         // Max Supply of Token; 0 = No Max
         typeSupply[_particleTypeId] = _maxSupply;
@@ -833,10 +876,10 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
         returns (uint256 _plasmaTypeId)
     {
         // Create Type
-        _plasmaTypeId = _createType(_uri, false); // ERC-1155 Fungible
+        _plasmaTypeId = tokenMgr.createType(_uri, false); // ERC-1155 Fungible
 
         // Create Token-Bridge
-        typeTokenBridge[_plasmaTypeId] = _createErc20Bridge(_plasmaTypeId, _name, _symbol, 18);
+        typeTokenBridge[_plasmaTypeId] = tokenMgr.createErc20Bridge(_plasmaTypeId, _name, _symbol, 18);
 
         // Type Access (Public or Private minting)
         registeredTypes[_plasmaTypeId] = _isPrivate ? 2 : 1;
@@ -852,7 +895,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
-            _mint(msg.sender, _plasmaTypeId, _initialMint, "", "");
+            tokenMgr.mint(msg.sender, _plasmaTypeId, _initialMint, "", "");
         }
 
         emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri);
@@ -865,7 +908,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard, BridgedERC
      */
     function _collectIons(address _from, uint256 _ions) internal {
         // Burn IONs from User
-        _burn(_from, ionTokenId, _ions);
+        tokenMgr.burn(_from, ionTokenId, _ions);
     }
 
     /**
