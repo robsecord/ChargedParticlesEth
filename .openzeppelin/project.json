@@ -1,9 +1,10 @@
 {
   "manifestVersion": "2.2",
   "contracts": {
+    "ChaiNucleus": "ChaiNucleus",
     "ChargedParticles": "ChargedParticles",
     "ChargedParticlesEscrow": "ChargedParticlesEscrow",
-    "ChaiNucleus": "ChaiNucleus"
+    "ChargedParticlesERC1155": "ChargedParticlesERC1155"
   },
   "dependencies": {
     "@openzeppelin/contracts-ethereum-package": "^2.4.0"
