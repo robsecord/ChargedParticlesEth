@@ -13,6 +13,7 @@ update=
 addrChaiNucleus=
 addrChargedParticles=
 addrChargedParticlesEscrow=
+addrChargedParticlesERC1155=
 
 depositFee="50000000000000000000"
 assetPair="chai"
@@ -20,8 +21,8 @@ daiAddress="0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6"
 ethFee="1100000000000000"
 ionFee="1000000000000000000"
 ionUrl="https://ipfs.io/ipfs/QmbNDYSzPUuEKa8ppv1W11fVJVZdGBUku2ZDKBqmUmyQdT"
-ionSupply="7000000000000000000000000"
-ionMint="3000000000000000000000000"   # reserves
+ionSupply="2000000000000000000000000"
+ionMint="1000000000000000000000000"   # reserves
 ionPrice="750000000000000"
 
 # ETH Fee:
@@ -99,13 +100,28 @@ deployFresh() {
     sleep 1s
 
     echoHeader
+    echo "Creating Contract: ChargedParticlesERC1155"
+    oz add ChargedParticlesERC1155 --push --skip-compile
+    addrChargedParticlesERC1155=$(oz create ChargedParticlesERC1155 --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    sleep 1s
+
+    echoHeader
     echo "Contract Addresses: "
-    echo " - ChaiNucleus:            $addrChaiNucleus"
-    echo " - ChargedParticles:       $addrChargedParticles"
-    echo " - ChargedParticlesEscrow: $addrChargedParticlesEscrow"
+    echo " - ChaiNucleus:             $addrChaiNucleus"
+    echo " - ChargedParticles:        $addrChargedParticles"
+    echo " - ChargedParticlesEscrow:  $addrChargedParticlesEscrow"
+    echo " - ChargedParticlesERC1155: $addrChargedParticlesERC1155"
 
     echoHeader
     echo "Contract Deployment Complete!"
+
+    echoHeader
+    echo "Initializing ChargedParticlesERC1155.."
+
+    echo " "
+    echo "setChargedParticles: $addrChargedParticles"
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesERC1155} --method 'setChargedParticles' --args ${addrChargedParticles})
+
 
     echoHeader
     echo "Initializing ChargedParticlesEscrow.."
@@ -132,6 +148,10 @@ deployFresh() {
     echo " "
     echo "registerEscrow: $addrChargedParticlesEscrow"
     result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerEscrow' --args ${addrChargedParticlesEscrow})
+
+    echo " "
+    echo "registerTokenManager: $addrChargedParticlesERC1155"
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerTokenManager' --args ${addrChargedParticlesERC1155})
 
     echo " "
     echo "registerAssetPair: $assetPair"
