@@ -546,7 +546,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(assetPairEnabled[_assetPairId], "E301");
 
         // Get Token UUID & Balance
-        uint256 typeId;
+        uint256 _typeId = _tokenId;
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _typeId = _tokenId & TYPE_MASK;
+        }
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         uint256 _existingBalance = assetTokenDeposited[_tokenUuid][_assetPairId];
         uint256 _newBalance = _assetAmount.add(_existingBalance);
@@ -556,19 +559,17 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Validate Type-Creator Settings
         if (_contractAddress == chargedParticles) {
-            typeId = _tokenId & TYPE_MASK;
-
             // Valid Asset-Pair?
-            if (creator_assetPairId[typeId].length > 0) {
-                require(_assetPairId == creator_assetPairId[typeId], "E302");
+            if (creator_assetPairId[_typeId].length > 0) {
+                require(_assetPairId == creator_assetPairId[_typeId], "E302");
             }
 
             // Valid Amount?
-            if (creator_assetDepositMin[typeId][_assetPairId] > 0) {
-                require(_newBalance >= creator_assetDepositMin[typeId][_assetPairId], "E320");
+            if (creator_assetDepositMin[_typeId][_assetPairId] > 0) {
+                require(_newBalance >= creator_assetDepositMin[_typeId][_assetPairId], "E320");
             }
-            if (creator_assetDepositMax[typeId][_assetPairId] > 0) {
-                require(_newBalance <= creator_assetDepositMax[typeId][_assetPairId], "E321");
+            if (creator_assetDepositMax[_typeId][_assetPairId] > 0) {
+                require(_newBalance <= creator_assetDepositMax[_typeId][_assetPairId], "E321");
             }
         }
 
@@ -599,7 +600,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
         // Tokenize Interest
-        uint256 _interestAmount = _tokenizeInterest(_contractAddress, typeId, _assetPairId, _assetAmount);
+        uint256 _interestAmount = _tokenizeInterest(_contractAddress, _typeId, _assetPairId, _assetAmount);
 
         // Track Asset Token Balance (Mass of each Particle)
         uint256 _assetBalance = _assetAmount.add(assetTokenDeposited[_tokenUuid][_assetPairId]);
@@ -968,14 +969,14 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 //        return (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT);
 //    }
 
-    function _toBytes16(string memory source) private pure returns (bytes16 result) {
-        bytes memory tmp = bytes(source);
-        if (tmp.length == 0) {
+    function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
+        bytes memory _tmp = bytes(_source);
+        if (_tmp.length == 0) {
             return 0x0;
         }
 
         assembly {
-            result := mload(add(source, 16))
+            _result := mload(add(_source, 16))
         }
     }
 }

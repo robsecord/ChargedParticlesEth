@@ -268,9 +268,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
      * @param _isNF     True if the Type of Token to Create is a Non-Fungible Token
      * @return  The ETH price to create a type
      */
-    function getCreationPrice(bool _isNF) public view returns (uint256 eth, uint256 ion) {
-        eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
-        ion = _isNF ? (createFeeIon.mul(2)) : createFeeIon;
+    function getCreationPrice(bool _isNF) public view returns (uint256 _eth, uint256 _ion) {
+        _eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
+        _ion = _isNF ? (createFeeIon.mul(2)) : createFeeIon;
     }
 
     /**
@@ -358,14 +358,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         whenNotPaused
         returns (uint256 _particleTypeId)
     {
-        address contractOwner = owner();
-        (uint256 ethPrice, uint256 ionPrice) = getCreationPrice(true);
+        address _contractOwner = owner();
+        (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(true);
 
         if (_payWithIons) {
-            _collectIons(msg.sender, ionPrice);
-            ethPrice = 0;
+            _collectIons(msg.sender, _ionPrice);
+            _ethPrice = 0;
         } else {
-            require(msg.value >= ethPrice, "E404");
+            require(msg.value >= _ethPrice, "E404");
         }
 
         // Create Particle Type
@@ -387,13 +387,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
         // Collect Fees
         else {
-            collectedFees[contractOwner] = ethPrice.add(collectedFees[contractOwner]);
+            collectedFees[_contractOwner] = _ethPrice.add(collectedFees[_contractOwner]);
         }
 
         // Refund over-payment
-        uint256 overage = msg.value.sub(ethPrice);
-        if (overage > 0) {
-            msg.sender.sendValue(overage);
+        uint256 _overage = msg.value.sub(_ethPrice);
+        if (_overage > 0) {
+            msg.sender.sendValue(_overage);
         }
     }
 
@@ -417,14 +417,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         whenNotPaused
         returns (uint256 _plasmaTypeId)
     {
-        address contractOwner = owner();
-        (uint256 ethPrice, uint256 ionPrice) = getCreationPrice(false);
+        address _contractOwner = owner();
+        (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(false);
 
         if (_payWithIons) {
-            _collectIons(msg.sender, ionPrice);
-            ethPrice = 0;
+            _collectIons(msg.sender, _ionPrice);
+            _ethPrice = 0;
         } else {
-            require(msg.value >= ethPrice, "E404");
+            require(msg.value >= _ethPrice, "E404");
         }
 
         // Create Plasma Type
@@ -445,13 +445,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
         // Collect Fees
         else {
-            collectedFees[contractOwner] = ethPrice.add(collectedFees[contractOwner]);
+            collectedFees[_contractOwner] = _ethPrice.add(collectedFees[_contractOwner]);
         }
 
         // Refund over-payment
-        uint256 overage = msg.value.sub(ethPrice);
-        if (overage > 0) {
-            msg.sender.sendValue(overage);
+        uint256 _overage = msg.value.sub(_ethPrice);
+        if (_overage > 0) {
+            msg.sender.sendValue(_overage);
         }
     }
 
@@ -486,13 +486,13 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         require(tokenMgr.isNonFungibleBaseType(_typeId), "E304");
         require(canMint(_typeId, 1), "E407");
 
-        address creator = typeCreator[_typeId];
-        uint256 ethPerToken;
+        address _creator = typeCreator[_typeId];
+        uint256 _ethPerToken;
 
         // Check Token Price
-        if (msg.sender != creator) {
-            ethPerToken = mintFee[_typeId];
-            require(msg.value >= ethPerToken, "E404");
+        if (msg.sender != _creator) {
+            _ethPerToken = mintFee[_typeId];
+            require(msg.value >= _ethPerToken, "E404");
         }
 
         // Series-Particles use the Metadata of their Type
@@ -510,14 +510,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         emit ParticleMinted(msg.sender, _to, _tokenId, _uri);
 
         // Track Collected Fees
-        if (msg.sender != creator) {
-            collectedFees[creator] = ethPerToken.add(collectedFees[creator]);
+        if (msg.sender != _creator) {
+            collectedFees[_creator] = _ethPerToken.add(collectedFees[_creator]);
         }
 
         // Refund overpayment
-        uint256 overage = msg.value.sub(ethPerToken);
-        if (overage > 0) {
-            msg.sender.sendValue(overage);
+        uint256 _overage = msg.value.sub(_ethPerToken);
+        if (_overage > 0) {
+            msg.sender.sendValue(_overage);
         }
         return _tokenId;
     }
@@ -542,30 +542,30 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         require(tokenMgr.isFungible(_typeId), "E304");
         require(canMint(_typeId, _amount), "E407");
 
-        address creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
-        uint256 totalEth;
-        uint256 ethPerToken;
+        address _creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
+        uint256 _totalEth;
+        uint256 _ethPerToken;
 
         // Check Token Price
-        if (msg.sender != creator) {
-            ethPerToken = mintFee[_typeId];
-            totalEth = _amount.mul(ethPerToken);
-            require(msg.value >= totalEth, "E404");
+        if (msg.sender != _creator) {
+            _ethPerToken = mintFee[_typeId];
+            _totalEth = _amount.mul(_ethPerToken);
+            require(msg.value >= _totalEth, "E404");
         }
 
         // Mint Token
         tokenMgr.mint(_to, _typeId, _amount, "", _data);
         emit PlasmaMinted(msg.sender, _to, _typeId, _amount);
 
-        if (msg.sender != creator) {
+        if (msg.sender != _creator) {
             // Track Collected Fees
-            collectedFees[creator] = totalEth.add(collectedFees[creator]);
+            collectedFees[_creator] = _totalEth.add(collectedFees[_creator]);
         }
 
         // Refund overpayment
-        uint256 overage = msg.value.sub(totalEth);
-        if (overage > 0) {
-            msg.sender.sendValue(overage);
+        uint256 _overage = msg.value.sub(_totalEth);
+        if (_overage > 0) {
+            msg.sender.sendValue(_overage);
         }
     }
 
@@ -673,14 +673,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
      * @dev Allows contract owner to withdraw any fees earned
      */
     function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
-        address creator = typeCreator[_typeId];
-        require(msg.sender == creator, "E305");
+        address _creator = typeCreator[_typeId];
+        require(msg.sender == _creator, "E305");
 
         // Withdraw Particle Deposit Fees from Escrow
-        escrow.withdrawCreatorFees(creator, _typeId);
+        escrow.withdrawCreatorFees(_creator, _typeId);
 
         // Withdraw Plasma Minting Fees (ETH)
-        uint256 _amount = collectedFees[creator];
+        uint256 _amount = collectedFees[_creator];
         if (_amount > 0) {
             _receiver.sendValue(_amount);
         }
@@ -771,8 +771,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     function withdrawFees(address payable _receiver) public onlyOwner {
         require(_receiver != address(0x0), "E412");
 
-        address contractOwner = owner();
-        uint256 _amount = collectedFees[contractOwner];
+        address _contractOwner = owner();
+        uint256 _amount = collectedFees[_contractOwner];
         if (_amount > 0) {
             _receiver.sendValue(_amount);
         }
@@ -926,14 +926,14 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @dev Convert a string to Bytes16
      */
-    function _toBytes16(string memory source) private pure returns (bytes16 result) {
-        bytes memory tmp = bytes(source);
-        if (tmp.length == 0) {
+    function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
+        bytes memory _tmp = bytes(_source);
+        if (_tmp.length == 0) {
             return 0x0;
         }
 
         assembly {
-            result := mload(add(source, 16))
+            _result := mload(add(_source, 16))
         }
     }
 }

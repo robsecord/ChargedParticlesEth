@@ -102,7 +102,10 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         public
         onlyBridge(_typeId)
     {
-        uint256 _tokenTypeId = _tokenId & TYPE_MASK;
+        uint256 _tokenTypeId = _tokenId;
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _tokenTypeId = _tokenId & TYPE_MASK;
+        }
         require(_tokenTypeId == _typeId, "E203");
 
         address _owner = ownerOf(_tokenId);
@@ -139,7 +142,10 @@ contract BridgedERC1155 is Initializable, ERC1155 {
     {
         require(_to != address(0x0), "E301");
 
-        uint256 _tokenTypeId = _tokenId & TYPE_MASK;
+        uint256 _tokenTypeId = _tokenId;
+        if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
+            _tokenTypeId = _tokenId & TYPE_MASK;
+        }
         require(_tokenTypeId == _typeId, "E203");
 
         _safeTransferFrom(_from, _to, _tokenId, _value);
