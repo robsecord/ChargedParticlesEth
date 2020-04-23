@@ -42,11 +42,10 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
     |     Variables/Events/Modifiers    |
     |__________________________________*/
 
+    /**
+     * @dev Address to the Charged Particles Controller Contract
+     */
     address chargedParticles;
-
-    //
-    // Modifiers
-    //
 
     /**
      * @dev Throws if called by any account other than the Charged Particles contract.
@@ -96,6 +95,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
     |      Only Charged Particles       |
     |__________________________________*/
 
+    /**
+     * @dev Creates a new Particle Type, either FT or NFT
+     */
     function createType(
         string memory _uri,
         bool isNF
@@ -107,6 +109,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         return _createType(_uri, isNF);
     }
 
+    /**
+     * @dev Mints a new Particle, either FT or NFT
+     */
     function mint(
         address _to,
         uint256 _typeId,
@@ -121,6 +126,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         return _mint(_to, _typeId, _amount, _uri, _data);
     }
 
+    /**
+     * @dev Mints a Batch of new Particles, either FT or NFT
+     */
     function mintBatch(
         address _to,
         uint256[] memory _types,
@@ -135,6 +143,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         return mintBatch(_to, _types, _amounts, _URIs, _data);
     }
 
+    /**
+     * @dev Burns an existing Particle, either FT or NFT
+     */
     function burn(
         address _from,
         uint256 _tokenId,
@@ -146,6 +157,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         _burn(_from, _tokenId, _amount);
     }
 
+    /**
+     * @dev Burns a Batch of existing Particles, either FT or NFT
+     */
     function burnBatch(
         address _from,
         uint256[] memory _tokenIds,
@@ -157,6 +171,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         _burnBatch(_from, _tokenIds, _amounts);
     }
 
+    /**
+     * @dev Creates an ERC20 Token Bridge Contract to interface with the ERC1155 Contract
+     */
     function createErc20Bridge(
         uint256 _typeId,
         string memory _name,
@@ -170,6 +187,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         return _createErc20Bridge(_typeId, _name, _symbol, _decimals);
     }
 
+    /**
+     * @dev Creates an ERC721 Token Bridge Contract to interface with the ERC1155 Contract
+     */
     function createErc721Bridge(
         uint256 _typeId,
         string memory _name,
@@ -184,9 +204,12 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
 
 
     /***********************************|
-    |            Only Owner             |
+    |          Only Admin/DAO           |
     |__________________________________*/
 
+    /**
+     * @dev Sets the Address to the Charged Particles Controller Contract
+     */
     function setChargedParticles(address _chargedParticles) public onlyOwner {
         chargedParticles = _chargedParticles;
     }

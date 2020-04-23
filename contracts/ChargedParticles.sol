@@ -209,12 +209,21 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.3.1";
+        version = "v0.3.3";
     }
 
     /***********************************|
     |            Public Read            |
     |__________________________________*/
+
+    /**
+     * @notice Gets the URI of a Type or Token
+     * @param _typeId     The ID of the Type or Token
+     * @return  The URI of the Type or Token
+     */
+    function uri(uint256 _typeId) public view returns (string memory) {
+        return tokenMgr.uri(_typeId);
+    }
 
     /**
      * @notice Gets the Creator of a Token Type
@@ -483,7 +492,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         payable
         returns (uint256)
     {
-        require(tokenMgr.isNonFungibleBaseType(_typeId), "E304");
+        require(tokenMgr.isNonFungibleBaseType(_typeId), "E104");
         require(canMint(_typeId, 1), "E407");
 
         address _creator = typeCreator[_typeId];
@@ -539,7 +548,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         whenNotPaused
         payable
     {
-        require(tokenMgr.isFungible(_typeId), "E304");
+        require(tokenMgr.isFungible(_typeId), "E104");
         require(canMint(_typeId, _amount), "E407");
 
         address _creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
@@ -583,7 +592,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         bytes16 _assetPairId;
 
         // Verify Token
-        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E304");
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E104");
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         require(registeredTypes[_typeId] > 0, "E402");
 
@@ -608,7 +617,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
      */
     function burnPlasma(uint256 _typeId, uint256 _amount) public {
         // Verify Token
-        require(tokenMgr.isFungible(_typeId), "E304");
+        require(tokenMgr.isFungible(_typeId), "E104");
         require(registeredTypes[_typeId] > 0, "E402");
 
         // Burn Token
@@ -631,7 +640,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E304");
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E104");
 
         // Transfer Asset Token from User to Contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
@@ -674,7 +683,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
      */
     function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
         address _creator = typeCreator[_typeId];
-        require(msg.sender == _creator, "E305");
+        require(msg.sender == _creator, "E105");
 
         // Withdraw Particle Deposit Fees from Escrow
         escrow.withdrawCreatorFees(_creator, _typeId);
@@ -688,7 +697,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     }
 
     /***********************************|
-    |            Only Owner             |
+    |          Only Admin/DAO           |
     |__________________________________*/
 
     /**

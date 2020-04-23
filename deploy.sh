@@ -17,7 +17,8 @@ addrChargedParticlesERC1155=
 
 depositFee="50000000000000000000"
 assetPair="chai"
-daiAddress="0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6"
+daiAddress="0xa31362CEa1B5CafE8C0F0b22eB64d4444d5249c8"
+daiPrefund="10000000000000000000"
 ethFee="1100000000000000"
 ionFee="1000000000000000000"
 ionUrl="https://ipfs.io/ipfs/QmbNDYSzPUuEKa8ppv1W11fVJVZdGBUku2ZDKBqmUmyQdT"
@@ -106,14 +107,14 @@ deployFresh() {
     sleep 1s
 
     echoHeader
-    echo "Contract Addresses: "
-    echo " - ChaiNucleus:             $addrChaiNucleus"
-    echo " - ChargedParticles:        $addrChargedParticles"
-    echo " - ChargedParticlesEscrow:  $addrChargedParticlesEscrow"
-    echo " - ChargedParticlesERC1155: $addrChargedParticlesERC1155"
+    echo "Contracts deployed.."
 
-    echoHeader
-    echo "Contract Deployment Complete!"
+#    echoHeader
+#    echo "Pre-funding owner with Asset Tokens.."
+
+#    echo " "
+#    echo "Pre-fund DAI: $daiPrefund"
+#    result=$(oz send-tx --no-interactive --to ${daiAddress} --method 'mint' --args ${ownerAccount},${daiPrefund})
 
     echoHeader
     echo "Initializing ChargedParticlesERC1155.."
@@ -121,7 +122,6 @@ deployFresh() {
     echo " "
     echo "setChargedParticles: $addrChargedParticles"
     result=$(oz send-tx --no-interactive --to ${addrChargedParticlesERC1155} --method 'setChargedParticles' --args ${addrChargedParticles})
-
 
     echoHeader
     echo "Initializing ChargedParticlesEscrow.."
@@ -157,15 +157,36 @@ deployFresh() {
     echo "registerAssetPair: $assetPair"
     result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerAssetPair' --args ${assetPair})
 
+#    # Convert ION URL to Hex
+#    ionUrl=$(xxd -pu <<< "$ionUrl")
+#    ionUrl="0x$ionUrl"
+#    echo " "
+#    echo "mintIons: "
+#    echo " - ionUrl: $ionUrl"
+#    echo " - ionSupply: $ionSupply"
+#    echo " - ionMint: $ionMint"
+#    echo " - ionPrice: $ionPrice"
+#    result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'mintIons' --args ${ionUrl},${ionSupply},${ionMint},${ionPrice})
+
     echoHeader
     echo " "
     echo "MANUAL TODO:"
     echo "   oz send-tx -n $networkName --to $addrChargedParticles"
     echo "    - mintIons: $ionUrl $ionSupply $ionMint $ionPrice"
-#    result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'mintIons' --args ${ionUrl},${ionSupply},${ionMint},${ionPrice})
 
     echoHeader
-    echo "Contract Initialization Complete!"
+    echo "Contracts initialized.."
+    echo " "
+
+    echoHeader
+    echo "Contract Addresses: "
+    echo " - ChaiNucleus:             $addrChaiNucleus"
+    echo " - ChargedParticles:        $addrChargedParticles"
+    echo " - ChargedParticlesEscrow:  $addrChargedParticlesEscrow"
+    echo " - ChargedParticlesERC1155: $addrChargedParticlesERC1155"
+
+    echoHeader
+    echo "Contract Deployment & Initialization Complete!"
     echo " "
     echoBeep
 }

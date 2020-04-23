@@ -91,6 +91,21 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     bytes4 constant internal INTERFACE_SIGNATURE_ERC721 = 0x80ac58cd;
     bytes4 constant internal INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
 
+    //
+    // Particle Terminology
+    //
+    //   Particle               - Non-fungible Token
+    //   Plasma                 - Fungible Token
+    //   Mass                   - Underlying Asset of a Token (ex; DAI)
+    //   Charge                 - Accrued Interest on the Underlying Asset of a Token
+    //   Charged Particle       - A Token that has a Mass and a Positive Charge
+    //   Neutral Particle       - A Token that has a Mass and No Charge
+    //   Energize / Recharge    - Deposit of an Underlying Asset into a Token
+    //   Discharge              - Withdraw the Accrued Interest of a Token leaving the Particle with its initial Mass
+    //   Release                - Withdraw the Underlying Asset & Accrued Interest of a Token leaving the Particle with No Mass
+    //                              - Released Tokens are either Burned/Destroyed or left in their Original State as an NFT
+    //
+
     /***********************************|
     |       Per Contract Settings       |
     |__________________________________*/
@@ -129,6 +144,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //        TypeID => Specific Asset-Pair that is allowed (otherwise, any Asset-Pair is allowed)
     mapping (uint256 => bytes16) internal creator_assetPairId;
 
+    // TODO: This should not be bound to Asset-Pair, should be applied to all Asset-Pairs
     //        TypeID =>    Asset-Pair-ID => Deposit Fees earned for Type Creator
     mapping (uint256 => mapping (bytes16 => uint256)) internal creator_assetDepositFee;
 
@@ -140,7 +156,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |     Variables/Events/Modifiers    |
     |__________________________________*/
 
-    // The Charged Particles ERC1155 Token Contract
+    // The Charged Particles ERC1155 Token Contract Address
     address internal chargedParticles;
 
     // Various Interest-bearing Tokens may act as the Nucleus for a Charged Particle
@@ -186,7 +202,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //    the "Charge" will start building up.  Essentially, only a small portion of the interest
     //    is used to pay the deposit fee.  The particle will be in "cool-down" mode until the "Mass"
     //    of the particle returns to 100% (this should be a relatively short period of time).
-    //    When the particle reaches 100% "Mass" is can be "Released" (or burned) to reclaim the underlying
+    //    When the particle reaches 100% "Mass" or more it can be "Released" (or burned) to reclaim the underlying
     //    asset + interest.  Since the "Mass" will be back to 100%, "Releasing" will yield at least 100%
     //    of the underlying asset back to the owner (plus any interest accrued, the "charge").
     uint256 public depositFee;
@@ -213,7 +229,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.3.1";
+        version = "v0.3.3";
     }
 
     /***********************************|
@@ -263,7 +279,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @dev Calculates the amount of Fees to be paid for a specific deposit amount
-     * @return  The amount of base fees and the amount of creator fees
+     * @return  The amount of base fees and the amount of custom/creator fees
      */
     function getFeesForDeposit(
         address _contractAddress,
@@ -300,7 +316,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @dev Calculates the Total Fee to be paid for a specific deposit amount
-     * @return  The amount of base fees plus the amount of custom/creator fees
+     * @return  The total amount of base fees plus the amount of custom/creator fees
      */
     function getFeeForDeposit(
         address _contractAddress,
@@ -347,11 +363,20 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |(For External Contract Integration)|
     |__________________________________*/
 
-    function isContractOwnerOperator(address _account, address _contract) public view returns (bool) {
+    /**
+     * @notice Checks if an Account is the Owner of a Contract
+     *    When Custom Contracts are registered, only the "owner" or operator of the Contract
+     *    is allowed to register them and define custom rules for how their tokens are "Charged".
+     *    Otherwise, any token can be "Charged" according to the default rules of Charged Particles.
+     */
+    function isContractOwner(address _account, address _contract) public view returns (bool) {
         address _contractOwner = IOwnable(_contract).owner();
-        return _contractOwner == _account || owner() == _account;
+        return _contractOwner != address(0x0) && _contractOwner == _account;
     }
 
+    /**
+     * @notice Registers a external ERC-721 Contract in order to define Custom Rules for Tokens
+     */
     function registerContractType(address _contractAddress) public {
         // Check Token Interface to ensure compliance
         IERC165 _tokenInterface = IERC165(_contractAddress);
@@ -368,6 +393,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         emit RegisterParticleContract(_contractAddress);
     }
 
+    /**
+     * @notice Registers the "Release-Burn" Custom Rule on an external ERC-721 Token Contract
+     *   When enabled, tokens that are "Charged" will require the Token to be Burned before
+     *   the underlying asset is Released.
+     */
     function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public {
         require(custom_registeredContract[_contractAddress], "E304");
         require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
@@ -377,6 +407,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
 
+    /**
+     * @notice Registers the "Asset-Pair" Custom Rule on an external ERC-721 Token Contract
+     *   The Asset-Pair Rule defines which Asset-Token & Interest-bearing Token Pair can be used to
+     *   "Charge" the Token.  If not set, any enabled Asset-Pair can be used.
+     */
     function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) public {
         require(custom_registeredContract[_contractAddress], "E304");
         require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
@@ -390,6 +425,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         custom_assetPairId[_contractAddress] = _assetPairId;
     }
 
+    /**
+     * @notice Registers the "Deposit Fee" Custom Rule on an external ERC-721 Token Contract
+     *    When set, every Token of the Custom ERC-721 Contract that is "Energized"
+     */
     function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public {
         require(custom_registeredContract[_contractAddress], "E304");
         require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
@@ -400,6 +439,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         custom_assetDepositFee[_contractAddress][_assetPairId] = _depositFee;
     }
 
+    /**
+     * @notice
+     */
     function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public {
         require(custom_registeredContract[_contractAddress], "E304");
         require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
@@ -410,6 +452,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         custom_assetDepositMin[_contractAddress][_assetPairId] = _minDeposit;
     }
 
+    /**
+     * @notice
+     */
     function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public {
         require(custom_registeredContract[_contractAddress], "E304");
         require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
@@ -424,17 +469,26 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |     Register Creator Settings     |
     |__________________________________*/
 
+    /**
+     * @notice
+     */
     function isTypeCreator(address _account, uint256 _typeId) public view returns (bool) {
         if (_account == chargedParticles) { return true; }
         address _typeCreator = IChargedParticles(chargedParticles).getTypeCreator(_typeId);
         return _typeCreator == _account;
     }
 
+    /**
+     * @notice
+     */
     function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) public {
         require(isTypeCreator(msg.sender, _typeId), "E306");
         creator_feeCollector[_typeId] = _feeCollector;
     }
 
+    /**
+     * @notice
+     */
     function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) public {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
@@ -445,6 +499,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         creator_assetPairId[_typeId] = _assetPairId;
     }
 
+    /**
+     * @notice
+     */
     function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) public {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
@@ -454,6 +511,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         creator_assetDepositFee[_typeId][_assetPairId] = _depositFee;
     }
 
+    /**
+     * @notice
+     */
     function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) public {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
@@ -463,6 +523,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         creator_assetDepositMin[_typeId][_assetPairId] = _minDeposit;
     }
 
+    /**
+     * @notice
+     */
     function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) public {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
@@ -730,7 +793,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
 
     /***********************************|
-    |            Only Owner             |
+    |          Only Admin/DAO           |
     |__________________________________*/
 
     /**
@@ -954,6 +1017,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //   Many (older) tokens don't implement ERC165 (CryptoKitties for one)
     //   Doesn't currently account for ERC998 - composable tokens
     //   Doesn't consider newer token standards
+    //   Could be used to potentially avoid ERC777
     //
 //    function _isNonFungibleToken(address _contractAddress, uint256 _tokenId) internal returns (bool) {
 //        // Check Token Interface to ensure compliance
