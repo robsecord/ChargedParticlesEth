@@ -13,8 +13,14 @@ resources.txt
 .env
 .versionFilesList.json
 build/
+bin/
 notes.txt
 
 # OpenZeppelin
 .openzeppelin/dev-*.json
 .openzeppelin/.session
+
+# Charged Particles
+./ChargedParticles.sol
+./ChargedParticlesERC1155.sol
+./ChargedParticlesEscrow.sol

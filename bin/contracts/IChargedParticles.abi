@@ -1,1 +1,0 @@
-[{"constant":true,"inputs":[{"internalType":"uint256","name":"_type","type":"uint256"}],"name":"getTypeCreator","outputs":[{"internalType":"address","name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"}]
