@@ -51,9 +51,11 @@
 //      326         Particle has Insufficient Charge
 //      327         Transfer Failed
 //      328         Access Control: Sender does not have required Role
+//      329         Token has no Mass
+//      330         Token has no Charge
 
 
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
@@ -849,6 +851,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
         nonReentrant
         returns (uint256)
     {
+        require(baseParticleMass(_contractAddress, _tokenId, _assetPairId) > 0, "E329");
         INonFungible _tokenInterface = INonFungible(_contractAddress);
 
         // Validate Token Owner/Operator
@@ -1060,6 +1063,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
 
         // Validate Discharge Amount
         uint256 _currentCharge = currentParticleCharge(_contractAddress, _tokenId, _assetPairId);
+        require(_currentCharge > 0, "E330");
         require(_currentCharge <= _assetAmount, "E326");
 
         // Precalculate Amount to Discharge to Receiver

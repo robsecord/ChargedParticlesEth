@@ -2,7 +2,7 @@
  * @dev Modified from OpenZeppelin Contracts 3.0
  * see: node_modules/@openzeppelin/contracts/access/AccessControl.sol
  */
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";

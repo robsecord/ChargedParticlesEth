@@ -37,7 +37,7 @@
 //      210         ERC721: Transfer to non ERC721Receiver implementer
 //      211         ERC165: Invalid interface id
 
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";

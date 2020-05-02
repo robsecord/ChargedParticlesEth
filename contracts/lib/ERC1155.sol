@@ -36,7 +36,7 @@
 //      111         Approve caller is not owner nor approved for all
 //      112         Approved query for nonexistent token
 
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";

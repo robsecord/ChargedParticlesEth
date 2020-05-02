@@ -22,7 +22,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 contract IBridgedERC1155 {
     event NewBridge(uint256 indexed _typeId, address indexed _bridge);

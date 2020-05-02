@@ -8,6 +8,15 @@
 		"solidity.packageDefaultDependenciesContractsDirectory": "",
 		"solidity.formatter": "none",
 		"slither.solcPath": "/Users/robsecord/.nvm/versions/node/v12.16.1/lib/node_modules/solc/solcjs",
-		"slither.hiddenDetectors": []
+		"slither.hiddenDetectors": [],
+		"solidity.compileUsingRemoteVersion": "v0.5.16+commit.9c3226ce",
+		"secbit.solc": "/Users/robsecord/workspace/Ethereum/ChargedParticles/ChargedParticlesEth/node_modules/solc/solcjs",
+		"solidity.enableLocalNodeCompiler": false
+	},
+	"launch": {
+		"ethcodeToken": {
+			"machineID": "e6c27740-8ca8-11ea-8024-ffa47f2b52cb",
+			"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJtYWNoaW5lSUQiOiJlNmMyNzc0MC04Y2E4LTExZWEtODAyNC1mZmE0N2YyYjUyY2IifQ.eHNEN5gsgffhbqY5vAkpzd3ga12bmSgPG84XToaS8N0"
+		}
 	}
 }

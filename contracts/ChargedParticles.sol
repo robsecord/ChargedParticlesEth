@@ -43,7 +43,7 @@
 //      418         Insufficient Asset Token funds
 //      419         Failed to transfer Asset Token
 
-pragma solidity ^0.5.16;
+pragma solidity 0.5.16;
 
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
@@ -656,7 +656,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
         // Transfer Asset Token from User to Contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
-        // Energize Particle
+        // Energize Particle; Transfering Asset from Contract to Escrow
         return escrow.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
     }
 
