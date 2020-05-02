@@ -43,7 +43,7 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
     |__________________________________*/
 
     // Address to the Charged Particles Controller Contract
-    address chargedParticles;
+    address internal chargedParticles;
 
     // Throws if called by any account other than the Charged Particles contract.
     modifier onlyChargedParticles() {
