@@ -131,10 +131,10 @@ contract ChaiNucleus is INucleus {
     }
 
     function initRopsten() public {
-        vat = VatLike(0xA85B3d84f54Fb238Ef257158da99FdfCe905C7aA);           // Deployed copy of: contracts/assets/dai/DaiVat.sol
-        pot = PotLike(0x47563186A46Aa3EBbEA5D294c8514f0ED49f2e2c);           // Deployed copy of: contracts/assets/dai/DaiPot.sol
-        daiJoin = JoinLike(0x298cb5798c0F0af4850d1a380E28E25C02FF087A);      // Deployed copy of: contracts/assets/dai/DaiJoin.sol
-        daiToken = GemLike(0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6);      // Deployed copy of: contracts/assets/dai/DaiGem.sol
+        vat = VatLike(0xA85B3d84f54Fb238Ef257158da99FdfCe905C7aA);           // Deployed copy of: variations/assets/dai/DaiVat.sol
+        pot = PotLike(0x47563186A46Aa3EBbEA5D294c8514f0ED49f2e2c);           // Deployed copy of: variations/assets/dai/DaiPot.sol
+        daiJoin = JoinLike(0x298cb5798c0F0af4850d1a380E28E25C02FF087A);      // Deployed copy of: variations/assets/dai/DaiJoin.sol
+        daiToken = GemLike(0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6);      // Deployed copy of: variations/assets/dai/DaiGem.sol
 
         initialize();
     }

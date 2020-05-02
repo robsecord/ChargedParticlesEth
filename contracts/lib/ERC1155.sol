@@ -46,7 +46,7 @@ import "../../node_modules/multi-token-standard/contracts/interfaces/IERC1155Tok
 
 
 /**
- * @dev Implementation of ERC1155 Multi-Token Standard contract
+ * @notice Implementation of ERC1155 Multi-Token Standard contract
  * @dev see node_modules/multi-token-standard/contracts/tokens/ERC1155/ERC1155.sol
  */
 contract ERC1155 is Initializable, IERC165 {
@@ -68,29 +68,40 @@ contract ERC1155 is Initializable, IERC165 {
     bytes4 constant internal ERC1155_RECEIVED_VALUE = 0xf23a6e61;
     bytes4 constant internal ERC1155_BATCH_RECEIVED_VALUE = 0xbc197c81;
 
-    //       Account =>           TypeID => ERC20 Balance
-    mapping (address => mapping (uint256 => uint256)) internal balances;
-    //       Account =>         Operator => Allowed?
-    mapping (address => mapping (address => bool)) internal operators;      // Operator Approval for All Tokens by Type
-    //       TokenID => Operator
-    mapping (uint256 => address) internal tokenApprovals;                   // Operator Approval per Token (ERC-721 only)
-    //       TokenID => Owner (ERC-721 only)
-    mapping (uint256 => address) internal nfOwners;
-    //        TypeID => Total Minted Supply
-    mapping (uint256 => uint256) internal mintedByType;
-    //        TypeID => Total Circulating Supply (ERC20 only, reduced on burn)
-    mapping (uint256 => uint256) internal supplyByType;
-    //       TokenID => URI for the Token Metadata
-    mapping (uint256 => string) internal tokenUri;
-
-    // Type Nonce for each Created Type
+    // Type Nonce for each Unique Type
     uint256 internal nonce;
 
+    //
+    // Generic (ERC20 & ERC721)
+    // 
+    //       Account =>         Operator => Allowed?
+    mapping (address => mapping (address => bool)) internal operators;   // Operator Approval for All Tokens by Type
+    //        TypeID => Total Minted Supply
+    mapping (uint256 => uint256) internal mintedByType;
+
+    //
+    // ERC20 Specific
+    //
+    //       Account =>           TypeID => ERC20 Balance
+    mapping (address => mapping (uint256 => uint256)) internal balances;
+    //        TypeID => Total Circulating Supply (reduced on burn)
+    mapping (uint256 => uint256) internal supplyByType;
+
+    //
+    // ERC721 Specific
+    //
+    //       TokenID => Operator
+    mapping (uint256 => address) internal tokenApprovals;   // Operator Approval per Token
+    //       TokenID => Owner
+    mapping (uint256 => address) internal nfOwners;
+    //       TokenID => URI for the Token Metadata
+    mapping (uint256 => string) internal tokenUri;
+    //
     // Enumerable NFTs
     mapping (uint256 => mapping (uint256 => uint256)) internal ownedTokensByTypeIndex;
     mapping (uint256 => mapping (uint256 => uint256)) internal allTokensByTypeIndex;
     mapping (uint256 => mapping (address => uint256[])) internal ownedTokensByType;
-    mapping (uint256 => uint256[]) internal allTokensByType; // ERC-721 Circulating Supply
+    mapping (uint256 => uint256[]) internal allTokensByType; // Circulating Supply
 
     //
     // Events
@@ -142,6 +153,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets the URI of the Token Metadata
+     * @param _id  The Type ID of the Token to get the URI for
+     * @return  The URI of the Token Metadata
      */
     function uri(uint256 _id) public view returns (string memory) {
         return tokenUri[_id];
@@ -149,6 +162,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Checks if a specific token interface is supported
+     * @param _interfaceID  The ID of the Interface to check
+     * @return  True if the interface ID is supported
      */
     function supportsInterface(bytes4 _interfaceID) external view returns (bool) {
         if (_interfaceID == INTERFACE_SIGNATURE_ERC165 ||
@@ -160,6 +175,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets the Total Circulating Supply of a Token-Type
+     * @param _typeId  The Type ID of the Token
+     * @return  The Total Circulating Supply of the Token-Type
      */
     function totalSupply(uint256 _typeId) public view returns (uint256) {
         if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
@@ -170,6 +187,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets the Total Minted Supply of a Token-Type
+     * @param _typeId  The Type ID of the Token
+     * @return  The Total Minted Supply of the Token-Type
      */
     function totalMinted(uint256 _typeId) public view returns (uint256) {
         return mintedByType[_typeId];
@@ -177,6 +196,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets the Owner of a Non-fungible Token (ERC-721 only)
+     * @param _tokenId  The ID of the Token
+     * @return  The Address of the Owner of the Token
      */
     function ownerOf(uint256 _tokenId) public view returns (address) {
         require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E104");
@@ -186,8 +207,8 @@ contract ERC1155 is Initializable, IERC165 {
     /**
      * @notice Get the balance of an account's Tokens
      * @param _tokenOwner  The address of the token holder
-     * @param _typeId      ID of the Token
-     * @return The _tokenOwner's balance of the Token type requested
+     * @param _typeId      The Type ID of the Token
+     * @return The Owner's Balance of the Token-Type
      */
     function balanceOf(address _tokenOwner, uint256 _typeId) public view returns (uint256) {
         // Non-fungible
@@ -202,8 +223,8 @@ contract ERC1155 is Initializable, IERC165 {
     /**
      * @notice Get the balance of multiple account/token pairs
      * @param _owners   The addresses of the token holders
-     * @param _typeIds  ID of the Tokens
-     * @return The _owner's balance of the Token types requested (i.e. balance for each (owner, id) pair)
+     * @param _typeIds  The Type IDs of the Tokens
+     * @return The Owner's Balance of the Token-Types
      */
     function balanceOfBatch(address[] memory _owners, uint256[] memory _typeIds) public view returns (uint256[] memory) {
         require(_owners.length == _typeIds.length, "E103");
@@ -229,6 +250,10 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets a specific Token by Index of a Users Enumerable Non-fungible Tokens (ERC-721 only)
+     * @param _typeId  The Type ID of the Token 
+     * @param _owner   The address of the Token Holder
+     * @param _index   The Index of the Token 
+     * @return  The ID of the Token by Owner, Type & Index
      */
     function tokenOfOwnerByIndex(uint256 _typeId, address _owner, uint256 _index) public view returns (uint256) {
         require(_index < balanceOf(_owner, _typeId), "E108");
@@ -237,6 +262,9 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets a specific Token by Index in All Enumerable Non-fungible Tokens (ERC-721 only)
+     * @param _typeId  The Type ID of the Token 
+     * @param _index   The Index of the Token 
+     * @return  The ID of the Token by Type & Index
      */
     function tokenByIndex(uint256 _typeId, uint256 _index) public view returns (uint256) {
         require(_index < totalSupply(_typeId), "E109");
@@ -245,6 +273,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Sets an Operator as Approved to Manage a specific Token
+     * @param _operator  Address to add to the set of authorized operators
+     * @param _tokenId  The ID of the Token
      */
     function approve(address _operator, uint256 _tokenId) public {
         address _owner = ownerOf(_tokenId);
@@ -257,6 +287,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Gets the Approved Operator of a specific Token
+     * @param _tokenId  The ID of the Token
+     * @return  The address of the approved operator
      */
     function getApproved(uint256 _tokenId) public view returns (address) {
         address owner = ownerOf(_tokenId);
@@ -276,21 +308,20 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Queries the approval status of an operator for a given owner
-     * @param _owner     The owner of the Tokens
-     * @param _operator  Address of authorized operator
+     * @param _tokenOwner   The owner of the Tokens
+     * @param _operator     Address of authorized operator
      * @return True if the operator is approved, false if not
      */
-    function isApprovedForAll(address _tokenOwner, address _operator) public view returns (bool isOperator) {
+    function isApprovedForAll(address _tokenOwner, address _operator) public view returns (bool) {
         return operators[_tokenOwner][_operator];
     }
 
     /**
      * @notice Transfers amount of an _id from the _from address to the _to address specified
-     * @param _from    Source address
-     * @param _to      Target address
-     * @param _id      ID of the token type
-     * @param _amount  Transferred amount
-     * @param _data    Additional data with no specified format, sent in call to `_to`
+     * @param _from     The Address of the Token Holder
+     * @param _to       The Address of the Token Receiver
+     * @param _id       ID of the Token
+     * @param _amount   The Amount to transfer
      */
     function transferFrom(address _from, address _to, uint256 _id, uint256 _amount) public {
         require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E105");
@@ -301,11 +332,11 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Safe-transfers amount of an _id from the _from address to the _to address specified
-     * @param _from    Source address
-     * @param _to      Target address
-     * @param _id      ID of the token type
-     * @param _amount  Transferred amount
-     * @param _data    Additional data with no specified format, sent in call to `_to`
+     * @param _from     The Address of the Token Holder
+     * @param _to       The Address of the Token Receiver
+     * @param _id       ID of the Token
+     * @param _amount   The Amount to transfer
+     * @param _data     Additional data with no specified format, sent in call to `_to`
      */
     function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) public {
         require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E105");
@@ -317,10 +348,10 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Send multiple types of Tokens from the _from address to the _to address (with safety call)
-     * @param _from     Source addresses
-     * @param _to       Target addresses
-     * @param _ids      IDs of each token type
-     * @param _amounts  Transfer amounts per token type
+     * @param _from     The Address of the Token Holder
+     * @param _to       The Address of the Token Receiver
+     * @param _ids      IDs of each Token
+     * @param _amounts  The Amount to transfer per Token
      * @param _data     Additional data with no specified format, sent in call to `_to`
      */
     function safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) public {
@@ -337,10 +368,10 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Transfers amount amount of an _id from the _from address to the _to address specified
-     * @param _from    Source address
-     * @param _to      Target address
-     * @param _id      ID of the token type
-     * @param _amount  Transferred amount
+     * @param _from     The Address of the Token Holder
+     * @param _to       The Address of the Token Receiver
+     * @param _id       ID of the Token
+     * @param _amount   The Amount to transfer
      */
     function _safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount) internal {
         // Non-Fungible
@@ -367,10 +398,10 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @notice Send multiple types of Tokens from the _from address to the _to address (with safety call)
-     * @param _from     Source addresses
-     * @param _to       Target addresses
-     * @param _ids      IDs of each token type
-     * @param _amounts  Transfer amounts per token type
+     * @param _from     The Address of the Token Holder
+     * @param _to       The Address of the Token Receiver
+     * @param _ids      IDs of each Token
+     * @param _amounts  The Amount to transfer per Token
      */
     function _safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts) internal {
         require(_ids.length == _amounts.length, "E103");
@@ -401,29 +432,9 @@ contract ERC1155 is Initializable, IERC165 {
     }
 
     /**
-     * @dev Check if the Receiver is a Contract and ensure compatibility to the ERC1155 spec
-     */
-    function _callonERC1155Received(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) internal {
-        // Check if recipient is a contract
-        if (_to.isContract()) {
-            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _amount, _data);
-            require(retval == ERC1155_RECEIVED_VALUE, "E102");
-        }
-    }
-
-    /**
-     * @dev  Check if the Receiver is a Contract and ensure compatibility to the ERC1155 spec
-     */
-    function _callonERC1155BatchReceived(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) internal {
-        // Pass data if recipient is a contract
-        if (_to.isContract()) {
-            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _amounts, _data);
-            require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E102");
-        }
-    }
-
-    /**
      * @dev Creates a new Type, either FT or NFT
+     * @param _uri   The Metadata URI of the Token (ERC721 only)
+     * @param _isNF  True for NFT Types; False otherwise
      */
     function _createType(string memory _uri, bool _isNF) internal returns (uint256 _type) {
         require(bytes(_uri).length > 0, "E107");
@@ -441,6 +452,12 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Mints a new Token, either FT or NFT
+     * @param _to      The Address of the Token Receiver
+     * @param _type    The Type ID of the Token
+     * @param _amount  The amount of the Token to Mint
+     * @param _URI     The Metadata URI of the Token (ERC721 only)
+     * @param _data    Additional data with no specified format, sent in call to `_to`
+     * @return The Token ID of the newly minted Token
      */
     function _mint(address _to, uint256 _type, uint256 _amount, string memory _URI, bytes memory _data) internal returns (uint256) {
         uint256 _tokenId;
@@ -475,6 +492,12 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Mints a Batch of new Tokens, either FT or NFT
+     * @param _to       The Address of the Token Receiver
+     * @param _types    The Type IDs of the Tokens
+     * @param _amounts  The amounts of the Tokens to Mint
+     * @param _URIs     The Metadata URI of the Tokens (ERC721 only)
+     * @param _data     Additional data with no specified format, sent in call to `_to`
+     * @return The Token IDs of the newly minted Tokens
      */
     function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, string[] memory _URIs, bytes memory _data) internal returns (uint256[] memory) {
         require(_types.length == _amounts.length, "E103");
@@ -520,6 +543,9 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Burns an existing Token, either FT or NFT
+     * @param _from     The Address of the Token Holder
+     * @param _tokenId  The ID of the Token
+     * @param _amount   The Amount to burn
      */
     function _burn(address _from, uint256 _tokenId, uint256 _amount) internal {
         uint256 _typeId = _tokenId;
@@ -549,6 +575,9 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Burns a Batch of existing Tokens, either FT or NFT
+     * @param _from      The Address of the Token Holder
+     * @param _tokenIds  The IDs of the Tokens
+     * @param _amounts   The Amounts to Burn of each Token
      */
     function _burnBatch(address _from, uint256[] memory _tokenIds, uint256[] memory _amounts) internal {
         require(_tokenIds.length == _amounts.length, "E103");
@@ -587,6 +616,9 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Adds NFT Tokens to a Users Enumerable List
+     * @param _typeId   The Type ID of the Token 
+     * @param _to       The Address of the Token Receiver
+     * @param _tokenId  The ID of the Token
      */
     function _addTokenToOwnerEnumeration(uint256 _typeId, address _to, uint256 _tokenId) internal {
         ownedTokensByTypeIndex[_typeId][_tokenId] = ownedTokensByType[_typeId][_to].length;
@@ -595,6 +627,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Adds NFT Tokens to the All-Tokens Enumerable List
+     * @param _typeId   The Type ID of the Token 
+     * @param _tokenId  The ID of the Token
      */
     function _addTokenToAllTokensEnumeration(uint256 _typeId, uint256 _tokenId) internal {
         allTokensByTypeIndex[_typeId][_tokenId] = allTokensByType[_typeId].length;
@@ -603,6 +637,9 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Removes NFT Tokens from a Users Enumerable List
+     * @param _typeId   The Type ID of the Token 
+     * @param _from     The Address of the Token Holder
+     * @param _tokenId  The ID of the Token
      */
     function _removeTokenFromOwnerEnumeration(uint256 _typeId, address _from, uint256 _tokenId) internal {
         uint256 _lastTokenIndex = ownedTokensByType[_typeId][_from].length.sub(1);
@@ -620,6 +657,8 @@ contract ERC1155 is Initializable, IERC165 {
 
     /**
      * @dev Removes NFT Tokens from the All-Tokens Enumerable List
+     * @param _typeId   The Type ID of the Token 
+     * @param _tokenId  The ID of the Token
      */
     function _removeTokenFromAllTokensEnumeration(uint256 _typeId, uint256 _tokenId) internal {
         uint256 _lastTokenIndex = allTokensByType[_typeId].length.sub(1);
@@ -631,6 +670,28 @@ contract ERC1155 is Initializable, IERC165 {
 
         allTokensByType[_typeId].length--;
         allTokensByTypeIndex[_typeId][_tokenId] = 0;
+    }
+
+    /**
+     * @dev Check if the Receiver is a Contract and ensure compatibility to the ERC1155 spec
+     */
+    function _callonERC1155Received(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) internal {
+        // Check if recipient is a contract
+        if (_to.isContract()) {
+            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _amount, _data);
+            require(retval == ERC1155_RECEIVED_VALUE, "E102");
+        }
+    }
+
+    /**
+     * @dev  Check if the Receiver is a Contract and ensure compatibility to the ERC1155 spec
+     */
+    function _callonERC1155BatchReceived(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) internal {
+        // Pass data if recipient is a contract
+        if (_to.isContract()) {
+            bytes4 retval = IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _amounts, _data);
+            require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E102");
+        }
     }
 }
 

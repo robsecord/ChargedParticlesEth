@@ -1,6 +1,6 @@
 {
   "name": "charged-particles",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "keywords": [
     "ethereum",
     "nft",
@@ -15,8 +15,9 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@openzeppelin/cli": "^2.6.0",
-    "@openzeppelin/contracts-ethereum-package": "^2.4.0",
+    "@openzeppelin/cli": "^2.8.2",
+    "@openzeppelin/contracts": "^3.0.0",
+    "@openzeppelin/contracts-ethereum-package": "^2.5.0",
     "@openzeppelin/upgrades": "^2.6.0",
     "@truffle/hdwallet-provider": "^1.0.32",
     "dotenv": "^8.0.0",
@@ -24,6 +25,7 @@
     "lodash": "^4.17.15",
     "multi-token-standard": "^0.8.9",
     "openzeppelin-solidity": "^2.4.0",
+    "solidity-docgen": "^0.5.3",
     "web3": "^1.2.4"
   }
 }

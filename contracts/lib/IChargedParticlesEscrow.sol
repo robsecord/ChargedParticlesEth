@@ -49,27 +49,27 @@ contract IChargedParticlesEscrow {
     |__________________________________*/
 
     function isContractOwnerOperator(address _account, address _contract) public returns (bool);
-    function registerContractType(address _contractAddress) public;
-    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public;
-    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) public;
-    function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public;
-    function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public;
-    function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public;
+    function registerContractType(address _contractAddress) external;
+    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external;
+    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) external;
+    function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) external;
+    function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) external;
+    function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) external;
 
-    function withdrawContractFees(address _contractAddress, address _receiver) public;
+    function withdrawContractFees(address _contractAddress, address _receiver) external;
 
     /***********************************|
     |     Register Creator Settings     |
     |__________________________________*/
 
     function isTypeCreator(address _account, uint256 _typeId) public returns (bool);
-    function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) public;
-    function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) public;
-    function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) public;
-    function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) public;
-    function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) public;
+    function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) external;
+    function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) external;
+    function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) external;
+    function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) external;
+    function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) external;
 
-    function withdrawCreatorFees(address _sender, uint256 _typeId) public;
+    function withdrawCreatorFees(uint256 _typeId) external;
 
     /***********************************|
     |          Particle Charge          |

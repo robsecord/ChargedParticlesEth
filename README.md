@@ -1,4 +1,6 @@
-## Charged Particles - Solidity Contracts v0.3.1
+## Charged Particles - Solidity Contracts v0.3.3
+
+[![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
 
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with **DAI** and accrue interest via **CHAI** 
 giving the Token a "Charge". 

@@ -50,16 +50,17 @@
 //      325         Failed to transfer Asset Token
 //      326         Particle has Insufficient Charge
 //      327         Transfer Failed
+//      328         Access Control: Sender does not have required Role
 
 
 pragma solidity ^0.5.16;
 
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "./lib/AccessControl.sol";
 import "./assets/INucleus.sol";
 
 contract IOwnable {
@@ -78,7 +79,7 @@ contract IChargedParticles {
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
+contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
@@ -87,6 +88,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     uint256 constant internal TYPE_NF_BIT = 1 << 255;                   // ERC1155 Common Non-fungible Token Bit
     uint256 constant internal TYPE_MASK = uint256(uint128(~0)) << 128;  // ERC1155 Common Non-fungible Type Mask
+
+    bytes32 constant public ROLE_DAO_GOV = keccak256("ROLE_DAO_GOV");
+    bytes32 constant public ROLE_MAINTAINER = keccak256("ROLE_MAINTAINER");
 
     bytes4 constant internal INTERFACE_SIGNATURE_ERC721 = 0x80ac58cd;
     bytes4 constant internal INTERFACE_SIGNATURE_ERC1155 = 0xd9b67a26;
@@ -126,12 +130,12 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //      Contract => Specific Asset-Pair that is allowed (otherwise, any Asset-Pair is allowed)
     mapping (address => bytes16) internal custom_assetPairId;
 
-    //      Contract =>    Asset-Pair-ID => Deposit Fees earned for Contract Owner
-    mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositFee;
+    //      Contract => Deposit Fees to be earned for Contract Owner
+    mapping (address => uint256) internal custom_assetDepositFee;
 
-    //      Contract =>    Asset-Pair-ID => Allowed Limit of Asset Token [min, max]
-    mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositMin;
-    mapping (address => mapping (bytes16 => uint256)) internal custom_assetDepositMax;
+    //      Contract => Allowed Limit of Asset Token [min, max]
+    mapping (address => uint256) internal custom_assetDepositMin;
+    mapping (address => uint256) internal custom_assetDepositMax;
 
     /***********************************|
     |         Per Token Settings        |
@@ -144,13 +148,12 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     //        TypeID => Specific Asset-Pair that is allowed (otherwise, any Asset-Pair is allowed)
     mapping (uint256 => bytes16) internal creator_assetPairId;
 
-    // TODO: This should not be bound to Asset-Pair, should be applied to all Asset-Pairs
-    //        TypeID =>    Asset-Pair-ID => Deposit Fees earned for Type Creator
-    mapping (uint256 => mapping (bytes16 => uint256)) internal creator_assetDepositFee;
+    //        TypeID => Deposit Fees to be earned for Type Creator
+    mapping (uint256 => uint256) internal creator_assetDepositFee;
 
-    //        TypeID =>    Asset-Pair-ID => Allowed Limit of Asset Token [min, max]
-    mapping (uint256 => mapping (bytes16 => uint256)) internal creator_assetDepositMin;
-    mapping (uint256 => mapping (bytes16 => uint256)) internal creator_assetDepositMax;
+    //        TypeID => Allowed Limit of Asset Token [min, max]
+    mapping (uint256 => uint256) internal creator_assetDepositMin;
+    mapping (uint256 => uint256) internal creator_assetDepositMax;
 
     /***********************************|
     |     Variables/Events/Modifiers    |
@@ -180,8 +183,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     mapping (uint256 => mapping (bytes16 => uint256)) internal interestTokenBalance;     // Current Balance in Interest Token
     mapping (uint256 => mapping (bytes16 => uint256)) internal assetTokenDeposited;      // Original Amount Deposited in Asset Token
 
+    //     TokenUUID => Operator
+    mapping (uint256 => address) internal tokenDischargeApprovals;                       // Operator Approval per Token
+
     //     TokenUUID => Token Release Operator
-    mapping (uint256 => address) internal assetToBeReleased;
+    mapping (uint256 => address) internal assetToBeReleasedBy;
 
     // Asset-Pair-ID => Deposit Fees earned by Contract
     // (collected in Interest-bearing Token, paid out in Asset Token)
@@ -216,7 +222,8 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     event RegisterParticleContract(address indexed _contractAddress);
     event CustomFeesWithdrawn(address indexed _contractAddress, address indexed _receiver);
-    event CreatorFeesWithdrawn(address indexed _sender, address indexed _creatorAddress);
+    event CreatorFeesWithdrawn(uint256 indexed _typeId, address indexed _creatorAddress);
+    event DischargeApproval(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _owner, address _operator);
     event EnergizedParticle(address indexed _contractAddress, uint256 indexed _tokenId, bytes16 _assetPairId, uint256 _assetBalance, uint256 _interestBalance);
     event DischargedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount, uint256 _interestBalance);
     event ReleasedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
@@ -226,9 +233,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |          Initialization           |
     |__________________________________*/
 
-    function initialize(address sender) public initializer {
-        Ownable.initialize(sender);
+    function initialize(address _sender, address _dao, address _maintainer) public initializer {
         ReentrancyGuard.initialize();
+        _setupRole(DEFAULT_ADMIN_ROLE, _sender);
+        _setupRole(ROLE_DAO_GOV, _dao);
+        _setupRole(ROLE_MAINTAINER, _maintainer);
         version = "v0.3.3";
     }
 
@@ -263,29 +272,62 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return uint256(keccak256(abi.encodePacked(_contractAddress, _tokenId)));
     }
 
-    function getAssetMinDeposit(address _contractAddress, uint256 _typeId, bytes16 _assetPairId) public view returns (uint256) {
+    function getAssetMinDeposit(address _contractAddress, uint256 _typeId) public view returns (uint256) {
         if (_contractAddress == chargedParticles) {
-            return creator_assetDepositMin[_typeId][_assetPairId];
+            return creator_assetDepositMin[_typeId];
         }
-        return custom_assetDepositMin[_contractAddress][_assetPairId];
+        return custom_assetDepositMin[_contractAddress];
     }
 
-    function getAssetMaxDeposit(address _contractAddress, uint256 _typeId, bytes16 _assetPairId) public view returns (uint256) {
+    function getAssetMaxDeposit(address _contractAddress, uint256 _typeId) public view returns (uint256) {
         if (_contractAddress == chargedParticles) {
-            return creator_assetDepositMax[_typeId][_assetPairId];
+            return creator_assetDepositMax[_typeId];
         }
-        return custom_assetDepositMax[_contractAddress][_assetPairId];
+        return custom_assetDepositMax[_contractAddress];
     }
 
     /**
-     * @dev Calculates the amount of Fees to be paid for a specific deposit amount
+     * @notice Sets an Operator as Approved to Discharge a specific Token
+     *    This allows an operator to release the interest-portion only
+     * @param _contractAddress  The Address to the Contract of the Token
+     * @param _tokenId          The ID of the Token
+     * @param _operator         The Address of the Operator to Approve
+     */
+    function setDischargeApproval(address _contractAddress, uint256 _tokenId, address _operator) public {
+        INonFungible _tokenInterface = INonFungible(_contractAddress);
+        address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
+        require(_operator != _tokenOwner, "310");
+        require(msg.sender == _tokenOwner || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "310");
+
+        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
+        tokenDischargeApprovals[_tokenUuid] = _operator;
+        emit DischargeApproval(_contractAddress, _tokenId, _tokenOwner, _operator);
+    }
+
+    /**
+     * @notice Gets the Approved Discharge-Operator of a specific Token
+     * @param _contractAddress  The Address to the Contract of the Token
+     * @param _tokenId          The ID of the Token
+     * @param _operator         The Address of the Operator to check
+     * @return  True if the _operator is Approved
+     */
+    function isApprovedForDischarge(address _contractAddress, uint256 _tokenId, address _operator) public view returns (bool) {
+        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
+        return tokenDischargeApprovals[_tokenUuid] == _operator;
+    }
+
+    /**
+     * @notice Calculates the amount of Fees to be paid for a specific deposit amount
+     *   Fees are calculated in Interest-Token as they are the type collected for Fees
+     * @param _contractAddress      The Address to the Contract of the Token
+     * @param _typeId               The Type-ID of the Token
+     * @param _interestTokenAmount  The Amount of Interest-Token to calculate Fees on
      * @return  The amount of base fees and the amount of custom/creator fees
      */
     function getFeesForDeposit(
         address _contractAddress,
         uint256 _typeId,
-        uint256 _interestTokenAmount,
-        bytes16 _assetPairId
+        uint256 _interestTokenAmount
     )
         public
         view
@@ -300,12 +342,12 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         }
 
         if (_contractAddress == chargedParticles) {
-            uint256 _creatorFeeSetting = creator_assetDepositFee[_typeId][_assetPairId];
+            uint256 _creatorFeeSetting = creator_assetDepositFee[_typeId];
             if (_creatorFeeSetting > 0) {
                 _creatorFee = _interestTokenAmount.mul(_creatorFeeSetting).div(DEPOSIT_FEE_MODIFIER);
             }
         } else {
-            uint256 _customFeeSetting = custom_assetDepositFee[_contractAddress][_assetPairId];
+            uint256 _customFeeSetting = custom_assetDepositFee[_contractAddress];
             if (_customFeeSetting > 0) {
                 _customFee = _interestTokenAmount.mul(_customFeeSetting).div(DEPOSIT_FEE_MODIFIER);
             }
@@ -315,28 +357,32 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Calculates the Total Fee to be paid for a specific deposit amount
+     * @notice Calculates the Total Fee to be paid for a specific deposit amount
+     *   Fees are calculated in Interest-Token as they are the type collected for Fees
+     * @param _contractAddress      The Address to the Contract of the Token
+     * @param _typeId               The Type-ID of the Token
+     * @param _interestTokenAmount  The Amount of Interest-Token to calculate Fees on
      * @return  The total amount of base fees plus the amount of custom/creator fees
      */
     function getFeeForDeposit(
         address _contractAddress,
         uint256 _typeId,
-        uint256 _interestTokenAmount,
-        bytes16 _assetPairId
+        uint256 _interestTokenAmount
     )
         public
         view
         returns (uint256)
     {
-        (uint256 _depositFee, uint256 _customFee, uint256 _creatorFee) = getFeesForDeposit(_contractAddress, _typeId, _interestTokenAmount, _assetPairId);
+        (uint256 _depositFee, uint256 _customFee, uint256 _creatorFee) = getFeesForDeposit(_contractAddress, _typeId, _interestTokenAmount);
         return _depositFee.add(_customFee).add(_creatorFee);
     }
 
     /**
-     * @notice Gets the Amount of Asset Tokens that have been Deposited
+     * @notice Gets the Amount of Asset Tokens that have been Deposited into the Particle
+     *    representing the Mass of the Particle.
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _tokenId          The ID of the Token within the External Contract
-     * @param _assetPairId      The Asset-Pair ID to check the balance of
+     * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The Amount of underlying Assets held within the Token
      */
     function baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public view returns (uint256) {
@@ -345,8 +391,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice Gets the amount of Charge the Particle has generated (it's accumulated interest)
-     * @param _tokenId      The ID of the Token
+     * @notice Gets the amount of Interest that the Particle has generated representing 
+     *    the Charge of the Particle
+     * @param _contractAddress  The Address to the External Contract of the Token
+     * @param _tokenId          The ID of the Token within the External Contract
+     * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The amount of interest the Token has generated (in Asset Token)
      */
     function currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) public returns (uint256) {
@@ -368,6 +417,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      *    When Custom Contracts are registered, only the "owner" or operator of the Contract
      *    is allowed to register them and define custom rules for how their tokens are "Charged".
      *    Otherwise, any token can be "Charged" according to the default rules of Charged Particles.
+     * @param _account   The Account to check if it is the Owner of the specified Contract
+     * @param _contract  The Address to the External Contract to check
+     * @return True if the _account is the Owner of the _contract
      */
     function isContractOwner(address _account, address _contract) public view returns (bool) {
         address _contractOwner = IOwnable(_contract).owner();
@@ -376,8 +428,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Registers a external ERC-721 Contract in order to define Custom Rules for Tokens
+     * @param _contractAddress  The Address to the External Contract of the Token
      */
-    function registerContractType(address _contractAddress) public {
+    function registerContractType(address _contractAddress) external {
         // Check Token Interface to ensure compliance
         IERC165 _tokenInterface = IERC165(_contractAddress);
         bool _is721 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC721);
@@ -385,7 +438,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(_is721 || _is1155, "E312");
 
         // Check Contract Owner to prevent random people from setting Limits
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
@@ -397,11 +450,12 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @notice Registers the "Release-Burn" Custom Rule on an external ERC-721 Token Contract
      *   When enabled, tokens that are "Charged" will require the Token to be Burned before
      *   the underlying asset is Released.
+     * @param _contractAddress       The Address to the External Contract of the Token
+     * @param _releaseRequiresBurn   True if the External Contract requires tokens to be Burned before Release
      */
-    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) public {
+    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external {
         require(custom_registeredContract[_contractAddress], "E304");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
-
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
         require(custom_assetPairId[_contractAddress].length > 0, "E313");
 
         custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
@@ -411,10 +465,12 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
      * @notice Registers the "Asset-Pair" Custom Rule on an external ERC-721 Token Contract
      *   The Asset-Pair Rule defines which Asset-Token & Interest-bearing Token Pair can be used to
      *   "Charge" the Token.  If not set, any enabled Asset-Pair can be used.
+     * @param _contractAddress  The Address to the External Contract of the Token
+     * @param _assetPairId      The Asset-Pair required for Energizing a Token; otherwise Any Asset-Pair is allowed
      */
-    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) public {
+    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) external {
         require(custom_registeredContract[_contractAddress], "E304");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
 
         if (_assetPairId.length > 0) {
             require(assetPairEnabled[_assetPairId], "E301");
@@ -427,41 +483,48 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Registers the "Deposit Fee" Custom Rule on an external ERC-721 Token Contract
-     *    When set, every Token of the Custom ERC-721 Contract that is "Energized"
+     *    When set, every Token of the Custom ERC-721 Contract that is "Energized" pays a Fee to the
+     *    Contract Owner denominated in the Interest-bearing Token of the Asset-Pair
+     * @param _contractAddress  The Address to the External Contract of the Token
+     * @param _depositFee       The Deposit Fee as a Percentage represented as 10000 = 100%
+     *    A value of "50" would represent a Fee of 0.5% of the Funding Asset ((50 / 10000) * 100)
+     *    This allows a fee as low as 0.01%  (value of "1")
      */
-    function registerContractSetting_DepositFee(address _contractAddress, bytes16 _assetPairId, uint256 _depositFee) public {
+    function registerContractSetting_DepositFee(address _contractAddress, uint256 _depositFee) external {
         require(custom_registeredContract[_contractAddress], "E304");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
-
-        require(assetPairEnabled[_assetPairId], "E301");
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
         require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "E315");
 
-        custom_assetDepositFee[_contractAddress][_assetPairId] = _depositFee;
+        custom_assetDepositFee[_contractAddress] = _depositFee;
     }
 
     /**
-     * @notice
+     * @notice Registers the "Minimum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
+     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at least this 
+     *    amount of Asset Token.
+     * @param _contractAddress  The Address to the External Contract of the Token
+     * @param _minDeposit       The Minimum Deposit required for a Token
      */
-    function registerContractSetting_MinDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _minDeposit) public {
+    function registerContractSetting_MinDeposit(address _contractAddress, uint256 _minDeposit) external {
         require(custom_registeredContract[_contractAddress], "E304");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
-
-        require(assetPairEnabled[_assetPairId], "E301");
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
         require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "E316");
 
-        custom_assetDepositMin[_contractAddress][_assetPairId] = _minDeposit;
+        custom_assetDepositMin[_contractAddress] = _minDeposit;
     }
 
     /**
-     * @notice
+     * @notice Registers the "Maximum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
+     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at most this 
+     *    amount of Asset Token.
+     * @param _contractAddress  The Address to the External Contract of the Token
+     * @param _maxDeposit       The Maximum Deposit allowed for a Token
      */
-    function registerContractSetting_MaxDeposit(address _contractAddress, bytes16 _assetPairId, uint256 _maxDeposit) public {
+    function registerContractSetting_MaxDeposit(address _contractAddress, uint256 _maxDeposit) external {
         require(custom_registeredContract[_contractAddress], "E304");
-        require(isContractOwnerOperator(msg.sender, _contractAddress), "E305");
+        require(isContractOwner(msg.sender, _contractAddress), "E305");
 
-        require(assetPairEnabled[_assetPairId], "E301");
-
-        custom_assetDepositMax[_contractAddress][_assetPairId] = _maxDeposit;
+        custom_assetDepositMax[_contractAddress] = _maxDeposit;
     }
 
 
@@ -470,7 +533,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |__________________________________*/
 
     /**
-     * @notice
+     * @notice Checks if the Account is the Type Creator of a Particle
+     * @param _account  The Address of the Account to check
+     * @param _typeId   The Type ID of the Particle to check
+     * @return  True if the _account is the _typeId Creator
      */
     function isTypeCreator(address _account, uint256 _typeId) public view returns (bool) {
         if (_account == chargedParticles) { return true; }
@@ -479,17 +545,24 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice
+     * @notice Registers the "Fee Collector" Custom Rule on a Particle Type
+     *    The Creator of a Particle Type can set a Custom Fee Collector Address
+     * @param _typeId         The Type ID of the Token
+     * @param _feeCollector   The Address of the Fee Collector
      */
-    function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) public {
+    function registerCreatorSetting_FeeCollector(uint256 _typeId, address _feeCollector) external {
         require(isTypeCreator(msg.sender, _typeId), "E306");
         creator_feeCollector[_typeId] = _feeCollector;
     }
 
     /**
-     * @notice
+     * @notice Registers the "Asset-Pair" Custom Rule on a Particle Type
+     *   The Asset-Pair Rule defines which Asset-Token & Interest-bearing Token Pair can be used to
+     *   "Charge" the Token.  If not set, any enabled Asset-Pair can be used.
+     * @param _typeId           The Type ID of the Token
+     * @param _assetPairId      The Asset-Pair required for Energizing a Token; otherwise Any Asset-Pair is allowed
      */
-    function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) public {
+    function registerCreatorSetting_AssetPair(uint256 _typeId, bytes16 _assetPairId) external {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
         if (_assetPairId.length > 0) {
@@ -500,38 +573,46 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @notice
+     * @notice Registers the "Deposit Fee" Custom Rule on a Particle Type
+     *    When set, every Token of this Type that is "Energized" pays a Fee to the
+     *    Creator denominated in the Interest-bearing Token of the Asset-Pair
+     * @param _typeId           The Type ID of the Token
+     * @param _depositFee       The Deposit Fee as a Percentage represented as 10000 = 100%
+     *    A value of "50" would represent a Fee of 0.5% of the Funding Asset ((50 / 10000) * 100)
+     *    This allows a fee as low as 0.01%  (value of "1")
      */
-    function registerCreatorSetting_DepositFee(uint256 _typeId, bytes16 _assetPairId, uint256 _depositFee) public {
+    function registerCreatorSetting_DepositFee(uint256 _typeId, uint256 _depositFee) external {
         require(isTypeCreator(msg.sender, _typeId), "E306");
-
-        require(assetPairEnabled[_assetPairId], "E301");
         require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "E315");
 
-        creator_assetDepositFee[_typeId][_assetPairId] = _depositFee;
+        creator_assetDepositFee[_typeId] = _depositFee;
     }
 
     /**
-     * @notice
+     * @notice Registers the "Minimum Deposit Amount" Custom Rule oa Particle Type
+     *    When set, every Token of this Type must be "Energized" with at least this 
+     *    amount of Asset Token.
+     * @param _typeId           The Type ID of the Token
+     * @param _minDeposit       The Minimum Deposit required for a Token
      */
-    function registerCreatorSetting_MinDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _minDeposit) public {
+    function registerCreatorSetting_MinDeposit(uint256 _typeId, uint256 _minDeposit) external {
         require(isTypeCreator(msg.sender, _typeId), "E306");
-
-        require(assetPairEnabled[_assetPairId], "E301");
         require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "E316");
 
-        creator_assetDepositMin[_typeId][_assetPairId] = _minDeposit;
+        creator_assetDepositMin[_typeId] = _minDeposit;
     }
 
     /**
-     * @notice
+     * @notice Registers the "Maximum Deposit Amount" Custom Rule a Particle Type
+     *    When set, every Token of this Type must be "Energized" with at most this 
+     *    amount of Asset Token.
+     * @param _typeId           The Type ID of the Token
+     * @param _maxDeposit       The Maximum Deposit allowed for a Token
      */
-    function registerCreatorSetting_MaxDeposit(uint256 _typeId, bytes16 _assetPairId, uint256 _maxDeposit) public {
+    function registerCreatorSetting_MaxDeposit(uint256 _typeId, uint256 _maxDeposit) external {
         require(isTypeCreator(msg.sender, _typeId), "E306");
 
-        require(assetPairEnabled[_assetPairId], "E301");
-
-        creator_assetDepositMax[_typeId][_assetPairId] = _maxDeposit;
+        creator_assetDepositMax[_typeId] = _maxDeposit;
     }
 
     /***********************************|
@@ -539,9 +620,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |__________________________________*/
 
     /**
-     * @dev Allows External Contract Owners to withdraw any Custom Fees earned
+     * @notice Allows External Contract Owners to withdraw any Custom Fees earned
+     * @param _contractAddress  The Address to the External Contract to withdraw Collected Fees for
+     * @param _receiver         The Address of the Receiver of the Collected Fees
      */
-    function withdrawContractFees(address _contractAddress, address _receiver) public nonReentrant {
+    function withdrawContractFees(address _contractAddress, address _receiver) external nonReentrant {
         require(custom_registeredContract[_contractAddress], "E304");
 
         // Validate Contract Owner
@@ -563,9 +646,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows Particle Type Creators to withdraw any Fees earned
+     * @notice Allows Particle Type Creators to withdraw any Fees earned
+     * @param _typeId  The Type ID to withdraw Collected Fees for
      */
-    function withdrawCreatorFees(address _sender, uint256 _typeId) public nonReentrant {
+    function withdrawCreatorFees(uint256 _typeId) external nonReentrant {
         bool withdrawn;
         for (uint i = 0; i < assetPairs.length; i++) {
             bytes16 _assetPairId = assetPairs[i];
@@ -577,8 +661,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         }
 
         if (withdrawn) {
-            _sender = (msg.sender == chargedParticles) ? _sender : msg.sender;
-            emit CreatorFeesWithdrawn(_sender, creator_feeCollector[_typeId]);
+            emit CreatorFeesWithdrawn(_typeId, creator_feeCollector[_typeId]);
         }
     }
 
@@ -586,15 +669,21 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |        Energize Particles         |
     |__________________________________*/
 
-    //
-    //  Fund Particle with Asset Token
-    //  Must be called by the Owner providing the Asset
-    //  Owner must Approve THIS contract as Operator of Asset
-    //
-    //  NOTE: DO NOT Energize an ERC20 Token, as anyone who holds any amount
-    //        of the same ERC20 token could discharge or release the funds.
-    //        All holders of the ERC20 token would essentially be owners of the Charged Particle.
-    //
+    /**
+     * @notice Fund Particle with Asset Token
+     *    Must be called by the Owner providing the Asset
+     *    Owner must Approve THIS contract as Operator of Asset
+     *
+     * NOTE: DO NOT Energize an ERC20 Token, as anyone who holds any amount
+     *       of the same ERC20 token could discharge or release the funds.
+     *       All holders of the ERC20 token would essentially be owners of the Charged Particle.
+     *
+     * @param _contractAddress  The Address to the Contract of the Token to Energize
+     * @param _tokenId          The ID of the Token to Energize
+     * @param _assetPairId      The Asset-Pair to Energize the Token with 
+     * @param _assetAmount      The Amount of Asset Token to Energize the Token with
+     * @return  The amount of Interest-bearing Tokens added to the escrow for the Token
+     */
     function energizeParticle(
         address _contractAddress,
         uint256 _tokenId,
@@ -628,11 +717,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
             }
 
             // Valid Amount?
-            if (creator_assetDepositMin[_typeId][_assetPairId] > 0) {
-                require(_newBalance >= creator_assetDepositMin[_typeId][_assetPairId], "E320");
+            if (creator_assetDepositMin[_typeId] > 0) {
+                require(_newBalance >= creator_assetDepositMin[_typeId], "E320");
             }
-            if (creator_assetDepositMax[_typeId][_assetPairId] > 0) {
-                require(_newBalance <= creator_assetDepositMax[_typeId][_assetPairId], "E321");
+            if (creator_assetDepositMax[_typeId] > 0) {
+                require(_newBalance <= creator_assetDepositMax[_typeId], "E321");
             }
         }
 
@@ -646,21 +735,21 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
                 }
 
                 // Valid Amount?
-                if (custom_assetDepositMin[_contractAddress][_assetPairId] > 0) {
-                    require(_newBalance >= custom_assetDepositMin[_contractAddress][_assetPairId], "E320");
+                if (custom_assetDepositMin[_contractAddress] > 0) {
+                    require(_newBalance >= custom_assetDepositMin[_contractAddress], "E320");
                 }
-                if (custom_assetDepositMax[_contractAddress][_assetPairId] > 0) {
-                    require(_newBalance <= custom_assetDepositMax[_contractAddress][_assetPairId], "E321");
+                if (custom_assetDepositMax[_contractAddress] > 0) {
+                    require(_newBalance <= custom_assetDepositMax[_contractAddress], "E321");
                 }
             }
         }
 
         // Collect Asset Token (reverts on fail)
         //   Has to be msg.sender, otherwise anyone could energize anyone else's particles,
-        //   provided the victim has approved this contract in the past.
+        //   with the victim's assets, provided the victim has approved this contract in the past.
         //   If contracts wish to energize a particle, they must first collect the asset
         //   from the user, and approve this contract to transfer from the source contract
-        _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
+        _collectAssetToken(msg.sender, _assetPairId, _assetAmount); 
 
         // Tokenize Interest
         uint256 _interestAmount = _tokenizeInterest(_contractAddress, _typeId, _assetPairId, _assetAmount);
@@ -679,12 +768,6 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return _interestAmount;
     }
 
-    // Add Asset; convert to Interest-Token to increase Charge, but not Mass
-//    function rechargeParticle() public {
-//        // TODO..
-//    }
-
-
     /***********************************|
     |        Discharge Particles        |
     |__________________________________*/
@@ -692,8 +775,11 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Allows the owner or operator of the Token to collect or transfer the interest generated
      *         from the token without removing the underlying Asset that is held within the token.
-     * @param _tokenId      The ID of the Token
-     * @return  The amount of interest released from the token (in Funding Token; DAI)
+     * @param _receiver         The Address to Receive the Discharged Asset Tokens
+     * @param _contractAddress  The Address to the Contract of the Token to Discharge
+     * @param _tokenId          The ID of the Token to Discharge
+     * @param _assetPairId      The Asset-Pair to Discharge from the Token 
+     * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
     function dischargeParticle(
         address _receiver,
@@ -709,6 +795,16 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return _discharge(_receiver, _contractAddress, _tokenId, _assetPairId, _currentCharge);
     }
 
+    /**
+     * @notice Allows the owner or operator of the Token to collect or transfer a specific amount the interest
+     *         generated from the token without removing the underlying Asset that is held within the token.
+     * @param _receiver         The Address to Receive the Discharged Asset Tokens
+     * @param _contractAddress  The Address to the Contract of the Token to Discharge
+     * @param _tokenId          The ID of the Token to Discharge
+     * @param _assetPairId      The Asset-Pair to Discharge from the Token 
+     * @param _assetAmount      The specific amount of Asset Token to Discharge from the Token
+     * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
+     */
     function dischargeParticle(
         address _receiver,
         address _contractAddress,
@@ -728,9 +824,21 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |         Release Particles         |
     |__________________________________*/
 
-    //
-    // Releases the Full amount of Asset + Interest held within the Particle by Asset-Pair
-    //
+    /**
+     * @notice Releases the Full amount of Asset + Interest held within the Particle by Asset-Pair
+     *    Tokens that require Burn before Release MUST call "finalizeRelease" after Burning the Token.
+     *    In such cases, the Order of Operations should be: 
+     *       1. call "releaseParticle"
+     *       2. Burn Token
+     *       3. call "finalizeRelease"
+     *    This should be done in a single, atomic transaction
+     *
+     * @param _receiver         The Address to Receive the Released Asset Tokens
+     * @param _contractAddress  The Address to the Contract of the Token to Release
+     * @param _tokenId          The ID of the Token to Release
+     * @param _assetPairId      The Asset-Pair to Release from the Token 
+     * @return  The Total Amount of Asset Token Released including all converted Interest
+     */
     function releaseParticle(
         address _receiver,
         address _contractAddress,
@@ -758,7 +866,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         if (requiresBurn) {
             uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
-            assetToBeReleased[_tokenUuid] = msg.sender;
+            assetToBeReleasedBy[_tokenUuid] = msg.sender;
             return 0; // Need to call "finalizeRelease" next, in order to prove token-burn
         }
 
@@ -766,6 +874,14 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return _payoutFull(_contractAddress, _tokenId, _receiver, _assetPairId);
     }
 
+    /**
+     * @notice Finalizes the Release of a Particle when that Particle requires Burn before Release
+     * @param _receiver         The Address to Receive the Released Asset Tokens
+     * @param _contractAddress  The Address to the Contract of the Token to Release
+     * @param _tokenId          The ID of the Token to Release
+     * @param _assetPairId      The Asset-Pair to Release from the Token 
+     * @return  The Total Amount of Asset Token Released including all converted Interest
+     */
     function finalizeRelease(
         address _receiver,
         address _contractAddress,
@@ -777,7 +893,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
-        address releaser = assetToBeReleased[_tokenUuid];
+        address releaser = assetToBeReleasedBy[_tokenUuid];
 
         // Validate Release Operator
         require(releaser == msg.sender, "E322");
@@ -787,7 +903,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         require(_tokenOwner == address(0x0), "E323");
 
         // Release Particle to Receiver
-        assetToBeReleased[_tokenUuid] = address(0x0);
+        assetToBeReleasedBy[_tokenUuid] = address(0x0);
         return _payoutFull(_contractAddress, _tokenId, _receiver, _assetPairId);
     }
 
@@ -797,16 +913,18 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     |__________________________________*/
 
     /**
-     * @dev Setup the Deposit Fee
+     * @dev Setup the Base Deposit Fee for the Escrow
      */
-    function setDepositFee(uint256 _depositFee) public onlyOwner {
+    function setDepositFee(uint256 _depositFee) external {
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "E328");
         depositFee = _depositFee;
     }
 
     /**
      * @dev Register the Charged Particles ERC1155 Token Contract
      */
-    function registerChargedParticles(address _chargedParticles) public onlyOwner {
+    function registerChargedParticles(address _chargedParticles) external {
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "E328");
         require(_chargedParticles != address(0x0), "E307");
         chargedParticles = _chargedParticles;
     }
@@ -814,9 +932,10 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     /**
      * @dev Register Contracts for Asset/Interest Pairs
      */
-    function registerAssetPair(string memory _assetPairId, address _assetTokenAddress, address _interestTokenAddress) public onlyOwner {
+    function registerAssetPair(string calldata _assetPairId, address _assetTokenAddress, address _interestTokenAddress) external {
+        require(hasRole(ROLE_MAINTAINER, msg.sender), "E328");
+
         bytes16 _assetPair = _toBytes16(_assetPairId);
-//        require(address(interestToken[_assetPair]) == address(0x0), "Asset-Pair has already been registered");
         require(_assetTokenAddress != address(0x0), "E308");
         require(_interestTokenAddress != address(0x0), "E309");
 
@@ -833,19 +952,22 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     /**
      * @dev Enable/Disable a specific Asset-Pair
      */
-    function toggleAssetPair(bytes16 _assetPairId, bool _isEnabled) public onlyOwner {
+    function toggleAssetPair(bytes16 _assetPairId, bool _isEnabled) external {
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "E328");
         require(address(interestToken[_assetPairId]) != address(0x0), "E303");
         assetPairEnabled[_assetPairId] = _isEnabled;
     }
 
     /**
-     * @dev Allows contract owner to withdraw any fees earned
+     * @dev Allows Escrow Contract Owner/DAO to withdraw any fees earned
      */
-    function withdrawFees(address _receiver) public onlyOwner {
+    function withdrawFees(address _receiver) external {
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "E328");
+
         for (uint i = 0; i < assetPairs.length; i++) {
             bytes16 _assetPairId = assetPairs[i];
             uint256 _interestAmount = collectedFees[_assetPairId];
-            if (_interestAmount == 0) {
+            if (_interestAmount > 0) {
                 _withdrawFees(_receiver, _assetPairId, _interestAmount);
             }
         }
@@ -880,7 +1002,7 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         returns (uint256)
     {
         // Internal Fees
-        (uint256 _depositFee, uint256 _customFee, uint256 _creatorFee) = getFeesForDeposit(_contractAddress, _typeId, _interestTokenAmount, _assetPairId);
+        (uint256 _depositFee, uint256 _customFee, uint256 _creatorFee) = getFeesForDeposit(_contractAddress, _typeId, _interestTokenAmount);
         collectedFees[_assetPairId] = _depositFee.add(collectedFees[_assetPairId]);
 
         // Custom Fees for External Contract
@@ -897,7 +1019,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return _interestTokenAmount.sub(_depositFee).sub(_customFee).sub(_creatorFee);
     }
 
-
+    /**
+     * @dev Converts an Asset Token to an Interest Token
+     */
     function _tokenizeInterest(
         address _contractAddress,
         uint256 _typeId,
@@ -915,6 +1039,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         return _getMassByDeposit(_contractAddress, _typeId, _assetPairId, _postBalance.sub(_preBalance));
     }
 
+    /**
+     * @dev Discharges the Interest from a Token
+     */
     function _discharge(
         address _receiver,
         address _contractAddress,
@@ -929,19 +1056,22 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "E310");
+        require((_tokenOwner == msg.sender) || isApprovedForDischarge(_contractAddress, _tokenId, msg.sender), "E310");
 
         // Validate Discharge Amount
         uint256 _currentCharge = currentParticleCharge(_contractAddress, _tokenId, _assetPairId);
         require(_currentCharge <= _assetAmount, "E326");
 
-        // Discharge Particle to Receiver
-        (uint256 _interestAmount, uint256 _receivedAmount) = _payoutCharge(_receiver, _assetPairId, _assetAmount);
+        // Precalculate Amount to Discharge to Receiver
+        (uint256 _interestAmount, uint256 _receivedAmount) = _siphonAsset(_assetPairId, _assetAmount);
 
         // Track Interest-bearing Token Balance (Mass of each Particle)
         uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         uint256 _interestBalance = interestTokenBalance[_tokenUuid][_assetPairId].sub(_interestAmount);
         interestTokenBalance[_tokenUuid][_assetPairId] = _interestBalance;
+
+        // Transfer Assets to Receiver
+        _payoutAssets(_receiver, _assetPairId, _receivedAmount);
 
         emit DischargedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount, _interestBalance);
 
@@ -950,11 +1080,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Pays out a specified amount of the Asset Token
-     * @param _receiver     The owner address to pay out to
-     * @param _assetAmount  The total amount of DAI to pay out
+     * @dev Collects a Specified Asset Amount of the Asset Token from the Interest Token stored for the Particle 
      */
-    function _payoutCharge(address _receiver, bytes16 _assetPairId, uint256 _assetAmount) internal returns (uint256, uint256) {
+    function _siphonAsset(bytes16 _assetPairId, uint256 _assetAmount) internal returns (uint256, uint256) {
         address _self = address(this);
         IERC20 _assetToken = assetToken[_assetPairId];
         INucleus _interestToken = interestToken[_assetPairId];
@@ -968,48 +1096,65 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
         uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
 
         // Transfer Interest
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
         return (_interestAmount, _receivedAmount);
     }
 
-    function _payoutFull(address _contractAddress, uint256 _tokenId, address _receiver, bytes16 _assetPairId) internal returns (uint256) {
+    /**
+     * @dev Collects a Specified Interest Amount of the Asset Token from the Interest Token stored for the Particle 
+     */
+    function _siphonInterest(bytes16 _assetPairId, uint256 _interestAmount) internal returns (uint256, uint256) {
         address _self = address(this);
-        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
         IERC20 _assetToken = assetToken[_assetPairId];
         INucleus _interestToken = interestToken[_assetPairId];
 
-        // Get Interest-bearing Token Balance
-        uint256 _interestAmount = interestTokenBalance[_tokenUuid][_assetPairId];
-
-        // Collect Asset + Interest
+        // Collect Interest
+        //  contract receives Asset Token,
         uint256 _preAssetAmount = _assetToken.balanceOf(_self);
         _interestToken.withdrawInterest(_self, _interestAmount);
         uint256 _postAssetAmount = _assetToken.balanceOf(_self);
         uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
 
-        // Transfer Asset + Interest
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
+        // Transfer Interest
+        return (_interestAmount, _receivedAmount);
+    }
 
-        // Reset Interest-bearing Token Balance (Mass of each Particle)
+    /**
+     * @dev Pays out a specified amount of the Asset Token
+     */
+    function _payoutAssets(address _receiver, bytes16 _assetPairId, uint256 _assetAmount) internal {
+        address _self = address(this);
+        IERC20 _assetToken = assetToken[_assetPairId];
+        require(_assetToken.transferFrom(_self, _receiver, _assetAmount), "E327");
+    }
+
+    /**
+     * @dev Pays out the full amount of the Asset Token + Interest Token
+     */
+    function _payoutFull(address _contractAddress, uint256 _tokenId, address _receiver, bytes16 _assetPairId) internal returns (uint256) {
+        // Get Interest-bearing Token Balance & Reset
+        uint256 _tokenUuid = getTokenUUID(_contractAddress, _tokenId);
+        uint256 _interestAmount = interestTokenBalance[_tokenUuid][_assetPairId];
         interestTokenBalance[_tokenUuid][_assetPairId] = 0;
+
+        // Determine Amount of Assets to Transfer to Receiver
+        (, uint256 _receivedAmount) = _siphonInterest(_assetPairId, _interestAmount);
+
+        // Transfer Assets to Receiver
+        _payoutAssets(_receiver, _assetPairId, _receivedAmount);
 
         emit ReleasedParticle(_contractAddress, _tokenId, _receiver, _assetPairId, _receivedAmount);
         return _receivedAmount;
     }
 
+    /**
+     * @dev Withdraws Fees in the form of Asset Tokens
+     */
     function _withdrawFees(address _receiver, bytes16 _assetPairId, uint256 _interestAmount) internal {
-        address _self = address(this);
-        IERC20 _assetToken = assetToken[_assetPairId];
-        INucleus _interestToken = interestToken[_assetPairId];
+        // Determine Amount of Assets to Transfer to Receiver
+        (, uint256 _receivedAmount) = _siphonInterest(_assetPairId, _interestAmount);
 
-        // Collect Deposit Fees
-        uint256 _preAssetAmount = _assetToken.balanceOf(_self);
-        _interestToken.withdrawInterest(_self, _interestAmount);
-        uint256 _postAssetAmount = _assetToken.balanceOf(_self);
-        uint256 _receivedAmount = _postAssetAmount.sub(_preAssetAmount);
-
-        // Transfer Fees in Asset Tokens
-        require(_assetToken.transferFrom(_self, _receiver, _receivedAmount), "E327");
+        // Transfer Assets to Receiver
+        _payoutAssets(_receiver, _assetPairId, _receivedAmount);
     }
 
     //
@@ -1033,6 +1178,9 @@ contract ChargedParticlesEscrow is Initializable, Ownable, ReentrancyGuard {
 //        return (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT);
 //    }
 
+    /**
+     * @dev Converts a string value into a bytes16 value
+     */
     function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
         bytes memory _tmp = bytes(_source);
         if (_tmp.length == 0) {

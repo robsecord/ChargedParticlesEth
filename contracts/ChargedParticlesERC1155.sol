@@ -42,14 +42,10 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
     |     Variables/Events/Modifiers    |
     |__________________________________*/
 
-    /**
-     * @dev Address to the Charged Particles Controller Contract
-     */
+    // Address to the Charged Particles Controller Contract
     address chargedParticles;
 
-    /**
-     * @dev Throws if called by any account other than the Charged Particles contract.
-     */
+    // Throws if called by any account other than the Charged Particles contract.
     modifier onlyChargedParticles() {
         require(msg.sender == chargedParticles, "Caller is not ChargedParticles");
         _;

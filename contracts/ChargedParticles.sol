@@ -50,8 +50,8 @@ import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/owner
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "./IChargedParticlesERC1155.sol";
-import "./IChargedParticlesEscrow.sol";
+import "./lib/IChargedParticlesERC1155.sol";
+import "./lib/IChargedParticlesEscrow.sol";
 
 
 /**
@@ -246,7 +246,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Checks if a user is allowed to mint a Token by Type ID
-     * @param _typeId     The Type ID of the Token
+     * @param _typeId   The Type ID of the Token
      * @param _amount   The amount of tokens to mint
      * @return  True if the user can mint the token type
      */
@@ -275,7 +275,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Gets the ETH price to create a Token Type
      * @param _isNF     True if the Type of Token to Create is a Non-Fungible Token
-     * @return  The ETH price to create a type
+     * @return  The ETH & ION price to create a type
      */
     function getCreationPrice(bool _isNF) public view returns (uint256 _eth, uint256 _ion) {
         _eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
@@ -284,6 +284,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Gets the Number of this Particle in the Series/Collection
+     * @param _tokenId  The ID of the token
+     * @return  The Series Number of the Particle
      */
     function getSeriesNumber(uint256 _tokenId) public view returns (uint256) {
         return tokenMgr.getNonFungibleIndex(_tokenId);
@@ -302,6 +304,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Gets the Max-Supply of the Particle Type (0 for infinite)
      * @param _typeId   The Token ID or the Type ID of the Token
+     * @return  The Maximum Supply of the Token-Type
      */
     function getMaxSupply(uint256 _typeId) public view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
@@ -311,6 +314,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Gets the Number of Minted Particles
      * @param _typeId   The Token ID or the Type ID of the Token
+     * @return  The Total Minted Supply of the Token-Type
      */
     function getTotalMinted(uint256 _typeId) public view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
@@ -323,6 +327,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Gets the Amount of Base DAI held in the Token (amount token was minted with)
+     * @param _tokenId  The ID of the Token
+     * @return  The Base Mass of the Particle
      */
     function baseParticleMass(uint256 _tokenId) public view returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
@@ -332,6 +338,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Gets the amount of Charge the Particle has generated (it's accumulated interest)
+     * @param _tokenId  The ID of the Token
+     * @return  The Current Charge of the Particle
      */
     function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
@@ -472,7 +480,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
      * @notice Mints a new Particle of the specified Type
      *          Note: Requires Asset-Token to mint
      * @param _to           The owner address to assign the new token to
-     * @param _typeId         The Type ID of the new token to mint
+     * @param _typeId       The Type ID of the new token to mint
      * @param _assetAmount  The amount of Asset-Tokens to deposit
      * @param _uri          The Unique URI to the Token Metadata
      * @param _data         Custom data used for transferring tokens into contracts
@@ -534,7 +542,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Mints new Plasma of the specified Type
      * @param _to      The owner address to assign the new tokens to
-     * @param _typeId    The Type ID of the tokens to mint
+     * @param _typeId  The Type ID of the tokens to mint
      * @param _amount  The amount of tokens to mint
      * @param _data    Custom data used for transferring tokens into contracts
      */
@@ -632,6 +640,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @notice Allows the owner/operator of the Particle to add additional Asset Tokens
+     * @param _tokenId      The ID of the Token
+     * @param _assetAmount  The Amount of Asset Tokens to Energize the Particle with
+     * @return  The amount of Interest-bearing Tokens added to the escrow for the Token
      */
     function energizeParticle(uint256 _tokenId, uint256 _assetAmount)
         public
@@ -656,6 +667,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Allows the owner/operator of the Particle to collect/transfer the interest generated
      *  from the token without removing the underlying Asset that is held in the token
+     * @param _receiver     The address of the receiver of the discharge
+     * @param _tokenId      The ID of the Token
+     * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
@@ -666,6 +680,10 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     /**
      * @notice Allows the owner/operator of the Particle to collect/transfer a specific amount of
      *  the interest generated from the token without removing the underlying Asset that is held in the token
+     * @param _receiver     The address of the receiver of the discharge
+     * @param _tokenId      The ID of the Token
+     * @param _assetAmount  The Amount of Asset Tokens to Discharge from the Particle
+     * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
     function dischargeParticle(address _receiver, uint256 _tokenId, uint256 _assetAmount) public returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
@@ -680,17 +698,20 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @dev Allows contract owner to withdraw any fees earned
+     * @param _receiver   The address of the receiver
+     * @param _typeId     The type of token to withdraw fees for
      */
     function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
         address _creator = typeCreator[_typeId];
         require(msg.sender == _creator, "E105");
 
         // Withdraw Particle Deposit Fees from Escrow
-        escrow.withdrawCreatorFees(_creator, _typeId);
+        escrow.withdrawCreatorFees(_typeId);
 
         // Withdraw Plasma Minting Fees (ETH)
         uint256 _amount = collectedFees[_creator];
         if (_amount > 0) {
+            collectedFees[_creator] = 0;
             _receiver.sendValue(_amount);
         }
         emit CreatorFeesWithdrawn(msg.sender, _receiver, _amount);
@@ -922,6 +943,9 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     /**
      * @dev Collects the Required Asset Token from the users wallet
+     * @param _from         The owner address to collect the Assets from
+     * @param _assetPairId  The ID of the Asset-Pair that the Particle will use for the Underlying Assets
+     * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
     function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
         address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPairId);
@@ -933,7 +957,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     }
 
     /**
-     * @dev Convert a string to Bytes16
+     * @dev Convert a String to Bytes16
      */
     function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
         bytes memory _tmp = bytes(_source);

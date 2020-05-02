@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"solidity.packageDefaultDependenciesContractsDirectory": "",
+		"solidity.formatter": "none",
+		"slither.solcPath": "/Users/robsecord/.nvm/versions/node/v12.16.1/lib/node_modules/solc/solcjs",
+		"slither.hiddenDetectors": []
+	}
+}
