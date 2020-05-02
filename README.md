@@ -1,4 +1,4 @@
-## Charged Particles - Solidity Contracts v0.3.3
+## Charged Particles - Solidity Contracts v0.3.5
 
 [![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
 

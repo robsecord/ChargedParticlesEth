@@ -238,7 +238,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
         _setupRole(DEFAULT_ADMIN_ROLE, _sender);
         _setupRole(ROLE_DAO_GOV, _dao);
         _setupRole(ROLE_MAINTAINER, _maintainer);
-        version = "v0.3.3";
+        version = "v0.3.5";
     }
 
     /***********************************|

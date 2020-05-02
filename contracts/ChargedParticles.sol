@@ -69,8 +69,8 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 2e3; // 2000   (20%)
     uint32 constant internal ION_SPECIAL_BIT = 1073741824;  // 31st BIT
 
-    IChargedParticlesERC1155 tokenMgr;
-    IChargedParticlesEscrow escrow;
+    IChargedParticlesERC1155 internal tokenMgr;
+    IChargedParticlesEscrow internal escrow;
 
     // Particles come in many "Types" created by Public Users.
     //   Each "Type" of Particle has a "Creator", who can set certain parameters
@@ -132,7 +132,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     bytes16 public version;
 
     // Contract State
-    bool isPaused;
+    bool public isPaused;
 
     //
     // Modifiers
@@ -209,7 +209,7 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
         ReentrancyGuard.initialize();
-        version = "v0.3.3";
+        version = "v0.3.5";
     }
 
     /***********************************|

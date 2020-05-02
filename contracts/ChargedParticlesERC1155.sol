@@ -136,7 +136,7 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
         onlyChargedParticles
         returns (uint256[] memory)
     {
-        return mintBatch(_to, _types, _amounts, _URIs, _data);
+        return _mintBatch(_to, _types, _amounts, _URIs, _data);
     }
 
     /**
