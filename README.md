@@ -6,8 +6,7 @@
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/robsecord/ChargedParticlesEth)
 ![GitHub last commit](https://img.shields.io/github/last-commit/robsecord/ChargedParticlesEth)
 
-**Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with **DAI** and accrue interest via **CHAI** 
-giving the Token a "Charge". 
+**Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with an Underlying Asset (ex: **DAI**) and accrue interest via an Interest-bearing token (ex: **CHAI**) giving the Token a "Charge". 
 
 #### Production Site (Beta, Ropsten Only)
 https://charged-particles.eth.link/
@@ -50,6 +49,7 @@ competitor's particles.  (Still trying to work this part out, ideas are welcome!
 
 #### Token Flavours
 Charged Particles currently come in 2 flavours: 
+(see the variations folder)
  - **ERC-721** - based on **openzeppelin-solidity v2.4.0** 
  - **ERC-1155** - based on **multi-token-standard v0.8.9**
 
@@ -62,7 +62,6 @@ Also being researched; Zapped NFTs (combining NFTs with DeFiZaps)
  - Fully-decentralized Public Particle Minting Station
  - Work-in-progress 
  - Repo: https://github.com/robsecord/ChargedParticlesWeb
- - Stage Site: https://charged-particles-stage.netlify.com/
 
 #### Feedback & Contributions
 Feel free to fork and/or use in your own projects!

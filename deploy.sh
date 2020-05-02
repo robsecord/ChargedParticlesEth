@@ -4,11 +4,12 @@
 export $(egrep -v '^#' .env | xargs)
 
 ownerAccount=
+daoAccount=
+maintainerAccount=
 networkName="development"
 silent=
 init=
 update=
-
 
 addrChaiNucleus=
 addrChargedParticles=
@@ -64,6 +65,10 @@ getOwnerAccount() {
         ownerAccount="$MAINNET_OWNER_ADDRESS"
     fi
 
+    # Todo..
+    daoAccount="$ownerAccount"
+    maintainerAccount="$ownerAccount"
+
     oz session --no-interactive --from "$ownerAccount" -n "$networkName"
     oz balance --from "$ownerAccount" -n "$networkName" --no-interactive
     oz balance --no-interactive --from "$ownerAccount" -n "$networkName" --erc20 "$daiAddress"
@@ -97,7 +102,7 @@ deployFresh() {
     echoHeader
     echo "Creating Contract: ChargedParticlesEscrow"
     oz add ChargedParticlesEscrow --push --skip-compile
-    addrChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    addrChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount},${daoAccount},${maintainerAccount} --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
