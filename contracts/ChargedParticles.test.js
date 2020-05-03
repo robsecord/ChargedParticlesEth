@@ -46,5 +46,25 @@ describe('ChargedParticles', () => {
       expect(fromWei(createFeeEthForNFT)).toBe("1");
       expect(fromWei(createFeeIonForNFT)).toBe("0.6");
     });
+
+    test('setPausedState', async () => {
+      let isPaused = await contractInstance.methods.isPaused().call({ from: nonOwner });
+      expect(isPaused).toBe(false);
+
+      await expectRevert(
+        contractInstance.methods.setPausedState(false).send({ from: nonOwner }),
+        "Ownable: caller is not the owner"
+      );
+
+      await contractInstance.methods.setPausedState(true).send({ from: owner });
+
+      isPaused = await contractInstance.methods.isPaused().call({ from: nonOwner });
+      expect(isPaused).toBe(true);
+
+      await contractInstance.methods.setPausedState(false).send({ from: owner });
+
+      isPaused = await contractInstance.methods.isPaused().call({ from: owner });
+      expect(isPaused).toBe(false);
+    });
   });
 });
