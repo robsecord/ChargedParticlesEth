@@ -1,16 +1,18 @@
 const { accounts, provider } = require('@openzeppelin/test-environment');
 const { TestHelper } = require('@openzeppelin/cli');
-const { expectRevert } = require('@openzeppelin/test-helpers');
+const { constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
 const { Contracts, ZWeb3 } = require('@openzeppelin/upgrades');
 
 ZWeb3.initialize(provider);
 const { web3 } = ZWeb3;
 
 const ChargedParticles = Contracts.getFromLocal('ChargedParticles');
+const ChargedParticlesERC1155 = Contracts.getFromLocal('ChargedParticlesERC1155');
 
 describe('ChargedParticles', () => {
   let [owner, nonOwner] = accounts;
   let contractInstance;
+  let tokenManagerInstance;
   let helper;
 
   beforeEach(async () => {
@@ -65,6 +67,53 @@ describe('ChargedParticles', () => {
 
       isPaused = await contractInstance.methods.isPaused().call({ from: owner });
       expect(isPaused).toBe(false);
+    });
+  });
+
+  describe('with Token manager', () => {
+    beforeEach(async () => {
+      contractInstance = await helper.createProxy(ChargedParticles, { initMethod: 'initialize', initArgs: [owner] });
+      tokenManagerInstance = await helper.createProxy(ChargedParticlesERC1155, { initMethod: 'initialize', initArgs: [owner] });
+    });
+
+    test('registerTokenManager', async () => {
+      await expectRevert(
+        contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: nonOwner }),
+        "Ownable: caller is not the owner"
+      );
+      
+      await expectRevert(
+        contractInstance.methods.registerTokenManager(constants.ZERO_ADDRESS).send({ from: owner }),
+        "E412"
+      );
+    });
+
+    test('mintIons', async () => {
+      const mintFee = web3.utils.toWei('1', 'ether')
+
+      await contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: owner });
+      await tokenManagerInstance.methods.setChargedParticles(contractInstance.address).send({ from: owner });
+      await expectRevert(
+        contractInstance.methods.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: nonOwner }),
+        "Ownable: caller is not the owner"
+      );
+      await expectRevert(
+        contractInstance.methods.mintIons('', 1337, 42, mintFee).send({ from: owner }),
+        "E107"
+      );
+
+      const receipt = await contractInstance.methods.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: owner, gas: 5e6 });
+      expectEvent(receipt, 'PlasmaTypeUpdated', {
+        _symbol: web3.utils.keccak256('ION'),
+        _isPrivate: false,
+        _initialMint: '42',
+        _uri: 'https://www.example.com'
+      });
+
+      await expectRevert(
+        contractInstance.methods.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: owner }),
+        "E416"
+      );
     });
   });
 });
