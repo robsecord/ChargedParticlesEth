@@ -20,6 +20,7 @@
     "@openzeppelin/contracts": "^3.0.0",
     "@openzeppelin/contracts-ethereum-package": "^2.5.0",
     "@openzeppelin/test-environment": "^0.1.4",
+    "@openzeppelin/test-helpers": "^0.5.5",
     "@openzeppelin/upgrades": "^2.6.0",
     "@truffle/debug-utils": "^4.1.1",
     "@truffle/hdwallet-provider": "^1.0.32",
