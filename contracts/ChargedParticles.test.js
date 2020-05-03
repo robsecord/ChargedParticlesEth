@@ -115,5 +115,66 @@ describe('ChargedParticles', () => {
         "E416"
       );
     });
+
+    describe('Public Read of Ion token', () => {
+      let ionTokenId;
+
+      beforeEach(async () => {
+        await contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: owner });
+        await tokenManagerInstance.methods.setChargedParticles(contractInstance.address).send({ from: owner });
+        const receipt = await contractInstance.methods.mintIons(
+          'https://www.example.com',
+          1337,
+          42,
+          web3.utils.toWei('1', 'ether')
+        ).send({ from: owner, gas: 5e6 });
+        ionTokenId = receipt.events['PlasmaTypeUpdated'].returnValues['_plasmaTypeId'];
+      });
+
+      test('uri', async () => {
+        const uri = await contractInstance.methods.uri(ionTokenId).call({ from: nonOwner });
+        expect(uri).toBe('https://www.example.com');
+      });
+
+      test('getTypeCreator', async () => {
+        const typeCreator = await contractInstance.methods.getTypeCreator(ionTokenId).call({ from: nonOwner });
+        expect(typeCreator).toBe(owner);
+      });
+
+      test('getTypeTokenBridge', async () => {
+        const bridgeAddress = await contractInstance.methods.getTypeTokenBridge(ionTokenId).call({ from: nonOwner });
+        expect(bridgeAddress).not.toBe(owner);
+        expect(bridgeAddress).not.toBe(nonOwner);
+        expect(bridgeAddress).not.toBe(contractInstance.address);
+        expect(bridgeAddress).not.toBe(tokenManagerInstance.address);
+      });
+
+      test('canMint', async () => {
+        let canMint = await contractInstance.methods.canMint(ionTokenId, 1).call({ from: nonOwner });
+        expect(canMint).toBe(true);
+        canMint = await contractInstance.methods.canMint(ionTokenId, 2000).call({ from: nonOwner });
+        expect(canMint).toBe(false);
+      });
+
+      test('getSeriesNumber', async () => {
+        const seriesNumber = await contractInstance.methods.getSeriesNumber(ionTokenId).call({ from: nonOwner });
+        expect(seriesNumber).toBe('0');
+      });
+
+      test('getMintingFee', async () => {
+        const mintFee = await contractInstance.methods.getMintingFee(ionTokenId).call({ from: nonOwner });
+        expect(web3.utils.fromWei(mintFee, 'ether')).toBe('1');
+      });
+
+      test('getMaxSupply', async () => {
+        const maxSupply = await contractInstance.methods.getMaxSupply(ionTokenId).call({ from: nonOwner });
+        expect(maxSupply).toBe('1337');
+      });
+
+      test('getTotalMinted', async () => {
+        const totalMinted = await contractInstance.methods.getTotalMinted(ionTokenId).call({ from: nonOwner });
+        expect(totalMinted).toBe('42');
+      });
+    });
   });
 });
