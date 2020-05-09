@@ -1,6 +1,8 @@
 ## Charged Particles - Solidity Contracts v0.3.5
 
 [![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
+![Node.js CI](https://github.com/robsecord/ChargedParticlesEth/workflows/Node.js%20CI/badge.svg)
+
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/robsecord/ChargedParticlesEth)
 ![GitHub repo size](https://img.shields.io/github/repo-size/robsecord/ChargedParticlesEth)
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/robsecord/ChargedParticlesEth)

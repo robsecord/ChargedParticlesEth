@@ -21,6 +21,6 @@ notes.txt
 .openzeppelin/.session
 
 # Charged Particles
-./ChargedParticles.sol
-./ChargedParticlesERC1155.sol
-./ChargedParticlesEscrow.sol
+ChargedParticles.json
+ChargedParticlesERC1155.json
+ChargedParticlesEscrow.json

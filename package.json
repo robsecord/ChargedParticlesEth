@@ -10,10 +10,10 @@
   "scripts": {
     "deploy-kovan": "./deploy.sh -n kovan",
     "deploy-ropsten": "./deploy.sh -n ropsten",
-    "deploy-mainnet": "./deploy.sh -n mainnet"
+    "deploy-mainnet": "./deploy.sh -n mainnet",
+    "gen-docs": "solidity-docgen -i contracts -o docs"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.0",
