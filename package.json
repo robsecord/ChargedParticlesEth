@@ -8,20 +8,25 @@
     "defi"
   ],
   "scripts": {
+    "compile": "npx oz compile",
+    "test": "npm run compile && npx jest --testTimeout 10000",
     "deploy-kovan": "./deploy.sh -n kovan",
     "deploy-ropsten": "./deploy.sh -n ropsten",
     "deploy-mainnet": "./deploy.sh -n mainnet"
   },
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.0",
     "@openzeppelin/contracts-ethereum-package": "^2.5.0",
+    "@openzeppelin/test-environment": "^0.1.4",
+    "@openzeppelin/test-helpers": "^0.5.5",
     "@openzeppelin/upgrades": "^2.6.0",
+    "@truffle/debug-utils": "^4.1.1",
     "@truffle/hdwallet-provider": "^1.0.32",
     "dotenv": "^8.0.0",
     "ganache-cli": "^6.9.0",
+    "jest": "^25.5.4",
     "lodash": "^4.17.15",
     "multi-token-standard": "^0.8.9",
     "openzeppelin-solidity": "^2.4.0",
