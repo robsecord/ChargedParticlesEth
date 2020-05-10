@@ -639,6 +639,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
             uint256 _interestAmount = custom_collectedDepositFees[_contractAddress][_assetPairId];
             if (_interestAmount > 0) {
                 _withdrawFees(_receiver, _assetPairId, _interestAmount);
+                custom_collectedDepositFees[_contractAddress][_assetPairId] = 0;
             }
         }
 
@@ -658,6 +659,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
             uint256 _interestAmount = creator_collectedDepositFees[_typeId][_assetPairId];
             if (_interestAmount > 0) {
                 _withdrawFees(creator_feeCollector[_typeId], _assetPairId, _interestAmount);
+                creator_collectedDepositFees[_typeId][_assetPairId] = 0;
                 withdrawn = true;
             }
         }
@@ -972,6 +974,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
             uint256 _interestAmount = collectedFees[_assetPairId];
             if (_interestAmount > 0) {
                 _withdrawFees(_receiver, _assetPairId, _interestAmount);
+                collectedFees[_assetPairId] = 0;
             }
         }
 
