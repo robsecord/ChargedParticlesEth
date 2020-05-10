@@ -1,14 +1,18 @@
-## Charged Particles - Solidity Contracts v0.3.5
+## Charged Particles - Solidity Contracts v0.3.6
 
+[![Discord](https://badgen.net/badge/definft/Charged%20Particles?icon=discord&label=discord)](https://discord.gg/Syh3gjz)
+[![Twitter Follow](https://badgen.net/twitter/follow/DeFiNFT?icon=twitter)](https://twitter.com/intent/follow?screen_name=DeFiNFT)
 [![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
-![Node.js CI](https://github.com/robsecord/ChargedParticlesEth/workflows/Node.js%20CI/badge.svg)
 
+![Node.js CI](https://github.com/robsecord/ChargedParticlesEth/workflows/Node.js%20CI/badge.svg)
+![GitHub last commit](https://img.shields.io/github/last-commit/robsecord/ChargedParticlesEth)
+![GitHub package.json version](https://img.shields.io/github/package-json/v/robsecord/ChargedParticlesEth)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/robsecord/ChargedParticlesEth)
 ![GitHub repo size](https://img.shields.io/github/repo-size/robsecord/ChargedParticlesEth)
-![GitHub package.json version](https://img.shields.io/github/package-json/v/robsecord/ChargedParticlesEth)
-![GitHub last commit](https://img.shields.io/github/last-commit/robsecord/ChargedParticlesEth)
 
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with an Underlying Asset (ex: **DAI**) and accrue interest via an Interest-bearing token (ex: **CHAI**) giving the Token a "Charge". 
+
+---
 
 #### Production Site (Beta, Ropsten Only)
 https://charged-particles.eth.link/
@@ -16,6 +20,7 @@ https://charged-particles.eth.link/
 #### Staging Site
 https://spring-block-3280.tmnl.co/
 
+---
 
 #### Value
 ```text
@@ -74,6 +79,8 @@ And, of course, contributions are always welcome!
 Join our community, share ideas and help support the project in anyway you want!
 
 **Discord**: https://discord.gg/Syh3gjz
+
+---
 
 ### Frameworks/Software used:
  - Main Repo:
@@ -140,7 +147,7 @@ Join our community, share ideas and help support the project in anyway you want!
 
 See package.json for more scripts
 
-~~__________________________________~~
+---
 
 _MIT License_
 

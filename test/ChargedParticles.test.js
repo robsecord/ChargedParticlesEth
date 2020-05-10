@@ -22,7 +22,7 @@ describe('ChargedParticles', () => {
   test('initializer', async () => {
     contractInstance = await helper.createProxy(ChargedParticles, { initMethod: 'initialize', initArgs: [owner] });
     const version = await contractInstance.methods.version().call({ from: owner });
-    expect(web3.utils.hexToAscii(version)).toMatch("v0.3.5");
+    expect(web3.utils.hexToAscii(version)).toMatch("v0.3.6");
   });
 
   describe('only Admin/DAO', () => {

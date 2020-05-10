@@ -208,7 +208,7 @@ contract ChargedParticles is Initializable, Ownable {
 
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
-        version = "v0.3.5";
+        version = "v0.3.6";
     }
 
     /***********************************|
