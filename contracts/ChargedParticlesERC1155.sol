@@ -20,6 +20,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+// Reduce deployment gas costs by limiting the size of text used in error messages
+// ERROR CODES:
+//  300:        ChargedParticlesERC1155
+//      301         Caller is not a Fused-Particle
+//      302         Caller is not the Fused-Particle Type-Controller
+
 pragma solidity 0.5.16;
 pragma experimental ABIEncoderV2;
 
@@ -42,12 +48,14 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
     |     Variables/Events/Modifiers    |
     |__________________________________*/
 
-    // Address to the Charged Particles Controller Contract
-    address internal chargedParticles;
+    // Integrated Controller Contracts
+    mapping (address => bool) internal fusedParticles;
+    // mapping (address => mapping (uint256 => bool)) internal fusedParticleTypes;
+    mapping (uint256 => address) internal fusedParticleTypes;
 
-    // Throws if called by any account other than the Charged Particles contract.
-    modifier onlyChargedParticles() {
-        require(msg.sender == chargedParticles, "Caller is not ChargedParticles");
+    // Throws if called by any account other than a Fused-Particle contract.
+    modifier onlyFusedParticles() {
+        require(fusedParticles[msg.sender], "E301");
         _;
     }
 
@@ -85,6 +93,15 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         return (_id & TYPE_NF_BIT == TYPE_NF_BIT) && (_id & NF_INDEX_MASK != 0);
     }
 
+    /**
+     * @notice Gets the Creator of a Token Type
+     * @param _typeId     The Type ID of the Token
+     * @return  The Creator Address
+     */
+    function getTypeCreator(uint256 _typeId) public view returns (address) {
+        return fusedParticleTypes[_typeId];
+    }
+
 
     /***********************************|
     |      Only Charged Particles       |
@@ -98,10 +115,12 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         bool isNF
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
         returns (uint256)
     {
-        return _createType(_uri, isNF);
+        uint256 _typeId = _createType(_uri, isNF);
+        fusedParticleTypes[_typeId] = msg.sender;
+        return _typeId;
     }
 
     /**
@@ -115,9 +134,10 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         bytes memory _data
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
         returns (uint256)
     {
+        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
         return _mint(_to, _typeId, _amount, _uri, _data);
     }
 
@@ -132,9 +152,12 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         bytes memory _data
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
         returns (uint256[] memory)
     {
+        for (uint256 i = 0; i < _types.length; i++) {
+            require(fusedParticleTypes[_types[i]] == msg.sender, "E302");
+        }
         return _mintBatch(_to, _types, _amounts, _URIs, _data);
     }
 
@@ -147,8 +170,13 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         uint256 _amount
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
     {
+        uint256 _typeId = _tokenId;
+        if (isNonFungible(_tokenId)) {
+            _typeId = getNonFungibleBaseType(_tokenId);
+        }
+        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
         _burn(_from, _tokenId, _amount);
     }
 
@@ -161,8 +189,15 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         uint256[] memory _amounts
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
     {
+        for (uint256 i = 0; i < _tokenIds.length; i++) {
+            uint256 _typeId = _tokenIds[i];
+            if (isNonFungible(_typeId)) {
+                _typeId = getNonFungibleBaseType(_typeId);
+            }
+            require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+        }
         _burnBatch(_from, _tokenIds, _amounts);
     }
 
@@ -176,9 +211,10 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         uint8 _decimals
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
         returns (address)
     {
+        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
         return _createErc20Bridge(_typeId, _name, _symbol, _decimals);
     }
 
@@ -191,9 +227,10 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
         string memory _symbol
     )
         public
-        onlyChargedParticles
+        onlyFusedParticles
         returns (address)
     {
+        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
         return _createErc721Bridge(_typeId, _name, _symbol);
     }
 
@@ -203,9 +240,9 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
     |__________________________________*/
 
     /**
-     * @dev Sets the Address to the Charged Particles Controller Contract
+     * @dev Adds an Integration Controller Contract as a Fused Particle to allow Creating/Minting
      */
-    function setChargedParticles(address _chargedParticles) public onlyOwner {
-        chargedParticles = _chargedParticles;
+    function setFusedParticleState(address _particleAddress, bool _fusedState) public onlyOwner {
+        fusedParticles[_particleAddress] = _fusedState;
     }
 }

@@ -74,7 +74,7 @@ contract INonFungible {
     function isApprovedForAll(address _owner, address _operator) external view returns (bool);
 }
 
-contract IChargedParticles {
+contract IChargedParticlesERC1155 {
     function getTypeCreator(uint256 _type) public view returns (address);
 }
 
@@ -162,7 +162,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
     |__________________________________*/
 
     // The Charged Particles ERC1155 Token Contract Address
-    address internal chargedParticles;
+    address internal chargedParticlesErc1155;
 
     // Various Interest-bearing Tokens may act as the Nucleus for a Charged Particle
     //   Interest-bearing Tokens (like Chai) are funded with an underlying Asset Token (like Dai)
@@ -275,14 +275,14 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
     }
 
     function getAssetMinDeposit(address _contractAddress, uint256 _typeId) public view returns (uint256) {
-        if (_contractAddress == chargedParticles) {
+        if (_contractAddress == chargedParticlesErc1155) {
             return creator_assetDepositMin[_typeId];
         }
         return custom_assetDepositMin[_contractAddress];
     }
 
     function getAssetMaxDeposit(address _contractAddress, uint256 _typeId) public view returns (uint256) {
-        if (_contractAddress == chargedParticles) {
+        if (_contractAddress == chargedParticlesErc1155) {
             return creator_assetDepositMax[_typeId];
         }
         return custom_assetDepositMax[_contractAddress];
@@ -343,7 +343,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
             _depositFee = _interestTokenAmount.mul(depositFee).div(DEPOSIT_FEE_MODIFIER);
         }
 
-        if (_contractAddress == chargedParticles) {
+        if (_contractAddress == chargedParticlesErc1155) {
             uint256 _creatorFeeSetting = creator_assetDepositFee[_typeId];
             if (_creatorFeeSetting > 0) {
                 _creatorFee = _interestTokenAmount.mul(_creatorFeeSetting).div(DEPOSIT_FEE_MODIFIER);
@@ -541,8 +541,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
      * @return  True if the _account is the _typeId Creator
      */
     function isTypeCreator(address _account, uint256 _typeId) public view returns (bool) {
-        if (_account == chargedParticles) { return true; }
-        address _typeCreator = IChargedParticles(chargedParticles).getTypeCreator(_typeId);
+        address _typeCreator = IChargedParticlesERC1155(chargedParticlesErc1155).getTypeCreator(_typeId);
         return _typeCreator == _account;
     }
 
@@ -714,7 +713,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
         require(_newBalance >= MIN_DEPOSIT_FEE, "E319");
 
         // Validate Type-Creator Settings
-        if (_contractAddress == chargedParticles) {
+        if (_contractAddress == chargedParticlesErc1155) {
             // Valid Asset-Pair?
             if (creator_assetPairId[_typeId].length > 0) {
                 require(_assetPairId == creator_assetPairId[_typeId], "E302");
@@ -861,7 +860,7 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
         require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "E310");
 
         // Validate Token Burn before Release
-        bool requiresBurn = (_contractAddress == chargedParticles);
+        bool requiresBurn = (_contractAddress == chargedParticlesErc1155);
         if (custom_registeredContract[_contractAddress]) {
             // Does Release Require Token Burn first?
             if (custom_releaseRequiresBurn[_contractAddress]) {
@@ -928,10 +927,10 @@ contract ChargedParticlesEscrow is Initializable, AccessControl, ReentrancyGuard
     /**
      * @dev Register the Charged Particles ERC1155 Token Contract
      */
-    function registerChargedParticles(address _chargedParticles) external {
+    function registerTokenManager(address _chargedParticles) external {
         require(hasRole(ROLE_DAO_GOV, msg.sender), "E328");
         require(_chargedParticles != address(0x0), "E307");
-        chargedParticles = _chargedParticles;
+        chargedParticlesErc1155 = _chargedParticles;
     }
 
     /**

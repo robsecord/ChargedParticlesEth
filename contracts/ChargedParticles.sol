@@ -804,6 +804,7 @@ contract ChargedParticles is Initializable, Ownable {
         uint256 _amount = collectedFees[_contractOwner];
         if (_amount > 0) {
             _receiver.sendValue(_amount);
+            collectedFees[_contractOwner] = 0;
         }
         emit ContractFeesWithdrawn(msg.sender, _receiver, _amount);
     }

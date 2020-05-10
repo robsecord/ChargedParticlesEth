@@ -126,7 +126,7 @@ deployFresh() {
 
     echo " "
     echo "setChargedParticles: $addrChargedParticles"
-    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesERC1155} --method 'setChargedParticles' --args ${addrChargedParticles})
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesERC1155} --method 'setFusedParticleState' --args ${addrChargedParticles},'true')
 
     echoHeader
     echo "Initializing ChargedParticlesEscrow.."
@@ -136,8 +136,8 @@ deployFresh() {
     result=$(oz send-tx --no-interactive --to ${addrChargedParticlesEscrow} --method 'setDepositFee' --args ${depositFee})
 
     echo " "
-    echo "registerChargedParticles: $addrChargedParticles"
-    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesEscrow} --method 'registerChargedParticles' --args ${addrChargedParticles})
+    echo "registerTokenManager: $addrChargedParticles"
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesEscrow} --method 'registerTokenManager' --args ${addrChargedParticlesERC1155})
 
     echo " "
     echo "registerAssetPair: $assetPair, $daiAddress, $addrChaiNucleus"
