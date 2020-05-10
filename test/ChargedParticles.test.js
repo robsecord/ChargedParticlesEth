@@ -92,7 +92,7 @@ describe('ChargedParticles', () => {
       const mintFee = web3.utils.toWei('1', 'ether')
 
       await contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: owner });
-      await tokenManagerInstance.methods.setChargedParticles(contractInstance.address).send({ from: owner });
+      await tokenManagerInstance.methods.setFusedParticleState(contractInstance.address, true).send({ from: owner });
       await expectRevert(
         contractInstance.methods.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: nonOwner }),
         "Ownable: caller is not the owner"
@@ -121,7 +121,7 @@ describe('ChargedParticles', () => {
 
       beforeEach(async () => {
         await contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: owner });
-        await tokenManagerInstance.methods.setChargedParticles(contractInstance.address).send({ from: owner });
+        await tokenManagerInstance.methods.setFusedParticleState(contractInstance.address, true).send({ from: owner });
         const receipt = await contractInstance.methods.mintIons(
           'https://www.example.com',
           1337,
@@ -183,7 +183,7 @@ describe('ChargedParticles', () => {
 
       beforeEach(async () => {
         await contractInstance.methods.registerTokenManager(tokenManagerInstance.address).send({ from: owner });
-        await tokenManagerInstance.methods.setChargedParticles(contractInstance.address).send({ from: owner });
+        await tokenManagerInstance.methods.setFusedParticleState(contractInstance.address, true).send({ from: owner });
         const receipt = await contractInstance.methods.mintIons(
           'https://www.example.com',
           1337,
