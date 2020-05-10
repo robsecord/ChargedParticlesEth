@@ -38,11 +38,11 @@
 
 pragma solidity 0.5.16;
 
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
-import "../../node_modules/multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
+import "@openzeppelin/upgrades/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
+import "multi-token-standard/contracts/interfaces/IERC1155TokenReceiver.sol";
 
 
 /**

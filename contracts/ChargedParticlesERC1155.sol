@@ -23,18 +23,18 @@
 pragma solidity 0.5.16;
 pragma experimental ABIEncoderV2;
 
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/upgrades/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "./lib/BridgedERC1155.sol";
 
 
 /**
  * @notice Charged Particles ERC1155 - Token Manager
  */
-contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, BridgedERC1155 {
+contract ChargedParticlesERC1155 is Initializable, Ownable, BridgedERC1155 {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -58,7 +58,6 @@ contract ChargedParticlesERC1155 is Initializable, Ownable, ReentrancyGuard, Bri
 
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
-        ReentrancyGuard.initialize();
         BridgedERC1155.initialize();
     }
 

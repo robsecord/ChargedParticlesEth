@@ -45,11 +45,11 @@
 
 pragma solidity 0.5.16;
 
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "../node_modules/@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/upgrades/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "./lib/IChargedParticlesERC1155.sol";
 import "./lib/IChargedParticlesEscrow.sol";
 
@@ -57,7 +57,7 @@ import "./lib/IChargedParticlesEscrow.sol";
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
+contract ChargedParticles is Initializable, Ownable {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -208,7 +208,6 @@ contract ChargedParticles is Initializable, Ownable, ReentrancyGuard {
 
     function initialize(address sender) public initializer {
         Ownable.initialize(sender);
-        ReentrancyGuard.initialize();
         version = "v0.3.5";
     }
 

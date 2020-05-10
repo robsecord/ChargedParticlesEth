@@ -7,20 +7,28 @@
     "non-fungible",
     "defi"
   ],
+  "engines": {
+    "node": ">=12.16.1",
+    "npm": ">=6.14.4"
+  },
   "scripts": {
     "compile": "npx oz compile",
     "test": "npm run compile && npx jest --testTimeout 10000",
+    "coverage": "truffle run coverage",
+    "test2": "buidler test",
+    "coverage2": "buidler coverage",
+    "coveralls": "./node_modules/.bin/solidity-coverage && cat coverage/lcov.info | coveralls",
     "deploy-kovan": "./deploy.sh -n kovan",
     "deploy-ropsten": "./deploy.sh -n ropsten",
-<<<<<<< HEAD
     "deploy-mainnet": "./deploy.sh -n mainnet",
     "gen-docs": "solidity-docgen -i contracts -o docs"
-=======
-    "deploy-mainnet": "./deploy.sh -n mainnet"
->>>>>>> 6c04f1cb22e250778c20d8ea50b8161294cece1a
   },
-  "dependencies": {},
+  "dependencies": {
+  },
   "devDependencies": {
+    "@nomiclabs/buidler": "^1.3.2",
+    "@nomiclabs/buidler-truffle5": "^1.3.2",
+    "@nomiclabs/buidler-web3": "^1.3.2",
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.0",
     "@openzeppelin/contracts-ethereum-package": "^2.5.0",
@@ -30,12 +38,15 @@
     "@truffle/debug-utils": "^4.1.1",
     "@truffle/hdwallet-provider": "^1.0.32",
     "dotenv": "^8.0.0",
+    "eslint": "^7.0.0",
+    "eslint-plugin-jest": "^23.10.0",
     "ganache-cli": "^6.9.0",
     "jest": "^25.5.4",
     "lodash": "^4.17.15",
     "multi-token-standard": "^0.8.9",
     "openzeppelin-solidity": "^2.4.0",
+    "solidity-coverage": "^0.7.0-beta.3",
     "solidity-docgen": "^0.5.3",
-    "web3": "^1.2.4"
+    "web3": "^1.2.7"
   }
 }

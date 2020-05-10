@@ -4,9 +4,9 @@
  */
 pragma solidity 0.5.16;
 
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
-import "../../node_modules/@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/EnumerableSet.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/GSN/Context.sol";
 
 /**
  * @dev Contract module that allows children to implement role-based access

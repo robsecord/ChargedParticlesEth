@@ -8,13 +8,13 @@ merged/
 .next
 .vscode/
 node_modules/
-.coverage
 resources.txt
 .env
 .versionFilesList.json
 build/
 bin/
 notes.txt
+cache
 
 # OpenZeppelin
 .openzeppelin/dev-*.json
@@ -24,3 +24,10 @@ notes.txt
 ChargedParticles.json
 ChargedParticlesERC1155.json
 ChargedParticlesEscrow.json
+
+# Code Coverage
+coverage
+.coverage
+coverage.json
+coverageEnv
+artifacts
