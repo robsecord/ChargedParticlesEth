@@ -274,6 +274,17 @@ describe('ChargedParticles', () => {
       });
 
       test('withdrawFees', async () => {
+        const balanceBefore1 = await web3.eth.getBalance(ionHodler);
+        const receipt1 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+        const balanceAfter1 = await web3.eth.getBalance(ionHodler);
+
+        expectEvent(receipt1, 'ContractFeesWithdrawn', {
+          _sender: owner,
+          _receiver: ionHodler,
+          _amount: '0'
+        });
+        expect((balanceAfter1 - balanceBefore1).toString()).toBe('0');
+
         await contractInstance.methods.mintPlasma(ionHodler, ionTokenId, 3, []).send({ from: nonOwner, gas: 5e6, value: web3.utils.toWei('5', 'ether') });
 
         expectRevert(
@@ -286,16 +297,27 @@ describe('ChargedParticles', () => {
           "E412"
         );
 
-        const balanceBefore = await web3.eth.getBalance(ionHodler);
-        const receipt = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
-        const balanceAfter = await web3.eth.getBalance(ionHodler);
+        const balanceBefore2 = await web3.eth.getBalance(ionHodler);
+        const receipt2 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+        const balanceAfter2 = await web3.eth.getBalance(ionHodler);
 
-        expectEvent(receipt, 'ContractFeesWithdrawn', {
+        expectEvent(receipt2, 'ContractFeesWithdrawn', {
           _sender: owner,
           _receiver: ionHodler,
           _amount: web3.utils.toWei('3', 'ether').toString()
         });
-        expect(web3.utils.fromWei((balanceAfter - balanceBefore).toString(), 'ether')).toBe('3');
+        expect(web3.utils.fromWei((balanceAfter2 - balanceBefore2).toString(), 'ether')).toBe('3');
+
+        const balanceBefore3 = await web3.eth.getBalance(ionHodler);
+        const receipt3 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+        const balanceAfter3 = await web3.eth.getBalance(ionHodler);
+
+        expectEvent(receipt3, 'ContractFeesWithdrawn', {
+          _sender: owner,
+          _receiver: ionHodler,
+          _amount: '0'
+        });
+        expect((balanceAfter3 - balanceBefore3).toString()).toBe('0');
       });
 
       test('burnPlasma', async () => {
