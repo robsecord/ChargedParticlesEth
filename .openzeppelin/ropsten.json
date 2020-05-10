@@ -1,359 +1,11 @@
 {
   "contracts": {
-    "ChargedParticlesERC1155": {
-      "address": "0x1dcB5735eDa99383459840FD7ACd3e68C04A944c",
-      "constructorCode": "6080604052615d5a806100136000396000f3fe",
-      "bodyBytecodeHash": "9d783b361c6068e49f3144bf90d88dc97dbb99267544cbb147f4bc0cddab050d",
-      "localBytecodeHash": "d7fbf76da7dde3ee2614e551f053d2793263004ffdf57551db8751e4c6b205f1",
-      "deployedBytecodeHash": "d7fbf76da7dde3ee2614e551f053d2793263004ffdf57551db8751e4c6b205f1",
-      "types": {
-        "t_bool": {
-          "id": "t_bool",
-          "kind": "elementary",
-          "label": "bool"
-        },
-        "t_uint256": {
-          "id": "t_uint256",
-          "kind": "elementary",
-          "label": "uint256"
-        },
-        "t_array:50<t_uint256>": {
-          "id": "t_array:50<t_uint256>",
-          "valueType": "t_uint256",
-          "length": "50",
-          "kind": "array",
-          "label": "uint256[50]"
-        },
-        "t_address": {
-          "id": "t_address",
-          "kind": "elementary",
-          "label": "address"
-        },
-        "t_mapping<t_bool>": {
-          "id": "t_mapping<t_bool>",
-          "valueType": "t_bool",
-          "label": "mapping(key => bool)",
-          "kind": "mapping"
-        },
-        "t_mapping<t_uint256>": {
-          "id": "t_mapping<t_uint256>",
-          "valueType": "t_uint256",
-          "label": "mapping(key => uint256)",
-          "kind": "mapping"
-        },
-        "t_mapping<t_address>": {
-          "id": "t_mapping<t_address>",
-          "valueType": "t_address",
-          "label": "mapping(key => address)",
-          "kind": "mapping"
-        },
-        "t_string": {
-          "id": "t_string",
-          "kind": "elementary",
-          "label": "string"
-        },
-        "t_mapping<t_string>": {
-          "id": "t_mapping<t_string>",
-          "valueType": "t_string",
-          "label": "mapping(key => string)",
-          "kind": "mapping"
-        },
-        "t_array:dyn<t_uint256>": {
-          "id": "t_array:dyn<t_uint256>",
-          "valueType": "t_uint256",
-          "length": "dyn",
-          "kind": "array",
-          "label": "uint256[]"
-        },
-        "t_mapping<t_array:dyn<t_uint256>>": {
-          "id": "t_mapping<t_array:dyn<t_uint256>>",
-          "valueType": "t_array:dyn<t_uint256>",
-          "label": "mapping(key => uint256[])",
-          "kind": "mapping"
-        }
-      },
-      "storage": [
-        {
-          "contract": "Initializable",
-          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
-          "label": "initialized",
-          "astId": 3,
-          "type": "t_bool",
-          "src": "757:24:0"
-        },
-        {
-          "contract": "Initializable",
-          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
-          "label": "initializing",
-          "astId": 5,
-          "type": "t_bool",
-          "src": "876:25:0"
-        },
-        {
-          "contract": "Initializable",
-          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
-          "label": "______gap",
-          "astId": 61,
-          "type": "t_array:50<t_uint256>",
-          "src": "1951:29:0"
-        },
-        {
-          "contract": "Ownable",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
-          "label": "_owner",
-          "astId": 10070,
-          "type": "t_address",
-          "src": "526:22:16"
-        },
-        {
-          "contract": "Ownable",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
-          "label": "______gap",
-          "astId": 10183,
-          "type": "t_array:50<t_uint256>",
-          "src": "2471:29:16"
-        },
-        {
-          "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
-          "label": "_guardCounter",
-          "astId": 10566,
-          "type": "t_uint256",
-          "src": "733:29:21"
-        },
-        {
-          "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
-          "label": "______gap",
-          "astId": 10599,
-          "type": "t_array:50<t_uint256>",
-          "src": "1563:29:21"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "nonce",
-          "astId": 7362,
-          "type": "t_uint256",
-          "src": "3349:22:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "operators",
-          "astId": 7368,
-          "type": "t_mapping<t_bool>",
-          "src": "3478:65:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "mintedByType",
-          "astId": 7372,
-          "type": "t_mapping<t_uint256>",
-          "src": "3639:50:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "balances",
-          "astId": 7378,
-          "type": "t_mapping<t_uint256>",
-          "src": "3790:67:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "supplyByType",
-          "astId": 7382,
-          "type": "t_mapping<t_uint256>",
-          "src": "3930:50:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "tokenApprovals",
-          "astId": 7386,
-          "type": "t_mapping<t_address>",
-          "src": "4057:52:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "nfOwners",
-          "astId": 7390,
-          "type": "t_mapping<t_address>",
-          "src": "4178:46:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "tokenUri",
-          "astId": 7394,
-          "type": "t_mapping<t_string>",
-          "src": "4281:45:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "ownedTokensByTypeIndex",
-          "astId": 7400,
-          "type": "t_mapping<t_uint256>",
-          "src": "4362:81:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "allTokensByTypeIndex",
-          "astId": 7406,
-          "type": "t_mapping<t_uint256>",
-          "src": "4449:79:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "ownedTokensByType",
-          "astId": 7413,
-          "type": "t_mapping<t_array:dyn<t_uint256>>",
-          "src": "4534:78:9"
-        },
-        {
-          "contract": "ERC1155",
-          "path": "contracts/lib/ERC1155.sol",
-          "label": "allTokensByType",
-          "astId": 7418,
-          "type": "t_mapping<t_array:dyn<t_uint256>>",
-          "src": "4618:55:9"
-        },
-        {
-          "contract": "BridgedERC1155",
-          "path": "contracts/lib/BridgedERC1155.sol",
-          "label": "bridge",
-          "astId": 6276,
-          "type": "t_mapping<t_address>",
-          "src": "2726:44:8"
-        },
-        {
-          "contract": "BridgedERC1155",
-          "path": "contracts/lib/BridgedERC1155.sol",
-          "label": "templateErc20",
-          "astId": 6278,
-          "type": "t_address",
-          "src": "2830:30:8"
-        },
-        {
-          "contract": "BridgedERC1155",
-          "path": "contracts/lib/BridgedERC1155.sol",
-          "label": "templateErc721",
-          "astId": 6280,
-          "type": "t_address",
-          "src": "2866:31:8"
-        },
-        {
-          "contract": "ChargedParticlesERC1155",
-          "path": "contracts/ChargedParticlesERC1155.sol",
-          "label": "chargedParticles",
-          "astId": 1938,
-          "type": "t_address",
-          "src": "2205:33:2"
-        }
-      ],
-      "warnings": {
-        "hasConstructor": false,
-        "hasSelfDestruct": false,
-        "hasDelegateCall": false,
-        "hasInitialValuesInDeclarations": false,
-        "uninitializedBaseContracts": []
-      }
-    },
-    "ChaiNucleus": {
-      "address": "0xB6a2d21D880d1dF02eb0475EA2C4493Ea394D0bC",
-      "constructorCode": "608060405234801561001057600080fd5b506115ab806100206000396000f3fe",
-      "bodyBytecodeHash": "2d4ca84e6711ae039aa7ab22ac4767088c1b0ac0bc316f6578163b3dd0642c10",
-      "localBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
-      "deployedBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
-      "types": {
-        "t_address": {
-          "id": "t_address",
-          "kind": "elementary",
-          "label": "address"
-        },
-        "t_uint256": {
-          "id": "t_uint256",
-          "kind": "elementary",
-          "label": "uint256"
-        },
-        "t_mapping<t_uint256>": {
-          "id": "t_mapping<t_uint256>",
-          "valueType": "t_uint256",
-          "label": "mapping(key => uint256)",
-          "kind": "mapping"
-        }
-      },
-      "storage": [
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "vat",
-          "astId": 4991,
-          "type": "t_address",
-          "src": "3320:19:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "pot",
-          "astId": 4993,
-          "type": "t_address",
-          "src": "3345:19:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "daiJoin",
-          "astId": 4995,
-          "type": "t_address",
-          "src": "3370:23:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "daiToken",
-          "astId": 4997,
-          "type": "t_address",
-          "src": "3399:24:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "totalSupply",
-          "astId": 5011,
-          "type": "t_uint256",
-          "src": "3646:26:5"
-        },
-        {
-          "contract": "ChaiNucleus",
-          "path": "contracts/assets/chai/ChaiNucleus.sol",
-          "label": "balanceOf",
-          "astId": 5015,
-          "type": "t_mapping<t_uint256>",
-          "src": "3679:43:5"
-        }
-      ],
-      "warnings": {
-        "hasConstructor": false,
-        "hasSelfDestruct": false,
-        "hasDelegateCall": false,
-        "hasInitialValuesInDeclarations": false,
-        "uninitializedBaseContracts": []
-      }
-    },
     "ChargedParticlesEscrow": {
-      "address": "0x5198CB4C117ea1eaD6eC4Df6185512665966B229",
-      "constructorCode": "6080604052614733806100136000396000f3fe",
-      "bodyBytecodeHash": "321642cc6d6d3a2406832f5b80653a9e123dc5e0f131574f3827b96d570639cd",
-      "localBytecodeHash": "1aaa2bc63d9b0c4d0c00ab02bbb90518e16aad4dbd890725dc0479fe40604aea",
-      "deployedBytecodeHash": "1aaa2bc63d9b0c4d0c00ab02bbb90518e16aad4dbd890725dc0479fe40604aea",
+      "address": "0xf7D6F3003C32407fe94915E996FB9d9D0E075128",
+      "constructorCode": "6080604052614785806100136000396000f3fe",
+      "bodyBytecodeHash": "5446326c57ac9b7b5420c5e79104ce93ccee17cf7be6dfd88583bef2299c355a",
+      "localBytecodeHash": "00c0916babd4e4d948d34fd23b9ba05c254f41e964b9bbebeb38fdf1e2bd4f5b",
+      "deployedBytecodeHash": "00c0916babd4e4d948d34fd23b9ba05c254f41e964b9bbebeb38fdf1e2bd4f5b",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -379,15 +31,15 @@
           "members": [
             {
               "label": "members",
-              "astId": 6023,
+              "astId": 6956,
               "type": "t_struct<EnumerableSet.AddressSet>",
-              "src": "1684:32:7"
+              "src": "1627:32:16"
             },
             {
               "label": "adminRole",
-              "astId": 6025,
+              "astId": 6958,
               "type": "t_bytes32",
-              "src": "1726:17:7"
+              "src": "1669:17:16"
             }
           ]
         },
@@ -398,15 +50,15 @@
           "members": [
             {
               "label": "index",
-              "astId": 10350,
+              "astId": 516,
               "type": "t_mapping<t_uint256>",
-              "src": "736:34:20"
+              "src": "736:34:7"
             },
             {
               "label": "values",
-              "astId": 10353,
+              "astId": 519,
               "type": "t_array:dyn<t_address>",
-              "src": "780:16:20"
+              "src": "780:16:7"
             }
           ]
         },
@@ -475,249 +127,249 @@
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "initialized",
-          "astId": 3,
+          "astId": 770,
           "type": "t_bool",
-          "src": "757:24:0"
+          "src": "757:24:9"
         },
         {
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "initializing",
-          "astId": 5,
+          "astId": 772,
           "type": "t_bool",
-          "src": "876:25:0"
+          "src": "876:25:9"
         },
         {
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "______gap",
-          "astId": 61,
+          "astId": 834,
           "type": "t_array:50<t_uint256>",
-          "src": "1951:29:0"
+          "src": "1982:29:9"
         },
         {
           "contract": "AccessControl",
           "path": "contracts/lib/AccessControl.sol",
           "label": "_roles",
-          "astId": 6030,
+          "astId": 6963,
           "type": "t_mapping<t_struct<AccessControl.RoleData>>",
-          "src": "1756:44:7"
+          "src": "1699:44:16"
         },
         {
           "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "_guardCounter",
-          "astId": 10566,
+          "astId": 732,
           "type": "t_uint256",
-          "src": "733:29:21"
+          "src": "733:29:8"
         },
         {
           "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
           "label": "______gap",
-          "astId": 10599,
+          "astId": 765,
           "type": "t_array:50<t_uint256>",
-          "src": "1563:29:21"
+          "src": "1563:29:8"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_registeredContract",
-          "astId": 2330,
+          "astId": 3248,
           "type": "t_mapping<t_bool>",
-          "src": "6271:60:3"
+          "src": "6198:60:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_releaseRequiresBurn",
-          "astId": 2334,
+          "astId": 3252,
           "type": "t_mapping<t_bool>",
-          "src": "6441:61:3"
+          "src": "6368:61:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_assetPairId",
-          "astId": 2338,
+          "astId": 3256,
           "type": "t_mapping<t_bytes16>",
-          "src": "6608:56:3"
+          "src": "6535:56:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_assetDepositFee",
-          "astId": 2342,
+          "astId": 3260,
           "type": "t_mapping<t_uint256>",
-          "src": "6740:60:3"
+          "src": "6667:60:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_assetDepositMin",
-          "astId": 2346,
+          "astId": 3264,
           "type": "t_mapping<t_uint256>",
-          "src": "6871:60:3"
+          "src": "6798:60:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_assetDepositMax",
-          "astId": 2350,
+          "astId": 3268,
           "type": "t_mapping<t_uint256>",
-          "src": "6937:60:3"
+          "src": "6864:60:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_feeCollector",
-          "astId": 2354,
+          "astId": 3272,
           "type": "t_mapping<t_address>",
-          "src": "7255:58:3"
+          "src": "7182:58:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_assetPairId",
-          "astId": 2358,
+          "astId": 3276,
           "type": "t_mapping<t_bytes16>",
-          "src": "7419:57:3"
+          "src": "7346:57:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_assetDepositFee",
-          "astId": 2362,
+          "astId": 3280,
           "type": "t_mapping<t_uint256>",
-          "src": "7550:61:3"
+          "src": "7477:61:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_assetDepositMin",
-          "astId": 2366,
+          "astId": 3284,
           "type": "t_mapping<t_uint256>",
-          "src": "7682:61:3"
+          "src": "7609:61:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_assetDepositMax",
-          "astId": 2370,
+          "astId": 3288,
           "type": "t_mapping<t_uint256>",
-          "src": "7749:61:3"
+          "src": "7676:61:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
-          "label": "chargedParticles",
-          "astId": 2372,
+          "label": "chargedParticlesErc1155",
+          "astId": 3290,
           "type": "t_address",
-          "src": "8004:33:3"
+          "src": "7931:40:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "assetToken",
-          "astId": 2376,
+          "astId": 3294,
           "type": "t_mapping<t_address>",
-          "src": "8292:47:3"
+          "src": "8226:47:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "interestToken",
-          "astId": 2380,
+          "astId": 3298,
           "type": "t_mapping<t_address>",
-          "src": "8421:52:3"
+          "src": "8355:52:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "assetPairs",
-          "astId": 2383,
+          "astId": 3301,
           "type": "t_array:dyn<t_bytes16>",
-          "src": "8502:29:3"
+          "src": "8436:29:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "assetPairEnabled",
-          "astId": 2387,
+          "astId": 3305,
           "type": "t_mapping<t_bool>",
-          "src": "8537:51:3"
+          "src": "8471:51:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "interestTokenBalance",
-          "astId": 2393,
+          "astId": 3311,
           "type": "t_mapping<t_uint256>",
-          "src": "8884:79:3"
+          "src": "8818:79:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "assetTokenDeposited",
-          "astId": 2399,
+          "astId": 3317,
           "type": "t_mapping<t_uint256>",
-          "src": "9010:78:3"
+          "src": "8944:78:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "tokenDischargeApprovals",
-          "astId": 2403,
+          "astId": 3321,
           "type": "t_mapping<t_address>",
-          "src": "9177:61:3"
+          "src": "9111:61:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "assetToBeReleasedBy",
-          "astId": 2407,
+          "astId": 3325,
           "type": "t_mapping<t_address>",
-          "src": "9345:57:3"
+          "src": "9279:57:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "collectedFees",
-          "astId": 2411,
+          "astId": 3329,
           "type": "t_mapping<t_uint256>",
-          "src": "9535:51:3"
+          "src": "9469:51:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "custom_collectedDepositFees",
-          "astId": 2417,
+          "astId": 3335,
           "type": "t_mapping<t_uint256>",
-          "src": "9679:86:3"
+          "src": "9613:86:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "creator_collectedDepositFees",
-          "astId": 2423,
+          "astId": 3341,
           "type": "t_mapping<t_uint256>",
-          "src": "9871:87:3"
+          "src": "9805:87:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "depositFee",
-          "astId": 2425,
+          "astId": 3343,
           "type": "t_uint256",
-          "src": "11109:25:3"
+          "src": "11043:25:12"
         },
         {
           "contract": "ChargedParticlesEscrow",
           "path": "contracts/ChargedParticlesEscrow.sol",
           "label": "version",
-          "astId": 2427,
+          "astId": 3345,
           "type": "t_bytes16",
-          "src": "11165:22:3"
+          "src": "11099:22:12"
         }
       ],
       "warnings": {
@@ -729,11 +381,11 @@
       }
     },
     "ChargedParticles": {
-      "address": "0xC14cFCC5E9431eE5149730770c1E2E4EB74119CC",
-      "constructorCode": "6080604052614dcb806100136000396000f3fe",
-      "bodyBytecodeHash": "b8b90b6132e057b5a14de189b8dcb460e29b6bd05345f393be0b95ed415b02a5",
-      "localBytecodeHash": "bb0bc4957e7cfe3d6cd8e9a9211a0264fc34ce04f5fbf0c5513d9c88be215f4e",
-      "deployedBytecodeHash": "bb0bc4957e7cfe3d6cd8e9a9211a0264fc34ce04f5fbf0c5513d9c88be215f4e",
+      "address": "0xBD0b2BeDab3DB706789e4d0aeDF01331CE6f6d0A",
+      "constructorCode": "6080604052614d19806100136000396000f3fe",
+      "bodyBytecodeHash": "2d5ee5e1e410686390835f82ddc2545a33cfa732998ba56ba03f2be097a92c6e",
+      "localBytecodeHash": "9a5d9d2597ce30386ccad1ddb6bf2a7d79930ddd6a0fdf2208c9c68fa2c54d6f",
+      "deployedBytecodeHash": "9a5d9d2597ce30386ccad1ddb6bf2a7d79930ddd6a0fdf2208c9c68fa2c54d6f",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -814,185 +466,509 @@
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "initialized",
-          "astId": 3,
+          "astId": 770,
           "type": "t_bool",
-          "src": "757:24:0"
+          "src": "757:24:9"
         },
         {
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "initializing",
-          "astId": 5,
+          "astId": 772,
           "type": "t_bool",
-          "src": "876:25:0"
+          "src": "876:25:9"
         },
         {
           "contract": "Initializable",
           "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
           "label": "______gap",
-          "astId": 61,
+          "astId": 834,
           "type": "t_array:50<t_uint256>",
-          "src": "1951:29:0"
+          "src": "1982:29:9"
         },
         {
           "contract": "Ownable",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "_owner",
-          "astId": 10070,
+          "astId": 236,
           "type": "t_address",
-          "src": "526:22:16"
+          "src": "526:22:3"
         },
         {
           "contract": "Ownable",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
           "label": "______gap",
-          "astId": 10183,
+          "astId": 349,
           "type": "t_array:50<t_uint256>",
-          "src": "2471:29:16"
-        },
-        {
-          "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
-          "label": "_guardCounter",
-          "astId": 10566,
-          "type": "t_uint256",
-          "src": "733:29:21"
-        },
-        {
-          "contract": "ReentrancyGuard",
-          "path": "node_modules/@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol",
-          "label": "______gap",
-          "astId": 10599,
-          "type": "t_array:50<t_uint256>",
-          "src": "1563:29:21"
+          "src": "2471:29:3"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "tokenMgr",
-          "astId": 94,
+          "astId": 865,
           "type": "t_address",
-          "src": "3416:42:1"
+          "src": "3293:42:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "escrow",
-          "astId": 96,
+          "astId": 867,
           "type": "t_address",
-          "src": "3464:39:1"
+          "src": "3341:39:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "registeredTypes",
-          "astId": 100,
+          "astId": 871,
           "type": "t_mapping<t_uint8>",
-          "src": "4890:51:1"
+          "src": "4767:51:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "typeCreator",
-          "astId": 104,
+          "astId": 875,
           "type": "t_mapping<t_address>",
-          "src": "4985:49:1"
+          "src": "4862:49:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "typeSupply",
-          "astId": 108,
+          "astId": 879,
           "type": "t_mapping<t_uint256>",
-          "src": "5076:48:1"
+          "src": "4953:48:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "mintFee",
-          "astId": 112,
+          "astId": 883,
           "type": "t_mapping<t_uint256>",
-          "src": "5197:45:1"
+          "src": "5074:45:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "typeAssetPairId",
-          "astId": 116,
+          "astId": 887,
           "type": "t_mapping<t_bytes16>",
-          "src": "5318:53:1"
+          "src": "5195:53:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "typeSpecialBits",
-          "astId": 120,
+          "astId": 891,
           "type": "t_mapping<t_uint32>",
-          "src": "5437:52:1"
+          "src": "5314:52:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "typeTokenBridge",
-          "astId": 124,
+          "astId": 895,
           "type": "t_mapping<t_address>",
-          "src": "5550:53:1"
+          "src": "5427:53:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "assetPairEnabled",
-          "astId": 128,
+          "astId": 899,
           "type": "t_mapping<t_bool>",
-          "src": "5637:51:1"
+          "src": "5514:51:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "collectedFees",
-          "astId": 132,
+          "astId": 903,
           "type": "t_mapping<t_uint256>",
-          "src": "5746:51:1"
+          "src": "5623:51:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "createFeeEth",
-          "astId": 134,
+          "astId": 905,
           "type": "t_uint256",
-          "src": "6195:29:1"
+          "src": "6072:29:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "createFeeIon",
-          "astId": 136,
+          "astId": 907,
           "type": "t_uint256",
-          "src": "6230:29:1"
+          "src": "6107:29:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "ionTokenId",
-          "astId": 138,
+          "astId": 909,
           "type": "t_uint256",
-          "src": "6391:27:1"
+          "src": "6268:27:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "version",
-          "astId": 140,
+          "astId": 911,
           "type": "t_bytes16",
-          "src": "6449:22:1"
+          "src": "6326:22:10"
         },
         {
           "contract": "ChargedParticles",
           "path": "contracts/ChargedParticles.sol",
           "label": "isPaused",
-          "astId": 142,
+          "astId": 913,
           "type": "t_bool",
-          "src": "6500:20:1"
+          "src": "6377:20:10"
+        }
+      ],
+      "warnings": {
+        "hasConstructor": false,
+        "hasSelfDestruct": false,
+        "hasDelegateCall": false,
+        "hasInitialValuesInDeclarations": false,
+        "uninitializedBaseContracts": []
+      }
+    },
+    "ChaiNucleus": {
+      "address": "0x3cBc813FAED5Ff05dB752A895d7B7f4f07dA5215",
+      "constructorCode": "608060405234801561001057600080fd5b506115ab806100206000396000f3fe",
+      "bodyBytecodeHash": "2d4ca84e6711ae039aa7ab22ac4767088c1b0ac0bc316f6578163b3dd0642c10",
+      "localBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
+      "deployedBytecodeHash": "a066c4ab9aed293d84915db2ca828d952f643d46f04690f2c42dedcf5ac9ff15",
+      "types": {
+        "t_address": {
+          "id": "t_address",
+          "kind": "elementary",
+          "label": "address"
+        },
+        "t_uint256": {
+          "id": "t_uint256",
+          "kind": "elementary",
+          "label": "uint256"
+        },
+        "t_mapping<t_uint256>": {
+          "id": "t_mapping<t_uint256>",
+          "valueType": "t_uint256",
+          "label": "mapping(key => uint256)",
+          "kind": "mapping"
+        }
+      },
+      "storage": [
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "vat",
+          "astId": 5924,
+          "type": "t_address",
+          "src": "3320:19:14"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "pot",
+          "astId": 5926,
+          "type": "t_address",
+          "src": "3345:19:14"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "daiJoin",
+          "astId": 5928,
+          "type": "t_address",
+          "src": "3370:23:14"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "daiToken",
+          "astId": 5930,
+          "type": "t_address",
+          "src": "3399:24:14"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "totalSupply",
+          "astId": 5944,
+          "type": "t_uint256",
+          "src": "3646:26:14"
+        },
+        {
+          "contract": "ChaiNucleus",
+          "path": "contracts/assets/chai/ChaiNucleus.sol",
+          "label": "balanceOf",
+          "astId": 5948,
+          "type": "t_mapping<t_uint256>",
+          "src": "3679:43:14"
+        }
+      ],
+      "warnings": {
+        "hasConstructor": false,
+        "hasSelfDestruct": false,
+        "hasDelegateCall": false,
+        "hasInitialValuesInDeclarations": false,
+        "uninitializedBaseContracts": []
+      }
+    },
+    "ChargedParticlesERC1155": {
+      "address": "0x2a79802736F3e318B69e910c43cdF99126Be2D5b",
+      "constructorCode": "6080604052615f45806100136000396000f3fe",
+      "bodyBytecodeHash": "141730741d7f4fd37b8b4e793deda9abcb6645434204a558938fbeafe188dd2b",
+      "localBytecodeHash": "54170e0115aa569133e441a664c09e81b498216333af1a026d16166050d26a7a",
+      "deployedBytecodeHash": "54170e0115aa569133e441a664c09e81b498216333af1a026d16166050d26a7a",
+      "types": {
+        "t_bool": {
+          "id": "t_bool",
+          "kind": "elementary",
+          "label": "bool"
+        },
+        "t_uint256": {
+          "id": "t_uint256",
+          "kind": "elementary",
+          "label": "uint256"
+        },
+        "t_array:50<t_uint256>": {
+          "id": "t_array:50<t_uint256>",
+          "valueType": "t_uint256",
+          "length": "50",
+          "kind": "array",
+          "label": "uint256[50]"
+        },
+        "t_address": {
+          "id": "t_address",
+          "kind": "elementary",
+          "label": "address"
+        },
+        "t_mapping<t_bool>": {
+          "id": "t_mapping<t_bool>",
+          "valueType": "t_bool",
+          "label": "mapping(key => bool)",
+          "kind": "mapping"
+        },
+        "t_mapping<t_uint256>": {
+          "id": "t_mapping<t_uint256>",
+          "valueType": "t_uint256",
+          "label": "mapping(key => uint256)",
+          "kind": "mapping"
+        },
+        "t_mapping<t_address>": {
+          "id": "t_mapping<t_address>",
+          "valueType": "t_address",
+          "label": "mapping(key => address)",
+          "kind": "mapping"
+        },
+        "t_string": {
+          "id": "t_string",
+          "kind": "elementary",
+          "label": "string"
+        },
+        "t_mapping<t_string>": {
+          "id": "t_mapping<t_string>",
+          "valueType": "t_string",
+          "label": "mapping(key => string)",
+          "kind": "mapping"
+        },
+        "t_array:dyn<t_uint256>": {
+          "id": "t_array:dyn<t_uint256>",
+          "valueType": "t_uint256",
+          "length": "dyn",
+          "kind": "array",
+          "label": "uint256[]"
+        },
+        "t_mapping<t_array:dyn<t_uint256>>": {
+          "id": "t_mapping<t_array:dyn<t_uint256>>",
+          "valueType": "t_array:dyn<t_uint256>",
+          "label": "mapping(key => uint256[])",
+          "kind": "mapping"
+        }
+      },
+      "storage": [
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
+          "label": "initialized",
+          "astId": 770,
+          "type": "t_bool",
+          "src": "757:24:9"
+        },
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
+          "label": "initializing",
+          "astId": 772,
+          "type": "t_bool",
+          "src": "876:25:9"
+        },
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/upgrades/contracts/Initializable.sol",
+          "label": "______gap",
+          "astId": 834,
+          "type": "t_array:50<t_uint256>",
+          "src": "1982:29:9"
+        },
+        {
+          "contract": "Ownable",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
+          "label": "_owner",
+          "astId": 236,
+          "type": "t_address",
+          "src": "526:22:3"
+        },
+        {
+          "contract": "Ownable",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol",
+          "label": "______gap",
+          "astId": 349,
+          "type": "t_array:50<t_uint256>",
+          "src": "2471:29:3"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "nonce",
+          "astId": 8295,
+          "type": "t_uint256",
+          "src": "3228:22:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "operators",
+          "astId": 8301,
+          "type": "t_mapping<t_bool>",
+          "src": "3357:65:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "mintedByType",
+          "astId": 8305,
+          "type": "t_mapping<t_uint256>",
+          "src": "3518:50:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "balances",
+          "astId": 8311,
+          "type": "t_mapping<t_uint256>",
+          "src": "3669:67:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "supplyByType",
+          "astId": 8315,
+          "type": "t_mapping<t_uint256>",
+          "src": "3809:50:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "tokenApprovals",
+          "astId": 8319,
+          "type": "t_mapping<t_address>",
+          "src": "3936:52:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "nfOwners",
+          "astId": 8323,
+          "type": "t_mapping<t_address>",
+          "src": "4057:46:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "tokenUri",
+          "astId": 8327,
+          "type": "t_mapping<t_string>",
+          "src": "4160:45:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "ownedTokensByTypeIndex",
+          "astId": 8333,
+          "type": "t_mapping<t_uint256>",
+          "src": "4241:81:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "allTokensByTypeIndex",
+          "astId": 8339,
+          "type": "t_mapping<t_uint256>",
+          "src": "4328:79:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "ownedTokensByType",
+          "astId": 8346,
+          "type": "t_mapping<t_array:dyn<t_uint256>>",
+          "src": "4413:78:18"
+        },
+        {
+          "contract": "ERC1155",
+          "path": "contracts/lib/ERC1155.sol",
+          "label": "allTokensByType",
+          "astId": 8351,
+          "type": "t_mapping<t_array:dyn<t_uint256>>",
+          "src": "4497:55:18"
+        },
+        {
+          "contract": "BridgedERC1155",
+          "path": "contracts/lib/BridgedERC1155.sol",
+          "label": "bridge",
+          "astId": 7209,
+          "type": "t_mapping<t_address>",
+          "src": "2624:44:17"
+        },
+        {
+          "contract": "BridgedERC1155",
+          "path": "contracts/lib/BridgedERC1155.sol",
+          "label": "templateErc20",
+          "astId": 7211,
+          "type": "t_address",
+          "src": "2728:30:17"
+        },
+        {
+          "contract": "BridgedERC1155",
+          "path": "contracts/lib/BridgedERC1155.sol",
+          "label": "templateErc721",
+          "astId": 7213,
+          "type": "t_address",
+          "src": "2764:31:17"
+        },
+        {
+          "contract": "ChargedParticlesERC1155",
+          "path": "contracts/ChargedParticlesERC1155.sol",
+          "label": "fusedParticles",
+          "astId": 2710,
+          "type": "t_mapping<t_bool>",
+          "src": "2321:49:11"
+        },
+        {
+          "contract": "ChargedParticlesERC1155",
+          "path": "contracts/ChargedParticlesERC1155.sol",
+          "label": "fusedParticleTypes",
+          "astId": 2714,
+          "type": "t_mapping<t_address>",
+          "src": "2459:56:11"
         }
       ],
       "warnings": {
@@ -1008,37 +984,37 @@
   "proxies": {
     "charged-particles/ChaiNucleus": [
       {
-        "address": "0xbdECef5a50F9F466bE9156d752e5794832eDaBCb",
+        "address": "0xFd12Ab90875Dc426D614CC3Ee3bF4df38142D5Ee",
         "version": "0.1.1",
-        "implementation": "0xB6a2d21D880d1dF02eb0475EA2C4493Ea394D0bC",
-        "admin": "0xEeb3aaeA0BF166801807Fb7e8d0bfDa5e711B5b4",
+        "implementation": "0x3cBc813FAED5Ff05dB752A895d7B7f4f07dA5215",
+        "admin": "0xf32169Cc03B68D7f225337d204A52f787C0d25b1",
         "kind": "Upgradeable"
       }
     ],
     "charged-particles/ChargedParticles": [
       {
-        "address": "0x3bC32efB8a544E1859Fd71AB1E8448131c7E2a6d",
+        "address": "0xA47C10d924028a27E0fF139C1B340A1b66CE9DFf",
         "version": "0.1.1",
-        "implementation": "0xC14cFCC5E9431eE5149730770c1E2E4EB74119CC",
-        "admin": "0xEeb3aaeA0BF166801807Fb7e8d0bfDa5e711B5b4",
+        "implementation": "0xBD0b2BeDab3DB706789e4d0aeDF01331CE6f6d0A",
+        "admin": "0xf32169Cc03B68D7f225337d204A52f787C0d25b1",
         "kind": "Upgradeable"
       }
     ],
     "charged-particles/ChargedParticlesEscrow": [
       {
-        "address": "0x71910675DD5D93783E4B8D5AFcfB2D596153508c",
+        "address": "0x62FF838B7748C5B834c57dfE30BDC0110a079a7c",
         "version": "0.1.1",
-        "implementation": "0x5198CB4C117ea1eaD6eC4Df6185512665966B229",
-        "admin": "0xEeb3aaeA0BF166801807Fb7e8d0bfDa5e711B5b4",
+        "implementation": "0xf7D6F3003C32407fe94915E996FB9d9D0E075128",
+        "admin": "0xf32169Cc03B68D7f225337d204A52f787C0d25b1",
         "kind": "Upgradeable"
       }
     ],
     "charged-particles/ChargedParticlesERC1155": [
       {
-        "address": "0x76296130E818088e2e2430Ee0c38173a2853554B",
+        "address": "0x64ed963a5753C154cEf0c06D01E50d04F408f979",
         "version": "0.1.1",
-        "implementation": "0x1dcB5735eDa99383459840FD7ACd3e68C04A944c",
-        "admin": "0xEeb3aaeA0BF166801807Fb7e8d0bfDa5e711B5b4",
+        "implementation": "0x2a79802736F3e318B69e910c43cdF99126Be2D5b",
+        "admin": "0xf32169Cc03B68D7f225337d204A52f787C0d25b1",
         "kind": "Upgradeable"
       }
     ]
@@ -1052,6 +1028,6 @@
     }
   },
   "proxyAdmin": {
-    "address": "0xEeb3aaeA0BF166801807Fb7e8d0bfDa5e711B5b4"
+    "address": "0xf32169Cc03B68D7f225337d204A52f787C0d25b1"
   }
 }
