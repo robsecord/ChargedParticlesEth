@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT
+
 // ChargedParticles.sol -- Interest-bearing NFTs
-// MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,34 +44,32 @@
 //      418         Insufficient Asset Token funds
 //      419         Failed to transfer Asset Token
 
-pragma solidity 0.5.16;
+pragma solidity 0.6.10;
 
-import "@openzeppelin/upgrades/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/ownership/Ownable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
-import "./lib/IChargedParticlesERC1155.sol";
-import "./lib/IChargedParticlesEscrow.sol";
+
+import "./interfaces/IChargedParticlesTokenManager.sol";
+import "./interfaces/IChargedParticlesEscrowManager.sol";
+
+import "./lib/Common.sol";
 
 
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, Ownable {
+contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     using SafeMath for uint256;
     using Address for address payable;
 
-    /***********************************|
-    |     Variables/Events/Modifiers    |
-    |__________________________________*/
-
-    uint256 constant internal DEPOSIT_FEE_MODIFIER = 1e4;   // 10000  (100%)
-    uint256 constant internal MAX_CUSTOM_DEPOSIT_FEE = 2e3; // 2000   (20%)
     uint32 constant internal ION_SPECIAL_BIT = 1073741824;  // 31st BIT
+    address constant internal CONTRACT_ID = address(0xC1DA0da0DA0da0DA0da0DA0da0DA0da0DA0da0DA00);
 
-    IChargedParticlesERC1155 internal tokenMgr;
-    IChargedParticlesEscrow internal escrow;
+    IChargedParticlesTokenManager internal tokenMgr;
+    IChargedParticlesEscrowManager internal escrowMgr;
 
     // Particles come in many "Types" created by Public Users.
     //   Each "Type" of Particle has a "Creator", who can set certain parameters
@@ -109,10 +108,7 @@ contract ChargedParticles is Initializable, Ownable {
     //        TypeID => Token-Bridge for ERC20/ERC721
     mapping (uint256 => address) internal typeTokenBridge;
 
-    // Allowed Asset-Pairs
-    mapping (bytes16 => bool) internal assetPairEnabled;
-
-    // Owner/Creator => ETH Fees earned by Creator
+    // Owner/Creator => ETH Fees earned by Contract/Creators
     mapping (address => uint256) internal collectedFees;
 
     // To Create "Types" (Fungible or Non-Fungible) there is a Fee.
@@ -125,7 +121,7 @@ contract ChargedParticles is Initializable, Ownable {
     uint256 internal createFeeIon;
 
     // Internal ERC20 Token used for Creating Types;
-    // needs to be created as a private ERC20 type within this contract
+    // needs to be created as a private fungible type within the ERC1155 contract
     uint256 internal ionTokenId;
 
     // Contract Version
@@ -137,6 +133,18 @@ contract ChargedParticles is Initializable, Ownable {
     //
     // Modifiers
     //
+
+    // Throws if called by any account other than the Charged Particles DAO contract.
+    modifier onlyDao() {
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "ChargedParticles: INVALID_DAO");
+        _;
+    }
+
+    // Throws if called by any account other than the Charged Particles Maintainer.
+    modifier onlyMaintainer() {
+        require(hasRole(ROLE_MAINTAINER, msg.sender), "ChargedParticles: INVALID_MAINTAINER");
+        _;
+    }
 
     modifier whenNotPaused() {
         require(!isPaused, "E417");
@@ -152,8 +160,7 @@ contract ChargedParticles is Initializable, Ownable {
         string indexed _symbol,
         bool indexed _isPrivate,
         bool _isSeries,
-        string _assetPairId,
-        uint256 _energizeFee,
+        bytes16 _assetPairId,
         string _uri
     );
 
@@ -206,9 +213,11 @@ contract ChargedParticles is Initializable, Ownable {
     |          Initialization           |
     |__________________________________*/
 
-    function initialize(address sender) public initializer {
-        Ownable.initialize(sender);
-        version = "v0.3.6";
+    function initialize() public initializer {
+        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(ROLE_DAO_GOV, msg.sender);
+        _setupRole(ROLE_MAINTAINER, msg.sender);
+        version = "v0.4.1";
     }
 
     /***********************************|
@@ -220,7 +229,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId     The ID of the Type or Token
      * @return  The URI of the Type or Token
      */
-    function uri(uint256 _typeId) public view returns (string memory) {
+    function uri(uint256 _typeId) external view returns (string memory) {
         return tokenMgr.uri(_typeId);
     }
 
@@ -229,7 +238,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId     The Type ID of the Token
      * @return  The Creator Address
      */
-    function getTypeCreator(uint256 _typeId) public view returns (address) {
+    function getTypeCreator(uint256 _typeId) external view returns (address) {
         return typeCreator[_typeId];
     }
 
@@ -238,7 +247,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId     The Token ID or the Type ID of the Token
      * @return  The Token-Bridge Address
      */
-    function getTypeTokenBridge(uint256 _typeId) public view returns (address) {
+    function getTypeTokenBridge(uint256 _typeId) external view returns (address) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return typeTokenBridge[_typeId];
     }
@@ -274,7 +283,6 @@ contract ChargedParticles is Initializable, Ownable {
     /**
      * @notice Gets the ETH price to create a Token Type
      * @param _isNF     True if the Type of Token to Create is a Non-Fungible Token
-     * @return  The ETH & ION price to create a type
      */
     function getCreationPrice(bool _isNF) public view returns (uint256 _eth, uint256 _ion) {
         _eth = _isNF ? (createFeeEth.mul(2)) : createFeeEth;
@@ -286,7 +294,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _tokenId  The ID of the token
      * @return  The Series Number of the Particle
      */
-    function getSeriesNumber(uint256 _tokenId) public view returns (uint256) {
+    function getSeriesNumber(uint256 _tokenId) external view returns (uint256) {
         return tokenMgr.getNonFungibleIndex(_tokenId);
     }
 
@@ -295,7 +303,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId     The Token ID or the Type ID of the Token
      * @return  The ETH price to mint the Token
      */
-    function getMintingFee(uint256 _typeId) public view returns (uint256) {
+    function getMintingFee(uint256 _typeId) external view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return mintFee[_typeId];
     }
@@ -305,7 +313,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId   The Token ID or the Type ID of the Token
      * @return  The Maximum Supply of the Token-Type
      */
-    function getMaxSupply(uint256 _typeId) public view returns (uint256) {
+    function getMaxSupply(uint256 _typeId) external view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return typeSupply[_typeId];
     }
@@ -315,7 +323,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId   The Token ID or the Type ID of the Token
      * @return  The Total Minted Supply of the Token-Type
      */
-    function getTotalMinted(uint256 _typeId) public view returns (uint256) {
+    function getTotalMinted(uint256 _typeId) external view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return tokenMgr.totalMinted(_typeId);
     }
@@ -329,10 +337,10 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _tokenId  The ID of the Token
      * @return  The Base Mass of the Particle
      */
-    function baseParticleMass(uint256 _tokenId) public view returns (uint256) {
+    function baseParticleMass(uint256 _tokenId) external view returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.baseParticleMass(address(tokenMgr), _tokenId, _assetPairId);
+        return escrowMgr.baseParticleMass(address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /**
@@ -340,13 +348,13 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _tokenId  The ID of the Token
      * @return  The Current Charge of the Particle
      */
-    function currentParticleCharge(uint256 _tokenId) public returns (uint256) {
+    function currentParticleCharge(uint256 _tokenId) external returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         require(registeredTypes[_typeId] > 0, "E402");
         require(tokenMgr.isNonFungible(_tokenId), "E402");
 
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.currentParticleCharge(address(tokenMgr), _tokenId, _assetPairId);
+        return escrowMgr.currentParticleCharge(address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /***********************************|
@@ -366,7 +374,6 @@ contract ChargedParticles is Initializable, Ownable {
         string memory _assetPairId,
         uint256 _maxSupply,
         uint256 _mintFee,
-        uint256 _energizeFee,
         bool _payWithIons
     )
         public
@@ -374,7 +381,6 @@ contract ChargedParticles is Initializable, Ownable {
         whenNotPaused
         returns (uint256 _particleTypeId)
     {
-        address _contractOwner = owner();
         (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(true);
 
         if (_payWithIons) {
@@ -392,8 +398,7 @@ contract ChargedParticles is Initializable, Ownable {
             _accessType,    // Token Access Type
             _assetPairId,   // Asset Pair for Type
             _maxSupply,     // Max Supply
-            _mintFee,       // Price-per-Token in ETH
-            _energizeFee    // Energize Fee for Creator
+            _mintFee        // Price-per-Token in ETH
         );
 
         // Mark ION-Generated Particles
@@ -403,7 +408,7 @@ contract ChargedParticles is Initializable, Ownable {
 
         // Collect Fees
         else {
-            collectedFees[_contractOwner] = _ethPrice.add(collectedFees[_contractOwner]);
+            collectedFees[CONTRACT_ID] = _ethPrice.add(collectedFees[CONTRACT_ID]);
         }
 
         // Refund over-payment
@@ -433,7 +438,6 @@ contract ChargedParticles is Initializable, Ownable {
         whenNotPaused
         returns (uint256 _plasmaTypeId)
     {
-        address _contractOwner = owner();
         (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(false);
 
         if (_payWithIons) {
@@ -461,7 +465,7 @@ contract ChargedParticles is Initializable, Ownable {
 
         // Collect Fees
         else {
-            collectedFees[_contractOwner] = _ethPrice.add(collectedFees[_contractOwner]);
+            collectedFees[CONTRACT_ID] = _ethPrice.add(collectedFees[CONTRACT_ID]);
         }
 
         // Refund over-payment
@@ -558,7 +562,7 @@ contract ChargedParticles is Initializable, Ownable {
         require(tokenMgr.isFungible(_typeId), "E104");
         require(canMint(_typeId, _amount), "E407");
 
-        address _creator = (_typeId == ionTokenId) ? owner() : typeCreator[_typeId];
+        address _creator = (_typeId == ionTokenId) ? CONTRACT_ID : typeCreator[_typeId];
         uint256 _totalEth;
         uint256 _ethPerToken;
 
@@ -593,7 +597,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @notice Destroys a Particle and releases the underlying Asset + Interest (Mass + Charge)
      * @param _tokenId  The ID of the token to burn
      */
-    function burnParticle(uint256 _tokenId) public {
+    function burnParticle(uint256 _tokenId) external {
         address _tokenContract = address(tokenMgr);
         address _tokenOwner;
         bytes16 _assetPairId;
@@ -606,13 +610,13 @@ contract ChargedParticles is Initializable, Ownable {
         // Prepare Particle Release
         _tokenOwner = tokenMgr.ownerOf(_tokenId);
         _assetPairId = typeAssetPairId[_typeId];
-        escrow.releaseParticle(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
+        escrowMgr.releaseParticle(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
         // Burn Token
         tokenMgr.burn(msg.sender, _tokenId, 1);
 
         // Release Particle (Payout Asset + Interest)
-        escrow.finalizeRelease(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
+        escrowMgr.finalizeRelease(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
         emit ParticleBurned(msg.sender, _tokenId);
     }
@@ -622,7 +626,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _typeId   The type of token to burn
      * @param _amount   The amount of tokens to burn
      */
-    function burnPlasma(uint256 _typeId, uint256 _amount) public {
+    function burnPlasma(uint256 _typeId, uint256 _amount) external {
         // Verify Token
         require(tokenMgr.isFungible(_typeId), "E104");
         require(registeredTypes[_typeId] > 0, "E402");
@@ -652,11 +656,11 @@ contract ChargedParticles is Initializable, Ownable {
         bytes16 _assetPairId = typeAssetPairId[_typeId];
         require(tokenMgr.isNonFungibleBaseType(_tokenId), "E104");
 
-        // Transfer Asset Token from User to Contract
+        // Transfer Asset Token from Caller to Contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
-        return escrow.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
+        return escrowMgr.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
     }
 
     /***********************************|
@@ -670,10 +674,10 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _tokenId      The ID of the Token
      * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
-    function dischargeParticle(address _receiver, uint256 _tokenId) public returns (uint256, uint256) {
+    function dischargeParticle(address _receiver, uint256 _tokenId) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId);
+        return escrowMgr.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId);
     }
 
     /**
@@ -684,10 +688,10 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _assetAmount  The Amount of Asset Tokens to Discharge from the Particle
      * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
-    function dischargeParticle(address _receiver, uint256 _tokenId, uint256 _assetAmount) public returns (uint256, uint256) {
+    function dischargeParticleAmount(address _receiver, uint256 _tokenId, uint256 _assetAmount) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrow.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
+        return escrowMgr.dischargeParticleAmount(_receiver, address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
     }
 
 
@@ -700,21 +704,21 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _receiver   The address of the receiver
      * @param _typeId     The type of token to withdraw fees for
      */
-    function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
-        address _creator = typeCreator[_typeId];
-        require(msg.sender == _creator, "E105");
+    // function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
+    //     address _creator = typeCreator[_typeId];
+    //     require(msg.sender == _creator, "E105");
 
-        // Withdraw Particle Deposit Fees from Escrow
-        escrow.withdrawCreatorFees(_typeId);
+    //     // Withdraw Particle Deposit Fees from Escrow
+    //     escrowMgr.withdrawCreatorFees(_typeId);
 
-        // Withdraw Plasma Minting Fees (ETH)
-        uint256 _amount = collectedFees[_creator];
-        if (_amount > 0) {
-            collectedFees[_creator] = 0;
-            _receiver.sendValue(_amount);
-        }
-        emit CreatorFeesWithdrawn(msg.sender, _receiver, _amount);
-    }
+    //     // Withdraw Plasma Minting Fees (ETH)
+    //     uint256 _amount = collectedFees[_creator];
+    //     if (_amount > 0) {
+    //         collectedFees[_creator] = 0;
+    //         _receiver.sendValue(_amount);
+    //     }
+    //     emit CreatorFeesWithdrawn(msg.sender, _receiver, _amount);
+    // }
 
     /***********************************|
     |          Only Admin/DAO           |
@@ -723,7 +727,7 @@ contract ChargedParticles is Initializable, Ownable {
     /**
      * @dev Setup the Creation/Minting Fees
      */
-    function setupFees(uint256 _createFeeEth, uint256 _createFeeIon) public onlyOwner {
+    function setupFees(uint256 _createFeeEth, uint256 _createFeeIon) external onlyDao {
         createFeeEth = _createFeeEth;
         createFeeIon = _createFeeIon;
     }
@@ -731,51 +735,30 @@ contract ChargedParticles is Initializable, Ownable {
     /**
      * @dev Toggle the "Paused" state of the contract
      */
-    function setPausedState(bool _paused) public onlyOwner {
+    function setPausedState(bool _paused) external onlyMaintainer {
         isPaused = _paused;
     }
 
     /**
      * @dev Register the address of the token manager contract
      */
-    function registerTokenManager(address _tokenMgr) public onlyOwner {
+    function registerTokenManager(address _tokenMgr) external onlyDao {
         require(_tokenMgr != address(0x0), "E412");
-        tokenMgr = IChargedParticlesERC1155(_tokenMgr);
+        tokenMgr = IChargedParticlesTokenManager(_tokenMgr);
     }
 
     /**
      * @dev Register the address of the escrow contract
      */
-    function registerEscrow(address _escrowAddress) public onlyOwner {
-        require(_escrowAddress != address(0x0), "E412");
-        escrow = IChargedParticlesEscrow(_escrowAddress);
-    }
-
-    /**
-     * @dev Register valid asset pairs (needs to mirror escrow)
-     */
-    function registerAssetPair(string memory _assetPairId) public onlyOwner {
-        bytes16 _assetPair = _toBytes16(_assetPairId);
-        require(escrow.isAssetPairEnabled(_assetPair), "E415");
-
-        // Allow Escrow to Transfer Assets from this Contract
-        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPair);
-        IERC20(_assetTokenAddress).approve(address(escrow), uint(-1));
-        assetPairEnabled[_assetPair] = true;
-    }
-
-    /**
-     * @dev Toggle an Asset Pair
-     */
-    function disableAssetPair(string memory _assetPairId) public onlyOwner {
-        bytes16 _assetPair = _toBytes16(_assetPairId);
-        assetPairEnabled[_assetPair] = false;
+    function registerEscrowManager(address _escrowMgr) external onlyDao {
+        require(_escrowMgr != address(0x0), "E412");
+        escrowMgr = IChargedParticlesEscrowManager(_escrowMgr);
     }
 
     /**
      * @dev Setup internal ION Token
      */
-    function mintIons(string memory _uri, uint256 _maxSupply, uint256 _amount, uint256 _mintFee) public onlyOwner returns (uint256) {
+    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _amount, uint256 _mintFee) external onlyDao returns (uint256) {
         require(ionTokenId == 0, "E416");
 
         // Create ION Token Type;
@@ -797,16 +780,32 @@ contract ChargedParticles is Initializable, Ownable {
      * @dev Allows contract owner to withdraw any ETH fees earned
      *      Interest-token Fees are collected in Escrow, withdraw from there
      */
-    function withdrawFees(address payable _receiver) public onlyOwner {
+    function withdrawFees(address payable _receiver) external onlyDao {
         require(_receiver != address(0x0), "E412");
 
-        address _contractOwner = owner();
-        uint256 _amount = collectedFees[_contractOwner];
+        uint256 _amount = collectedFees[CONTRACT_ID];
         if (_amount > 0) {
+            collectedFees[CONTRACT_ID] = 0;
             _receiver.sendValue(_amount);
-            collectedFees[_contractOwner] = 0;
         }
         emit ContractFeesWithdrawn(msg.sender, _receiver, _amount);
+    }
+
+    function enableDao(address _dao) external onlyDao {
+        require(_dao != msg.sender, "ChargedParticles: INVALID_DAO");
+
+        grantRole(ROLE_DAO_GOV, _dao);
+        // DAO must assign a Maintainer
+
+        if (hasRole(ROLE_DAO_GOV, msg.sender)) {
+            renounceRole(ROLE_DAO_GOV, msg.sender);
+        }
+        if (hasRole(ROLE_MAINTAINER, msg.sender)) {
+            renounceRole(ROLE_MAINTAINER, msg.sender);
+        }
+        if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        }
     }
 
     /***********************************|
@@ -818,31 +817,27 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _name             The Name of the Particle
      * @param _uri              A unique URI for the Token Type which will serve the JSON metadata
      * @param _accessType       A bit indicating the Access Type; Private/Public, Series/Collection
-     * @param _assetPairId      The ID of the Asset-Pair that the Particle will use for the Underlying Assets
+     * @param _assetPair        The Name of the Asset-Pair that the Particle will use for the Underlying Assets
      * @param _maxSupply        The Max Supply of Tokens that can be minted
      *                          Provide a value of 0 for no limit
      * @param _mintFee          The "Mint" Fee that is collected for each Particle and paid to the Particle Type Creator
-     * @param _energizeFee      The "Energize" Fee that is collected upon Asset Deposit for each Particle and paid to the Particle Type Creator
-     *                          Collected when the Particle is Energized
-     * @return The ID of the newly created Particle Type
-     *         Use this ID when Minting Particles of this Type
+     * @return _particleTypeId  The ID of the newly created Particle Type
+     *                          Use this ID when Minting Particles of this Type
      */
     function _createParticle(
         string memory _name,
         string memory _uri,
         string memory _symbol,
         uint8 _accessType,
-        string memory _assetPairId,
+        string memory _assetPair,
         uint256 _maxSupply,
-        uint256 _mintFee,
-        uint256 _energizeFee
+        uint256 _mintFee
     )
         internal
         returns (uint256 _particleTypeId)
     {
-        bytes16 _assetPair = _toBytes16(_assetPairId);
-        require(_energizeFee <= MAX_CUSTOM_DEPOSIT_FEE, "E413");
-        require(assetPairEnabled[_assetPair], "E414");
+        bytes16 _assetPairId = _toBytes16(_assetPair);
+        require(escrowMgr.isAssetPairEnabled(_assetPairId), "E415");
 
         // Create Type
         _particleTypeId = tokenMgr.createType(_uri, true); // ERC-1155 Non-Fungible
@@ -861,22 +856,17 @@ contract ChargedParticles is Initializable, Ownable {
 
         // Creator of Type
         typeCreator[_particleTypeId] = msg.sender;
-        escrow.registerCreatorSetting_FeeCollector(_particleTypeId, msg.sender);
 
         // Type Asset-Pair
-        typeAssetPairId[_particleTypeId] = _assetPair;
-        escrow.registerCreatorSetting_AssetPair(_particleTypeId, _assetPair);
-
-        // The Deposit Fee for Creators
-        escrow.registerCreatorSetting_DepositFee(_particleTypeId, _assetPair, _energizeFee);
-
+        typeAssetPairId[_particleTypeId] = _assetPairId;
+        
+        // Log Event
         emit ParticleTypeUpdated(
             _particleTypeId,
             _symbol,
             (_accessType & 2 == 2),     // isPrivate
             (_accessType & 4 == 4),     // isSeries
             _assetPairId,
-            _energizeFee,
             _uri
         );
     }
@@ -890,8 +880,8 @@ contract ChargedParticles is Initializable, Ownable {
      *                          Provide a value of 0 for no limit
      * @param _mintFee          The ETH Price of each Token when sold to public
      * @param _initialMint      The amount of tokens to initially mint
-     * @return The ID of the newly created Plasma Type
-     *         Use this ID when Minting Plasma of this Type
+     * @return _plasmaTypeId    The ID of the newly created Plasma Type
+     *                          Use this ID when Minting Plasma of this Type
      */
     function _createPlasma(
         string memory _name,
@@ -948,7 +938,7 @@ contract ChargedParticles is Initializable, Ownable {
      * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
     function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
-        address _assetTokenAddress = escrow.getAssetTokenAddress(_assetPairId);
+        address _assetTokenAddress = escrowMgr.getAssetTokenAddress(_assetPairId);
         IERC20 _assetToken = IERC20(_assetTokenAddress);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);

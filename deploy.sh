@@ -12,9 +12,10 @@ init=
 update=
 
 addrChaiNucleus=
+addrChaiEscrow=
 addrChargedParticles=
 addrChargedParticlesEscrow=
-addrChargedParticlesERC1155=
+addrChargedParticlesTokenManager=
 
 depositFee="50000000000000000000"
 assetPair="chai"
@@ -88,6 +89,12 @@ deployFresh() {
     oz compile
 
     echoHeader
+    echo "Creating Contract: ChaiEscrow"
+    oz add ChaiEscrow --push --skip-compile
+    addrChaiEscrow=$(oz create ChaiEscrow --init initialize --no-interactive | tail -n 1)
+    sleep 1s
+
+    echoHeader
     echo "Creating Contract: ChaiNucleus"
     oz add ChaiNucleus --push --skip-compile
     addrChaiNucleus=$(oz create ChaiNucleus --init initRopsten --no-interactive | tail -n 1)
@@ -96,19 +103,19 @@ deployFresh() {
     echoHeader
     echo "Creating Contract: ChargedParticles"
     oz add ChargedParticles --push --skip-compile
-    addrChargedParticles=$(oz create ChargedParticles --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    addrChargedParticles=$(oz create ChargedParticles --init initialize --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
-    echo "Creating Contract: ChargedParticlesEscrow"
-    oz add ChargedParticlesEscrow --push --skip-compile
-    addrChargedParticlesEscrow=$(oz create ChargedParticlesEscrow --init initialize --args ${ownerAccount},${daoAccount},${maintainerAccount} --no-interactive | tail -n 1)
+    echo "Creating Contract: ChargedParticlesEscrowManager"
+    oz add ChargedParticlesEscrowManager --push --skip-compile
+    addrChargedParticlesEscrow=$(oz create ChargedParticlesEscrowManager --init initialize --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
-    echo "Creating Contract: ChargedParticlesERC1155"
-    oz add ChargedParticlesERC1155 --push --skip-compile
-    addrChargedParticlesERC1155=$(oz create ChargedParticlesERC1155 --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
+    echo "Creating Contract: ChargedParticlesTokenManager"
+    oz add ChargedParticlesTokenManager --push --skip-compile
+    addrChargedParticlesTokenManager=$(oz create ChargedParticlesTokenManager --init initialize --args ${ownerAccount} --no-interactive | tail -n 1)
     sleep 1s
 
     echoHeader
@@ -122,14 +129,14 @@ deployFresh() {
 #    result=$(oz send-tx --no-interactive --to ${daiAddress} --method 'mint' --args ${ownerAccount},${daiPrefund})
 
     echoHeader
-    echo "Initializing ChargedParticlesERC1155.."
+    echo "Initializing ChargedParticlesTokenManager.."
 
     echo " "
     echo "setChargedParticles: $addrChargedParticles"
-    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesERC1155} --method 'setFusedParticleState' --args ${addrChargedParticles},'true')
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesTokenManager} --method 'setFusedParticleState' --args ${addrChargedParticles},'true')
 
     echoHeader
-    echo "Initializing ChargedParticlesEscrow.."
+    echo "Initializing ChargedParticlesEscrowManager.."
 
     echo " "
     echo "setDepositFee: $depositFee"
@@ -137,7 +144,7 @@ deployFresh() {
 
     echo " "
     echo "registerTokenManager: $addrChargedParticles"
-    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesEscrow} --method 'registerTokenManager' --args ${addrChargedParticlesERC1155})
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticlesEscrow} --method 'registerTokenManager' --args ${addrChargedParticlesTokenManager})
 
     echo " "
     echo "registerAssetPair: $assetPair, $daiAddress, $addrChaiNucleus"
@@ -155,8 +162,8 @@ deployFresh() {
     result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerEscrow' --args ${addrChargedParticlesEscrow})
 
     echo " "
-    echo "registerTokenManager: $addrChargedParticlesERC1155"
-    result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerTokenManager' --args ${addrChargedParticlesERC1155})
+    echo "registerTokenManager: $addrChargedParticlesTokenManager"
+    result=$(oz send-tx --no-interactive --to ${addrChargedParticles} --method 'registerTokenManager' --args ${addrChargedParticlesTokenManager})
 
     echo " "
     echo "registerAssetPair: $assetPair"
@@ -187,8 +194,8 @@ deployFresh() {
     echo "Contract Addresses: "
     echo " - ChaiNucleus:             $addrChaiNucleus"
     echo " - ChargedParticles:        $addrChargedParticles"
-    echo " - ChargedParticlesEscrow:  $addrChargedParticlesEscrow"
-    echo " - ChargedParticlesERC1155: $addrChargedParticlesERC1155"
+    echo " - ChargedParticlesEscrowManager:  $addrChargedParticlesEscrow"
+    echo " - ChargedParticlesTokenManager: $addrChargedParticlesTokenManager"
 
     echoHeader
     echo "Contract Deployment & Initialization Complete!"

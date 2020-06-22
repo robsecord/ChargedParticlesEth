@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT
+
 // INucleus.sol -- Charged Particles
-// MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,13 +21,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.10;
 
 /**
  * @title Particle Nucleus interface
  * @dev The base layer for underlying assets attached to Charged Particles
  */
-contract INucleus {
+interface INucleus {
     // Balance in Asset Token
     function assetBalance(address _account) external returns (uint);
 
@@ -43,7 +44,7 @@ contract INucleus {
     function depositAsset(address _account, uint _assetAmount) external;
 
     // Withdraw amount specified in Interest-bearing Token
-    function withdrawInterest(address _account, uint _interestAmount) public;
+    function withdrawInterest(address _account, uint _interestAmount) external;
 
     // Withdraw amount specified in Asset Token
     function withdrawAsset(address _account, uint _assetAmount) external returns (uint);

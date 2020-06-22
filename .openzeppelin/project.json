@@ -1,27 +1,28 @@
 {
   "manifestVersion": "2.2",
   "contracts": {
+    "ChaiEscrow": "ChaiEscrow",
     "ChaiNucleus": "ChaiNucleus",
     "ChargedParticles": "ChargedParticles",
-    "ChargedParticlesEscrow": "ChargedParticlesEscrow",
-    "ChargedParticlesERC1155": "ChargedParticlesERC1155"
+    "ChargedParticlesEscrowManager": "ChargedParticlesEscrowManager",
+    "ChargedParticlesTokenManager": "ChargedParticlesTokenManager"
   },
   "dependencies": {
-    "@openzeppelin/contracts-ethereum-package": "^2.4.0"
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0"
   },
   "name": "charged-particles",
   "version": "0.1.1",
   "telemetryOptIn": true,
   "compiler": {
     "manager": "openzeppelin",
-    "solcVersion": "0.5.16",
+    "solcVersion": "0.6.10",
     "compilerSettings": {
       "optimizer": {
         "enabled": true,
         "runs": "200"
       }
     },
-    "artifactsDir": "build/contracts",
+    "artifactsDir": "build",
     "contractsDir": "contracts",
     "typechain": {
       "enabled": false

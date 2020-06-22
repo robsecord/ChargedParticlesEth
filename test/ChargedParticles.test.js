@@ -7,7 +7,7 @@ ZWeb3.initialize(provider);
 const { web3 } = ZWeb3;
 
 const ChargedParticles = Contracts.getFromLocal('ChargedParticles');
-const ChargedParticlesERC1155 = Contracts.getFromLocal('ChargedParticlesERC1155');
+const ChargedParticlesTokenManager = Contracts.getFromLocal('ChargedParticlesTokenManager');
 
 describe('ChargedParticles', () => {
   let [owner, nonOwner, ionHodler] = accounts;
@@ -22,7 +22,7 @@ describe('ChargedParticles', () => {
   test('initializer', async () => {
     contractInstance = await helper.createProxy(ChargedParticles, { initMethod: 'initialize', initArgs: [owner] });
     const version = await contractInstance.methods.version().call({ from: owner });
-    expect(web3.utils.hexToAscii(version)).toMatch("v0.3.6");
+    expect(web3.utils.hexToAscii(version)).toMatch("v0.4.1");
   });
 
   describe('only Admin/DAO', () => {
@@ -73,7 +73,7 @@ describe('ChargedParticles', () => {
   describe('with Token manager', () => {
     beforeEach(async () => {
       contractInstance = await helper.createProxy(ChargedParticles, { initMethod: 'initialize', initArgs: [owner] });
-      tokenManagerInstance = await helper.createProxy(ChargedParticlesERC1155, { initMethod: 'initialize', initArgs: [owner] });
+      tokenManagerInstance = await helper.createProxy(ChargedParticlesTokenManager, { initMethod: 'initialize', initArgs: [owner] });
     });
 
     test('registerTokenManager', async () => {

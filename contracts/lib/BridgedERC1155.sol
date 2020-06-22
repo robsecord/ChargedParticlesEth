@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT
+
 // BridgedERC1155.sol - Charged Particles
-// MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
 // Original Idea: https://github.com/pelith/erc-1155-adapter
@@ -37,11 +38,11 @@
 //      210         ERC721: Transfer to non ERC721Receiver implementer
 //      211         ERC165: Invalid interface id
 
-pragma solidity 0.5.16;
+pragma solidity 0.6.10;
+pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/upgrades/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC721/IERC721Receiver.sol";
 import "./ERC1155.sol";
 
@@ -49,11 +50,7 @@ import "./ERC1155.sol";
 /**
  * @notice ERC-1155 Token Standard with support for Bridges to individual ERC-20 & ERC-721 Token Contracts
  */
-contract BridgedERC1155 is Initializable, ERC1155 {
-
-    /***********************************|
-    |     Variables/Events/Modifiers    |
-    |__________________________________*/
+abstract contract BridgedERC1155 is Initializable, ERC1155 {
 
     //        TypeID => Token Bridge Address
     mapping (uint256 => address) internal bridge;
@@ -83,7 +80,7 @@ contract BridgedERC1155 is Initializable, ERC1155 {
     |          Initialization           |
     |__________________________________*/
 
-    function initialize() public initializer {
+    function initialize() public virtual override initializer {
         ERC1155.initialize();
 
         // Create Bridge Contract Templates
@@ -114,7 +111,7 @@ contract BridgedERC1155 is Initializable, ERC1155 {
         }
         require(_tokenTypeId == _typeId, "E203");
 
-        address _owner = ownerOf(_tokenId);
+        address _owner = _ownerOf(_tokenId);
         require(_operator != _owner, "E204");
         require(_from == _owner || isApprovedForAll(_owner, _from), "E205");
 

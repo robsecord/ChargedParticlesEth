@@ -1,4 +1,5 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
+const maxGas = 20000000;
 
 require('dotenv').config();
 
@@ -16,13 +17,12 @@ const mnemonic = {
 
 module.exports = {
   networks: {
-    development: {
-      protocol: 'http',
+    local: {
       host: 'localhost',
-      port: 8545,
-      gas: 6000000,
-      gasPrice: 1e9,
-      networkId: '*',
+      port: '8545',
+      gas: maxGas,
+      gasPrice: 1 * 1000000000,
+      network_id: '*'
     },
     kovan: {
       provider: () => new HDWalletProvider(

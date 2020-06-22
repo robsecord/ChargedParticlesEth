@@ -9,7 +9,7 @@
 		"solidity.formatter": "none",
 		"slither.solcPath": "/Users/robsecord/.nvm/versions/node/v12.16.1/lib/node_modules/solc/solcjs",
 		"slither.hiddenDetectors": [],
-		"solidity.compileUsingRemoteVersion": "v0.5.16+commit.9c3226ce",
+		"solidity.compileUsingRemoteVersion": "v0.6.10+commit.9c3226ce",
 		"secbit.solc": "/Users/robsecord/workspace/Ethereum/ChargedParticles/ChargedParticlesEth/node_modules/solc/solcjs",
 		"solidity.enableLocalNodeCompiler": false
 	},

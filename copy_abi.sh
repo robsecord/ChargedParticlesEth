@@ -6,16 +6,16 @@
 requireFields='{fileName: .fileName, contractName: .contractName, abi: .abi, compiler: .compiler, networks: .networks}'
 
 rm -f ./ChargedParticles.json
-rm -f ./ChargedParticlesEscrow.json
-rm -f ./ChargedParticlesERC1155.json
+rm -f ./ChargedParticlesEscrowManager.json
+rm -f ./ChargedParticlesTokenManager.json
 
 echo "Generating JSON file for ChargedParticles"
 cat ./build/contracts/ChargedParticles.json | jq -r "$requireFields" > ./ChargedParticles.json
 
-echo "Generating JSON file for ChargedParticlesEscrow"
-cat ./build/contracts/ChargedParticlesEscrow.json | jq -r "$requireFields" > ./ChargedParticlesEscrow.json
+echo "Generating JSON file for ChargedParticlesEscrowManager"
+cat ./build/contracts/ChargedParticlesEscrowManager.json | jq -r "$requireFields" > ./ChargedParticlesEscrowManager.json
 
-echo "Generating JSON file for ChargedParticlesERC1155"
-cat ./build/contracts/ChargedParticlesERC1155.json | jq -r "$requireFields" > ./ChargedParticlesERC1155.json
+echo "Generating JSON file for ChargedParticlesTokenManager"
+cat ./build/contracts/ChargedParticlesTokenManager.json | jq -r "$requireFields" > ./ChargedParticlesTokenManager.json
 
 
