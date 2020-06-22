@@ -12,7 +12,7 @@
 
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with an Underlying Asset (ex: **DAI**) and accrue interest via an Interest-bearing token (ex: **CHAI**) giving the Token a "Charge". 
 
-Coming Soon:
+**Coming Soon**:
 
 - Aave - aTokens
 - mStable - mTokens
