@@ -12,13 +12,20 @@
 
 **Charged Particles** are Non-Fungible Tokens (NFTs) that are minted with an Underlying Asset (ex: **DAI**) and accrue interest via an Interest-bearing token (ex: **CHAI**) giving the Token a "Charge". 
 
+Coming Soon:
+
+- Aave - aTokens
+- mStable - mTokens
+- Idle Finance - yTokens
+
+
 ---
 
 #### Production Site (Beta, Ropsten Only)
 https://charged-particles.eth.link/
 
 #### Staging Site
-https://spring-block-3280.tmnl.co/
+https://charged-particles.tmnl.co/
 
 ---
 
@@ -54,17 +61,6 @@ has. Or perhaps certain items can only be used once they reach a certain level o
 Other possibilities include battling over the "charge" of a particle - the winner earns the interest from their 
 competitor's particles.  (Still trying to work this part out, ideas are welcome!)
 
-#### Token Flavours
-Charged Particles currently come in 2 flavours: 
-(see the variations folder)
- - **ERC-721** - based on **openzeppelin-solidity v2.4.0** 
- - **ERC-1155** - based on **multi-token-standard v0.8.9**
-
-Potential 3rd-flavour being researched: **ERC-998** for composable particles that can wrap existing NFTs, enabling 
-them to generate a charge too! Thanks to James McCall @mccallios for contributing to the idea!
-
-Also being researched; Zapped NFTs (combining NFTs with DeFiZaps)
-
 #### Particle Accelerator
  - Fully-decentralized Public Particle Minting Station
  - Work-in-progress 
@@ -84,17 +80,13 @@ Join our community, share ideas and help support the project in anyway you want!
 
 ### Frameworks/Software used:
  - Main Repo:
-    - OpenZeppelin CLI **v2.6.0**
-    - OpenZeppelin Ethereum Contracts **v2.4.0**
-    - OpenZeppelin Upgrades **v2.6.0**
- - Variations folder:
-    - Truffle **v5.1.11** (core: 5.1.11)
-    - Ganache **2.1.0**
-    - OpenZeppelin Solidity Contracts **v2.4.0**
- - Both:
-    - Solidity  **v0.5.13** (solc-js)
+    - OpenZeppelin CLI **v2.8.0**
+    - OpenZeppelin Upgrades **v2.8.0**
+    - OpenZeppelin Ethereum Contracts **v3.0.0**
+    - Solidity  **v0.6.10** (solc-js)
     - NodeJS **v12.14.1**
-    - Web3.js **v1.2.1**
+    - Buidler **v1.3.5**
+    - EthersJS **v4.0.27**
 
 ### Prepare environment:
     
@@ -122,28 +114,12 @@ Join our community, share ideas and help support the project in anyway you want!
     MAINNET_OWNER_MNEMONIC="__12-word_mnemonic__"
 ```
 
-### To run the Main Repo (Testnet or Mainnet only):
-    
- 1. npm install
- 2. npm run deploy-kovan
+### Deploy:
 
- 
-### To run the Variations Folders Locally:
+ 0. In a separate terminal: yarn start
     
- 1. Fire up a local Test RPC (Ganache)
-    - npx ganache-cli --deterministic
- 2. npm install
- 3. manually deploy contracts: 
-    - deploy: variations/assets/dai/*.sol
-      - Get deploy addresses and copy to "variations/assets/chai/Chai.sol"
-    - deploy: variations/assets/chai/Chai.sol
-    - deploy: variations/erc721/ChargedParticlesCHAI.sol
-      - OR
-    - deploy: variations/erc1155/ChargedParticlesCHAI.sol
- 4. run **setup()** on ChargedParticles contract
-    - _daiAddress param should point to deployed address of "variations/assets/dai/DaiGem.sol"
-    - _chaiAddress param should point to deployed address of "variations/assets/chai/Chai.sol"
-        
+ 1. yarn
+ 2. yarn deploy-local
 
 See package.json for more scripts
 
@@ -151,5 +127,5 @@ See package.json for more scripts
 
 _MIT License_
 
-Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
+Copyright (c) 2020 Rob Secord <robsecord.eth>
 
