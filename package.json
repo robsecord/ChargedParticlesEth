@@ -51,6 +51,7 @@
     "ganache-cli": "^6.9.0",
     "husky": "^4.2.5",
     "lodash": "^4.17.15",
+    "mocha-junit-reporter": "^2.0.0",
     "openzeppelin-solidity": "^2.4.0",
     "oz-console": "^2.0.1",
     "solc": "0.6.4",
