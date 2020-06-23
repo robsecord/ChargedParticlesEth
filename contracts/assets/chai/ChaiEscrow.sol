@@ -21,41 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  300:        ChargedParticlesEscrowManager
-//      301         Asset-Pair is not enabled
-//      302         Asset-Pair is not allowed
-//      303         Asset-Pair has not been registered
-//      304         Contract is not registered
-//      305         Invalid Contract Operator
-//      306         Must be creator of type
-//      307         Invalid address
-//      308         Invalid Asset Token address
-//      309         Invalid Interest Token address
-//      310         Invalid owner/operator
-//      311         Index out-of-bounds
-//      312         Invalid Token-Type Interface
-//      313         Requires setting a Single Custom Asset-Pair
-//      314         Setting releaseRequiresBurn cannot be true for Multi-Asset Particles
-//      315         Deposit Fee is too high
-//      316         Minimum deposit is not high enough
-//      317         Caller is not Contract Owner
-//      318         Token must be Non-fungible
-//      319         Token Balance is lower than required limit
-//      320         Token Balance is lower than allowed limit
-//      321         Token Balance is higher than allowed limit
-//      322         Token not prepared for release or unapproved operator
-//      323         Token requires burning before release
-//      324         Insufficient Asset Token funds
-//      325         Failed to transfer Asset Token
-//      326         Particle has Insufficient Charge
-//      327         Transfer Failed
-//      328         Access Control: Sender does not have required Role
-//      329         Token has no Mass
-//      330         Token has no Charge
-
-
 pragma solidity 0.6.10;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -125,7 +90,7 @@ contract ChaiEscrow is Initializable, EscrowBase {
         uint256 _newBalance = _assetAmount.add(_existingBalance);
 
         // Validate Minimum-Required Balance
-        require(_newBalance >= MIN_DEPOSIT_FEE, "E319");
+        require(_newBalance >= MIN_DEPOSIT_FEE, "CHE: INSUFF_DEPOSIT");
 
         // Collect Asset Token (reverts on fail)
         //   Has to be msg.sender, otherwise anyone could energize anyone else's particles,
@@ -216,7 +181,7 @@ contract ChaiEscrow is Initializable, EscrowBase {
         onlyEscrow
         returns (uint256)
     {
-        require(_baseParticleMass(_tokenUuid) > 0, "E329");
+        require(_baseParticleMass(_tokenUuid) > 0, "CHE: INSUFF_MASS");
 
         // Release Particle to Receiver
         return _payoutFull(_tokenUuid, _receiver);
@@ -273,8 +238,8 @@ contract ChaiEscrow is Initializable, EscrowBase {
      */
     function _collectAssetToken(address _from, uint256 _assetAmount) internal {
         uint256 _userAssetBalance = assetToken.balanceOf(_from);
-        require(_assetAmount <= _userAssetBalance, "E324");
-        require(assetToken.transferFrom(_from, address(this), _assetAmount), "E325"); // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetAmount <= _userAssetBalance, "CHE: INSUFF_ASSETS");
+        require(assetToken.transferFrom(_from, address(this), _assetAmount), "CHE: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
     }
 
     /**
@@ -307,8 +272,8 @@ contract ChaiEscrow is Initializable, EscrowBase {
     {
         // Validate Discharge Amount
         uint256 _currentCharge = _currentParticleCharge(_tokenUuid);
-        require(_currentCharge > 0, "E330");
-        require(_currentCharge <= _assetAmount, "E326");
+        require(_currentCharge > 0, "CHE: INSUFF_CHARGE");
+        require(_currentCharge <= _assetAmount, "CHE: INSUFF_BALANCE");
 
         // Precalculate Amount to Discharge to Receiver
         (uint256 _interestAmount, uint256 _receivedAmount) = _siphonAsset(_assetAmount);
@@ -364,7 +329,7 @@ contract ChaiEscrow is Initializable, EscrowBase {
      */
     function _payoutAssets(address _receiver, uint256 _assetAmount) internal {
         address _self = address(this);
-        require(assetToken.transferFrom(_self, _receiver, _assetAmount), "E327");
+        require(assetToken.transferFrom(_self, _receiver, _assetAmount), "CHE: TRANSFER_FAILED");
     }
 
     /**

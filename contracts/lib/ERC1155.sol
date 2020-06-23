@@ -21,22 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  100:        ERC1155
-//      101         Invalid Recipient
-//      102         Invalid on-received message
-//      103         Invalid arrays length
-//      104         Invalid type
-//      105         Invalid owner/operator
-//      106         Insufficient balance
-//      107         Invalid URI for Type
-//      108         Owner index out of bounds
-//      109         Global index out of bounds
-//      110         Approval to current owner
-//      111         Approve caller is not owner nor approved for all
-//      112         Approved query for nonexistent token
-
 pragma solidity 0.6.10;
 pragma experimental ABIEncoderV2;
 
@@ -218,7 +202,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return  The ID of the Token by Owner, Type & Index
      */
     function tokenOfOwnerByIndex(uint256 _typeId, address _owner, uint256 _index) public view returns (uint256) {
-        require(_index < _balanceOf(_owner, _typeId), "E108");
+        require(_index < _balanceOf(_owner, _typeId), "E1155: INVALID_INDEX");
         return ownedTokensByType[_typeId][_owner][_index];
     }
 
@@ -229,7 +213,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return  The ID of the Token by Type & Index
      */
     function tokenByIndex(uint256 _typeId, uint256 _index) public view returns (uint256) {
-        require(_index < _totalSupply(_typeId), "E109");
+        require(_index < _totalSupply(_typeId), "E1155: INVALID_INDEX");
         return allTokensByType[_typeId][_index];
     }
 
@@ -240,8 +224,8 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      */
     function approve(address _operator, uint256 _tokenId) public {
         address _owner = _ownerOf(_tokenId);
-        require(_operator != _owner, "E110");
-        require(msg.sender == _owner || isApprovedForAll(_owner, msg.sender), "E111");
+        require(_operator != _owner, "E1155: INVALID_OPERATOR");
+        require(msg.sender == _owner || isApprovedForAll(_owner, msg.sender), "E1155: NOT_OPERATOR");
 
         tokenApprovals[_tokenId] = _operator;
         emit Approval(_owner, _operator, _tokenId);
@@ -254,7 +238,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      */
     function getApproved(uint256 _tokenId) public view returns (address) {
         address owner = _ownerOf(_tokenId);
-        require(owner != address(0x0), "E112");
+        require(owner != address(0x0), "E1155: INVALID_TOKEN");
         return tokenApprovals[_tokenId];
     }
 
@@ -286,8 +270,8 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _amount   The Amount to transfer
      */
     function transferFrom(address _from, address _to, uint256 _id, uint256 _amount) public {
-        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E105");
-        require(_to != address(0x0),"E101");
+        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E1155: NOT_OPERATOR");
+        require(_to != address(0x0), "E1155: INVALID_ADDRESS");
 
         _safeTransferFrom(_from, _to, _id, _amount);
     }
@@ -301,8 +285,8 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _data     Additional data with no specified format, sent in call to `_to`
      */
     function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _amount, bytes memory _data) public {
-        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E105");
-        require(_to != address(0x0),"E101");
+        require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E1155: NOT_OPERATOR");
+        require(_to != address(0x0), "E1155: INVALID_ADDRESS");
 
         _safeTransferFrom(_from, _to, _id, _amount);
         _callonERC1155Received(_from, _to, _id, _amount, _data);
@@ -317,8 +301,8 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _data     Additional data with no specified format, sent in call to `_to`
      */
     // function safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts, bytes memory _data) public {
-    //     require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E105");
-    //     require(_to != address(0x0),"E101");
+    //     require((msg.sender == _from) || isApprovedForAll(_from, msg.sender), "E1155: NOT_OPERATOR");
+    //     require(_to != address(0x0),"E1155: INVALID_ADDRESS");
 
     //     _safeBatchTransferFrom(_from, _to, _ids, _amounts);
     //     _callonERC1155BatchReceived(_from, _to, _ids, _amounts, _data);
@@ -355,7 +339,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return  The Address of the Owner of the Token
      */
     function _ownerOf(uint256 _tokenId) internal view returns (address) {
-        require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E104");
+        require(_tokenId & TYPE_NF_BIT == TYPE_NF_BIT, "E1155: INVALID_TYPE");
         return nfOwners[_tokenId];
     }
 
@@ -382,7 +366,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return The Owner's Balance of the Token-Types
      */
     function _balanceOfBatch(address[] memory _owners, uint256[] memory _typeIds) internal view returns (uint256[] memory) {
-        require(_owners.length == _typeIds.length, "E103");
+        require(_owners.length == _typeIds.length, "E1155: ARRAY_LEN_MISMATCH");
 
         uint256[] memory _balances = new uint256[](_owners.length);
         for (uint256 i = 0; i < _owners.length; ++i) {
@@ -415,7 +399,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
         if (_id & TYPE_NF_BIT == TYPE_NF_BIT) {
             uint256 _typeId = _id & TYPE_MASK;
 
-            require(nfOwners[_id] == _from);
+            require(nfOwners[_id] == _from, "E1155: INVALID_OWNER");
             nfOwners[_id] = _to;
             _amount = 1;
 
@@ -441,7 +425,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _amounts  The Amount to transfer per Token
      */
     function _safeBatchTransferFrom(address _from, address _to, uint256[] memory _ids, uint256[] memory _amounts) internal {
-        require(_ids.length == _amounts.length, "E103");
+        require(_ids.length == _amounts.length, "E1155: ARRAY_LEN_MISMATCH");
 
         uint256 id;
         uint256 amount;
@@ -453,7 +437,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
             if (id & TYPE_NF_BIT == TYPE_NF_BIT) { // Non-Fungible
                 typeId = id & TYPE_MASK;
-                require(nfOwners[id] == _from);
+                require(nfOwners[id] == _from, "E1155: INVALID_OWNER");
                 nfOwners[id] = _to;
 
                 _removeTokenFromOwnerEnumeration(typeId, _from, id);
@@ -474,7 +458,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _isNF  True for NFT Types; False otherwise
      */
     function _createType(string memory _uri, bool _isNF) internal returns (uint256 _type) {
-        require(bytes(_uri).length > 0, "E107");
+        require(bytes(_uri).length > 0, "E1155: INVALID_URI");
 
         _type = (++nonce << 128);
         if (_isNF) {
@@ -537,7 +521,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return The Token IDs of the newly minted Tokens
      */
     // function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, string[] memory _URIs, bytes memory _data) internal returns (uint256[] memory) {
-    //     require(_types.length == _amounts.length, "E103");
+    //     require(_types.length == _amounts.length, "E1155: ARRAY_LEN_MISMATCH");
     //     uint256 _type;
     //     uint256 _index;
     //     uint256 _tokenId;
@@ -590,7 +574,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
         // Non-fungible
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
             address _tokenOwner = _ownerOf(_tokenId);
-            require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E105");
+            require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E1155: NOT_OPERATOR");
             nfOwners[_tokenId] = address(0x0);
             tokenUri[_tokenId] = "";
             _typeId = _tokenId & TYPE_MASK;
@@ -602,7 +586,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
         // Fungible
         else {
-            require(_balanceOf(_from, _tokenId) >= _amount, "E106");
+            require(_balanceOf(_from, _tokenId) >= _amount, "E1155: INSUFF_BALANCE");
             supplyByType[_typeId] = supplyByType[_typeId].sub(_amount);
             balances[_from][_typeId] = balances[_from][_typeId].sub(_amount);
         }
@@ -617,7 +601,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _amounts   The Amounts to Burn of each Token
      */
     // function _burnBatch(address _from, uint256[] memory _tokenIds, uint256[] memory _amounts) internal {
-    //     require(_tokenIds.length == _amounts.length, "E103");
+    //     require(_tokenIds.length == _amounts.length, "E1155: ARRAY_LEN_MISMATCH");
 
     //     uint256 _tokenId;
     //     uint256 _typeId;
@@ -630,7 +614,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
     //         // Non-fungible
     //         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
     //             _tokenOwner = _ownerOf(_tokenId);
-    //             require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E105");
+    //             require(_tokenOwner == _from || isApprovedForAll(_tokenOwner, _from), "E1155: NOT_OPERATOR");
     //             nfOwners[_tokenId] = address(0x0);
     //             tokenUri[_tokenId] = "";
     //             _typeId = _tokenId & TYPE_MASK;
@@ -642,7 +626,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     //         // Fungible
     //         else {
-    //             require(_balanceOf(_from, _tokenId) >= _amounts[i], "E106");
+    //             require(_balanceOf(_from, _tokenId) >= _amounts[i], "E1155: INSUFF_BALANCE");
     //             supplyByType[_typeId] = supplyByType[_typeId].sub(_amounts[i]);
     //             balances[_from][_tokenId] = balances[_from][_tokenId].sub(_amounts[i]);
     //         }
@@ -716,7 +700,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
         // Check if recipient is a contract
         if (_to.isContract()) {
             bytes4 retval = IERC1155TokenReceiver(_to).onERC1155Received(msg.sender, _from, _id, _amount, _data);
-            require(retval == ERC1155_RECEIVED_VALUE, "E102");
+            require(retval == ERC1155_RECEIVED_VALUE, "E1155: INVALID_RECEIVER");
         }
     }
 
@@ -727,7 +711,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
     //     // Pass data if recipient is a contract
     //     if (_to.isContract()) {
     //         bytes4 retval = IERC1155TokenReceiver(_to).onERC1155BatchReceived(msg.sender, _from, _ids, _amounts, _data);
-    //         require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E102");
+    //         require(retval == ERC1155_BATCH_RECEIVED_VALUE, "E1155: INVALID_RECEIVER");
     //     }
     // }
 }

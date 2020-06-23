@@ -23,21 +23,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  200:        BridgedERC1155
-//      201         Invalid Bridge
-//      202         Non-existent Bridge
-//      203         Token is not of Type
-//      204         Approval to current owner
-//      205         Approve caller is not owner nor approved for all
-//      206         Bridge already setup
-//      207         Invalid owner/operator
-//      208         ERC-20: Transfer failed
-//      209         ERC-721: Transfer failed
-//      210         ERC721: Transfer to non ERC721Receiver implementer
-//      211         ERC165: Invalid interface id
-
 pragma solidity 0.6.10;
 pragma experimental ABIEncoderV2;
 
@@ -71,7 +56,7 @@ abstract contract BridgedERC1155 is Initializable, ERC1155 {
      * @dev Throws if called by any account other than a Bridge contract.
      */
     modifier onlyBridge(uint256 _typeId) {
-        require(bridge[_typeId] == msg.sender, "E201");
+        require(bridge[_typeId] == msg.sender, "B1155: ONLY_BRIDGE");
         _;
     }
 
@@ -109,11 +94,11 @@ abstract contract BridgedERC1155 is Initializable, ERC1155 {
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
             _tokenTypeId = _tokenId & TYPE_MASK;
         }
-        require(_tokenTypeId == _typeId, "E203");
+        require(_tokenTypeId == _typeId, "B1155: INVALID_TYPE");
 
         address _owner = _ownerOf(_tokenId);
-        require(_operator != _owner, "E204");
-        require(_from == _owner || isApprovedForAll(_owner, _from), "E205");
+        require(_operator != _owner, "B1155: INVALID_OPERATOR");
+        require(_from == _owner || isApprovedForAll(_owner, _from), "B1155: NOT_OPERATOR");
 
         tokenApprovals[_tokenId] = _operator;
         emit Approval(_owner, _operator, _tokenId);
@@ -149,13 +134,13 @@ abstract contract BridgedERC1155 is Initializable, ERC1155 {
         onlyBridge(_typeId)
         returns (bool)
     {
-        require(_to != address(0x0), "E201");
+        require(_to != address(0x0), "B1155: INVALID_ADDRESS");
 
         uint256 _tokenTypeId = _tokenId;
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
             _tokenTypeId = _tokenId & TYPE_MASK;
         }
-        require(_tokenTypeId == _typeId, "E203");
+        require(_tokenTypeId == _typeId, "B1155: INVALID_TYPE");
 
         _safeTransferFrom(_from, _to, _tokenId, _value);
         return true;
@@ -178,7 +163,7 @@ abstract contract BridgedERC1155 is Initializable, ERC1155 {
         internal
         returns (address)
     {
-        require(bridge[_typeId] == address(0), "E202");
+        require(bridge[_typeId] == address(0), "B1155: INVALID_BRIDGE");
 
         address newBridge = _createClone(templateErc20);
         ERC20Bridge(newBridge).setup(_typeId, _name, _symbol, _decimals);
@@ -199,7 +184,7 @@ abstract contract BridgedERC1155 is Initializable, ERC1155 {
         internal
         returns (address)
     {
-        require(bridge[_typeId] == address(0), "E202");
+        require(bridge[_typeId] == address(0), "B1155: INVALID_BRIDGE");
 
         address newBridge = _createClone(templateErc721);
         ERC721Bridge(newBridge).setup(_typeId, _name, _symbol);
@@ -245,7 +230,7 @@ contract ERC20Bridge {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 
     function setup(uint256 _typeId, string memory _name, string memory _symbol, uint8 _decimals) public {
-        require(typeId == 0 && address(entity) == address(0), "E206");
+        require(typeId == 0 && address(entity) == address(0), "B1155: ERC20_ALREADY_INIT");
         entity = BridgedERC1155(msg.sender);
         typeId = _typeId;
         name = _name;
@@ -262,7 +247,7 @@ contract ERC20Bridge {
     }
 
     function transfer(address _recipient, uint256 _amount) external returns (bool) {
-        require(entity.transferFromBridged(typeId, msg.sender, _recipient, typeId, _amount), "E208");
+        require(entity.transferFromBridged(typeId, msg.sender, _recipient, typeId, _amount), "B1155: ERC20_TRANSFER_FAILED");
         emit Transfer(msg.sender, _recipient, _amount);
         return true;
     }
@@ -279,7 +264,7 @@ contract ERC20Bridge {
 
     function transferFrom(address _sender, address _recipient, uint256 _amount) external returns (bool) {
         allowed[_sender][msg.sender] = allowed[_sender][msg.sender].sub(_amount);
-        require(entity.transferFromBridged(typeId, _sender, _recipient, typeId, _amount), "E208");
+        require(entity.transferFromBridged(typeId, _sender, _recipient, typeId, _amount), "B1155: ERC20_TRANSFER_FAILED");
         emit Transfer(_sender, _recipient, _amount);
         return true;
     }
@@ -728,7 +713,7 @@ contract ERC721Bridge {
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
 
     function setup(uint256 _typeId, string memory _name, string memory _symbol) public {
-        require(typeId == 0 && address(entity) == address(0), "E206");
+        require(typeId == 0 && address(entity) == address(0), "B1155: ERC721_ALREADY_INIT");
         entity = BridgedERC1155(msg.sender);
         typeId = _typeId;
         name = _name;
@@ -736,7 +721,7 @@ contract ERC721Bridge {
     }
 
     function supportsInterface(bytes4 interfaceId) public pure returns (bool) {
-        require(interfaceId != 0xffffffff, "E211");
+        require(interfaceId != 0xffffffff, "B1155: ERC721_INVALID_INTERFACE");
         return interfaceId == INTERFACE_ID_ERC721;
     }
 
@@ -790,15 +775,15 @@ contract ERC721Bridge {
     }
 
     function _transferFrom(address _operator, address _from, address _to, uint256 _tokenId) internal {
-        require((_operator == _from) || entity.isApprovedForAll(_from, _operator), "E207");
-        require(entity.transferFromBridged(typeId, _from, _to, _tokenId, 1), "E209");
+        require((_operator == _from) || entity.isApprovedForAll(_from, _operator), "B1155: ERC721_NOT_OPERATOR");
+        require(entity.transferFromBridged(typeId, _from, _to, _tokenId, 1), "B1155: ERC721_TRANSFER_FAILED");
         emit Transfer(_from, _to, _tokenId);
     }
 
     function _safeTransferFrom(address _operator, address _from, address _to, uint256 _tokenId, bytes memory _data) internal {
-        require((_operator == _from) || entity.isApprovedForAll(_from, _operator), "E207");
-        require(entity.transferFromBridged(typeId, _from, _to, _tokenId, 1), "E209");
-        require(_checkOnERC721Received(_operator, _from, _to, _tokenId, _data), "E210");
+        require((_operator == _from) || entity.isApprovedForAll(_from, _operator), "B1155: ERC721_NOT_OPERATOR");
+        require(entity.transferFromBridged(typeId, _from, _to, _tokenId, 1), "B1155: ERC721_TRANSFER_FAILED");
+        require(_checkOnERC721Received(_operator, _from, _to, _tokenId, _data), "B1155: ERC721_INVALID_RECEIVER");
         emit Transfer(_from, _to, _tokenId);
     }
 

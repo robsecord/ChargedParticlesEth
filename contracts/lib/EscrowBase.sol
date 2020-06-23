@@ -63,19 +63,19 @@ abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
 
     // Throws if called by any account other than the Charged Particles Escrow Controller.
     modifier onlyEscrow() {
-        require(msg.sender == address(escrowMgr), "EscrowBase: INVALID_ESCROW_CONTROLLER");
+        require(msg.sender == address(escrowMgr), "CPEB: INVALID_ESCROW");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles Escrow Controller.
     modifier whenNotPaused() {
-        require(paused != true, "EscrowBase: CONTRACT_PAUSED");
+        require(paused != true, "CPEB: PAUSED");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles DAO contract.
     modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "EscrowBase: INVALID_DAO");
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "CPEB: INVALID_DAO");
         _;
     }
 
@@ -129,8 +129,8 @@ abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
      * @dev Register Contracts for Asset/Interest Pairs
      */
     function registerAssetPair(address _assetTokenAddress, address _interestTokenAddress) external onlyDao {
-        require(_assetTokenAddress != address(0x0), "E308");
-        require(_interestTokenAddress != address(0x0), "E309");
+        require(_assetTokenAddress != address(0x0), "CPEB: INVALID_ASSET_TOKEN");
+        require(_interestTokenAddress != address(0x0), "CPEB: INVALID_INTEREST_TOKEN");
 
         // Register Addresses
         assetToken = IERC20(_assetTokenAddress);
@@ -142,7 +142,7 @@ abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
     }
 
     function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "EscrowBase: INVALID_DAO");
+        require(_dao != msg.sender, "CPEB: INVALID_NEW_DAO");
 
         grantRole(ROLE_DAO_GOV, _dao);
 

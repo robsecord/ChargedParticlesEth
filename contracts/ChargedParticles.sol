@@ -21,29 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  400:        ChargedParticles
-//      401         Invalid Method
-//      402         Unregistered Type
-//      403         Particle has no Charge
-//      404         Insufficient ETH Balance
-//      405         Insufficient DAI Balance
-//      406         Invalid value for "requiredDai" parameter
-//      407         No access to Mint (Private Type)
-//      408         Transfer Failed
-//      409         Particle has insufficient charge
-//      410         Particle must be non-fungible to hold a charge
-//      411         Unregistered Asset Pairing
-//      412         Invalid Pairing Token Address
-//      413         Creator Mint Fee is too high
-//      414         Asset-Pair ID does not exist
-//      415         Asset-Pair not enabled in Escrow
-//      416         ION Token already created
-//      417         Contract paused
-//      418         Insufficient Asset Token funds
-//      419         Failed to transfer Asset Token
-
 pragma solidity 0.6.10;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -136,18 +113,18 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
 
     // Throws if called by any account other than the Charged Particles DAO contract.
     modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "ChargedParticles: INVALID_DAO");
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "CP: INVALID_DAO");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles Maintainer.
     modifier onlyMaintainer() {
-        require(hasRole(ROLE_MAINTAINER, msg.sender), "ChargedParticles: INVALID_MAINTAINER");
+        require(hasRole(ROLE_MAINTAINER, msg.sender), "CP: INVALID_MAINTAINER");
         _;
     }
 
     modifier whenNotPaused() {
-        require(!isPaused, "E417");
+        require(!isPaused, "CP: PAUSED");
         _;
     }
 
@@ -350,8 +327,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      */
     function currentParticleCharge(uint256 _tokenId) external returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        require(registeredTypes[_typeId] > 0, "E402");
-        require(tokenMgr.isNonFungible(_tokenId), "E402");
+        require(registeredTypes[_typeId] > 0, "CP: INVALID_TYPE");
+        require(tokenMgr.isNonFungible(_tokenId), "CP: FUNGIBLE_TYPE");
 
         bytes16 _assetPairId = typeAssetPairId[_typeId];
         return escrowMgr.currentParticleCharge(address(tokenMgr), _tokenId, _assetPairId);
@@ -387,7 +364,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             _collectIons(msg.sender, _ionPrice);
             _ethPrice = 0;
         } else {
-            require(msg.value >= _ethPrice, "E404");
+            require(msg.value >= _ethPrice, "CP: INSUFF_FUNDS");
         }
 
         // Create Particle Type
@@ -444,7 +421,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             _collectIons(msg.sender, _ionPrice);
             _ethPrice = 0;
         } else {
-            require(msg.value >= _ethPrice, "E404");
+            require(msg.value >= _ethPrice, "CP: INSUFF_FUNDS");
         }
 
         // Create Plasma Type
@@ -503,8 +480,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         payable
         returns (uint256)
     {
-        require(tokenMgr.isNonFungibleBaseType(_typeId), "E104");
-        require(canMint(_typeId, 1), "E407");
+        require(tokenMgr.isNonFungibleBaseType(_typeId), "CP: FUNGIBLE_TYPE");
+        require(canMint(_typeId, 1), "CP: CANT_MINT");
 
         address _creator = typeCreator[_typeId];
         uint256 _ethPerToken;
@@ -512,7 +489,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         // Check Token Price
         if (msg.sender != _creator) {
             _ethPerToken = mintFee[_typeId];
-            require(msg.value >= _ethPerToken, "E404");
+            require(msg.value >= _ethPerToken, "CP: INSUFF_FUNDS");
         }
 
         // Series-Particles use the Metadata of their Type
@@ -559,8 +536,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         whenNotPaused
         payable
     {
-        require(tokenMgr.isFungible(_typeId), "E104");
-        require(canMint(_typeId, _amount), "E407");
+        require(tokenMgr.isFungible(_typeId), "CP: NON_FUNGIBLE_TYPE");
+        require(canMint(_typeId, _amount), "CP: CANT_MINT");
 
         address _creator = (_typeId == ionTokenId) ? CONTRACT_ID : typeCreator[_typeId];
         uint256 _totalEth;
@@ -570,7 +547,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         if (msg.sender != _creator) {
             _ethPerToken = mintFee[_typeId];
             _totalEth = _amount.mul(_ethPerToken);
-            require(msg.value >= _totalEth, "E404");
+            require(msg.value >= _totalEth, "CP: INSUFF_FUNDS");
         }
 
         // Mint Token
@@ -603,9 +580,9 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         bytes16 _assetPairId;
 
         // Verify Token
-        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E104");
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "CP: FUNGIBLE_TYPE");
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        require(registeredTypes[_typeId] > 0, "E402");
+        require(registeredTypes[_typeId] > 0, "CP: INVALID_TYPE");
 
         // Prepare Particle Release
         _tokenOwner = tokenMgr.ownerOf(_tokenId);
@@ -628,8 +605,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      */
     function burnPlasma(uint256 _typeId, uint256 _amount) external {
         // Verify Token
-        require(tokenMgr.isFungible(_typeId), "E104");
-        require(registeredTypes[_typeId] > 0, "E402");
+        require(tokenMgr.isFungible(_typeId), "CP: NON_FUNGIBLE_TYPE");
+        require(registeredTypes[_typeId] > 0, "CP: INVALID_TYPE");
 
         // Burn Token
         tokenMgr.burn(msg.sender, _typeId, _amount);
@@ -654,7 +631,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        require(tokenMgr.isNonFungibleBaseType(_tokenId), "E104");
+        require(tokenMgr.isNonFungibleBaseType(_tokenId), "CP: FUNGIBLE_TYPE");
 
         // Transfer Asset Token from Caller to Contract
         _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
@@ -706,7 +683,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      */
     // function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
     //     address _creator = typeCreator[_typeId];
-    //     require(msg.sender == _creator, "E105");
+    //     require(msg.sender == _creator, "CP: NOT_CREATOR");
 
     //     // Withdraw Particle Deposit Fees from Escrow
     //     escrowMgr.withdrawCreatorFees(_typeId);
@@ -743,7 +720,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      * @dev Register the address of the token manager contract
      */
     function registerTokenManager(address _tokenMgr) external onlyDao {
-        require(_tokenMgr != address(0x0), "E412");
+        require(_tokenMgr != address(0x0), "CP: INVALID_ADDRESS");
         tokenMgr = IChargedParticlesTokenManager(_tokenMgr);
     }
 
@@ -751,7 +728,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      * @dev Register the address of the escrow contract
      */
     function registerEscrowManager(address _escrowMgr) external onlyDao {
-        require(_escrowMgr != address(0x0), "E412");
+        require(_escrowMgr != address(0x0), "CP: INVALID_ADDRESS");
         escrowMgr = IChargedParticlesEscrowManager(_escrowMgr);
     }
 
@@ -759,7 +736,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      * @dev Setup internal ION Token
      */
     function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _amount, uint256 _mintFee) external onlyDao returns (uint256) {
-        require(ionTokenId == 0, "E416");
+        require(ionTokenId == 0, "CP: ALREADY_INIT");
 
         // Create ION Token Type;
         //  ERC20, Private, Limited
@@ -781,7 +758,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      *      Interest-token Fees are collected in Escrow, withdraw from there
      */
     function withdrawFees(address payable _receiver) external onlyDao {
-        require(_receiver != address(0x0), "E412");
+        require(_receiver != address(0x0), "CP: INVALID_ADDRESS");
 
         uint256 _amount = collectedFees[CONTRACT_ID];
         if (_amount > 0) {
@@ -792,7 +769,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     }
 
     function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "ChargedParticles: INVALID_DAO");
+        require(_dao != msg.sender, "CP: INVALID_NEW_DAO");
 
         grantRole(ROLE_DAO_GOV, _dao);
         // DAO must assign a Maintainer
@@ -837,7 +814,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         returns (uint256 _particleTypeId)
     {
         bytes16 _assetPairId = _toBytes16(_assetPair);
-        require(escrowMgr.isAssetPairEnabled(_assetPairId), "E415");
+        require(escrowMgr.isAssetPairEnabled(_assetPairId), "CP: INVALID_ASSET_PAIR");
 
         // Create Type
         _particleTypeId = tokenMgr.createType(_uri, true); // ERC-1155 Non-Fungible
@@ -942,8 +919,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         IERC20 _assetToken = IERC20(_assetTokenAddress);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
-        require(_assetAmount <= _userAssetBalance, "E418");
-        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "E419"); // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetAmount <= _userAssetBalance, "CP: INSUFF_ASSETS");
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
     }
 
     /**

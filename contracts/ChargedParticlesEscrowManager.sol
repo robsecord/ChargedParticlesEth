@@ -21,41 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  300:        ChargedParticlesEscrowManager
-//      301         Asset-Pair is not enabled
-//      302         Asset-Pair is not allowed
-//      303         Asset-Pair has not been registered
-//      304         Contract is not registered
-//      305         Invalid Contract Operator
-//      306         Must be creator of type
-//      307         Invalid address
-//      308         Invalid Asset Token address
-//      309         Invalid Interest Token address
-//      310         Invalid owner/operator
-//      311         Index out-of-bounds
-//      312         Invalid Token-Type Interface
-//      313         Requires setting a Single Custom Asset-Pair
-//      314         Setting releaseRequiresBurn cannot be true for Multi-Asset Particles
-//      315         Deposit Fee is too high
-//      316         Minimum deposit is not high enough
-//      317         Caller is not Contract Owner
-//      318         Token must be Non-fungible
-//      319         Token Balance is lower than required limit
-//      320         Token Balance is lower than allowed limit
-//      321         Token Balance is higher than allowed limit
-//      322         Token not prepared for release or unapproved operator
-//      323         Token requires burning before release
-//      324         Insufficient Asset Token funds
-//      325         Failed to transfer Asset Token
-//      326         Particle has Insufficient Charge
-//      327         Transfer Failed
-//      328         Access Control: Sender does not have required Role
-//      329         Token has no Mass
-//      330         Token has no Charge
-
-
 pragma solidity 0.6.10;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
@@ -156,13 +121,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
     // Throws if called by any account other than the Charged Particles DAO contract.
     modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "ChargedParticlesEscrowManager: INVALID_DAO");
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "CPEM: INVALID_DAO");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles Maintainer.
     modifier onlyMaintainer() {
-        require(hasRole(ROLE_MAINTAINER, msg.sender), "ChargedParticlesEscrowManager: INVALID_MAINTAINER");
+        require(hasRole(ROLE_MAINTAINER, msg.sender), "CPEM: INVALID_MAINTAINER");
         _;
     }
 
@@ -203,12 +168,12 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     }
 
     function getAssetPairByIndex(uint _index) external override view returns (bytes16) {
-        require(_index >= 0 && _index < assetPairs.length, "E311");
+        require(_index >= 0 && _index < assetPairs.length, "CPEM: INVALID_INDEX");
         return assetPairs[_index];
     }
 
     function getAssetTokenEscrow(bytes16 _assetPairId) external override view returns (address) {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return address(assetPairEscrow[_assetPairId]);
     }
 
@@ -242,8 +207,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     function setDischargeApproval(address _contractAddress, uint256 _tokenId, address _operator) external override  {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require(_operator != _tokenOwner, "310");
-        require(msg.sender == _tokenOwner || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "310");
+        require(_operator != _tokenOwner, "CPEM: CANNOT_BE_SELF");
+        require(msg.sender == _tokenOwner || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "CPEM: NOT_OPERATOR");
 
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
         tokenDischargeApprovals[_tokenUuid] = _operator;
@@ -352,10 +317,10 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         IERC165 _tokenInterface = IERC165(_contractAddress);
         bool _is721 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC721);
         bool _is1155 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC1155);
-        require(_is721 || _is1155, "E312");
+        require(_is721 || _is1155, "CPEM: INVALID_INTERFACE");
 
         // Check Contract Owner to prevent random people from setting Limits
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         // Contract Registered!
         custom_registeredContract[_contractAddress] = true;
@@ -371,9 +336,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _releaseRequiresBurn   True if the External Contract requires tokens to be Burned before Release
      */
     function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external override {
-        require(custom_registeredContract[_contractAddress], "E304");
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
-        require(custom_assetPairId[_contractAddress].length > 0, "E313");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
+        require(custom_assetPairId[_contractAddress].length > 0, "CPEM: REQUIRES_SINGLE_ASSET_PAIR");
 
         custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
@@ -386,13 +351,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair required for Energizing a Token; otherwise Any Asset-Pair is allowed
      */
     function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) external override {
-        require(custom_registeredContract[_contractAddress], "E304");
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         if (_assetPairId.length > 0) {
-            require(_isAssetPairEnabled(_assetPairId), "E301");
+            require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         } else {
-            require(custom_releaseRequiresBurn[_contractAddress] != true, "E314");
+            require(custom_releaseRequiresBurn[_contractAddress] != true, "CPEM: CANNOT_REQUIRE_RELEASE_BURN");
         }
 
         custom_assetPairId[_contractAddress] = _assetPairId;
@@ -408,9 +373,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      *    This allows a fee as low as 0.01%  (value of "1")
      */
     function registerContractSetting_DepositFee(address _contractAddress, uint256 _depositFee) external override {
-        require(custom_registeredContract[_contractAddress], "E304");
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
-        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "E315");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
+        require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "CPEM: AMOUNT_INVALID");
 
         custom_assetDepositFee[_contractAddress] = _depositFee;
     }
@@ -423,9 +388,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _minDeposit       The Minimum Deposit required for a Token
      */
     function registerContractSetting_MinDeposit(address _contractAddress, uint256 _minDeposit) external override {
-        require(custom_registeredContract[_contractAddress], "E304");
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
-        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "E316");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
+        require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "CPEM: AMOUNT_INVALID");
 
         custom_assetDepositMin[_contractAddress] = _minDeposit;
     }
@@ -438,8 +403,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _maxDeposit       The Maximum Deposit allowed for a Token
      */
     function registerContractSetting_MaxDeposit(address _contractAddress, uint256 _maxDeposit) external override {
-        require(custom_registeredContract[_contractAddress], "E304");
-        require(_isContractOwner(msg.sender, _contractAddress), "E305");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         custom_assetDepositMax[_contractAddress] = _maxDeposit;
     }
@@ -456,13 +421,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to Withdraw Fees for
      */
     function withdrawContractFees(address _contractAddress, address _receiver, bytes16 _assetPairId) external override nonReentrant {
-        require(custom_registeredContract[_contractAddress], "E304");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
 
         // Validate Contract Owner
         address _contractOwner = IOwnable(_contractAddress).owner();
-        require(_contractOwner == msg.sender, "E317");
+        require(_contractOwner == msg.sender, "CPEM: NOT_OWNER");
 
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         uint256 _interestAmount = assetPairEscrow[_assetPairId].withdrawFees(_contractAddress, _receiver);
         emit FeesWithdrawn(_contractAddress, _receiver, _assetPairId, _interestAmount);
     }
@@ -497,9 +462,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         nonReentrant
         returns (uint256)
     {
-//        require(_isNonFungibleToken(_contractAddress, _tokenId), "E318");
-        require(_isAssetPairEnabled(_assetPairId), "E301");
-        require(custom_registeredContract[_contractAddress], "E304");
+//        require(_isNonFungibleToken(_contractAddress, _tokenId), "CPEM: INVALID_TYPE");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
+        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
 
         // Get Escrow for Asset
         IEscrow _assetPairEscrow = assetPairEscrow[_assetPairId];
@@ -516,15 +481,15 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         // Validate Custom Contract Settings
         // Valid Asset-Pair?
         if (custom_assetPairId[_contractAddress].length > 0) {
-            require(_assetPairId == custom_assetPairId[_contractAddress], "E302");
+            require(_assetPairId == custom_assetPairId[_contractAddress], "CPEM: INVALID_ASSET_PAIR");
         }
 
         // Valid Amount?
         if (custom_assetDepositMin[_contractAddress] > 0) {
-            require(_newBalance >= custom_assetDepositMin[_contractAddress], "E320");
+            require(_newBalance >= custom_assetDepositMin[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
         if (custom_assetDepositMax[_contractAddress] > 0) {
-            require(_newBalance <= custom_assetDepositMax[_contractAddress], "E321");
+            require(_newBalance <= custom_assetDepositMax[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
 
         // Transfer Asset Token from Caller to Contract
@@ -623,13 +588,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         nonReentrant
         returns (uint256)
     {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
-        require(_baseParticleMass(_contractAddress, _tokenId, _assetPairId) > 0, "E329");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
+        require(_baseParticleMass(_contractAddress, _tokenId, _assetPairId) > 0, "CPEM: INSUFF_MASS");
         INonFungible _tokenInterface = INonFungible(_contractAddress);
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "E310");
+        require((_tokenOwner == msg.sender) || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "CPEM: NOT_OPERATOR");
 
         // Validate Token Burn before Release
         bool requiresBurn;
@@ -673,11 +638,11 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address releaser = assetToBeReleasedBy[_tokenUuid];
 
         // Validate Release Operator
-        require(releaser == msg.sender, "E322");
+        require(releaser == msg.sender, "CPEM: NOT_RELEASE_OPERATOR");
 
         // Validate Token Burn
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
-        require(_tokenOwner == address(0x0), "E323");
+        require(_tokenOwner == address(0x0), "CPEM: INVALID_BURN");
 
         // Release Particle to Receiver
         assetToBeReleasedBy[_tokenUuid] = address(0x0);
@@ -703,7 +668,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         // Validate Escrow
         bytes16 _assetPairId = _toBytes16(_assetPair);
         IEscrow _newEscrow = IEscrow(_escrow);
-        require(_newEscrow.isPaused() != true, "ChargedParticlesEscrowManager: INVALID_ESCROW");
+        require(_newEscrow.isPaused() != true, "CPEM: INVALID_ESCROW");
 
         // Register Pair
         assetPairs.push(_assetPairId);
@@ -714,7 +679,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @dev Disable a specific Asset-Pair
      */
     function disableAssetPair(bytes16 _assetPairId) external onlyDao {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         assetPairEscrow[_assetPairId] = IEscrow(address(0x0));
     }
@@ -725,13 +690,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     function withdrawFees(address _receiver, string calldata _assetPair) external onlyDao {
         address _self = address(this);
         bytes16 _assetPairId = _toBytes16(_assetPair);
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         uint256 _interestAmount = assetPairEscrow[_assetPairId].withdrawFees(_self, _receiver);
         emit FeesWithdrawn(_self, _receiver, _assetPairId, _interestAmount);
     }
 
     function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "ChargedParticlesEscrowManager: INVALID_DAO");
+        require(_dao != msg.sender, "CPEM: INVALID_NEW_DAO");
 
         grantRole(ROLE_DAO_GOV, _dao);
         // DAO must assign a Maintainer
@@ -755,12 +720,12 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         return (address(assetPairEscrow[_assetPairId]) != address(0x0));
     }
     function _getAssetTokenAddress(bytes16 _assetPairId) internal view returns (address) {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return assetPairEscrow[_assetPairId].getAssetTokenAddress();
     }
 
     function _getInterestTokenAddress(bytes16 _assetPairId) internal view returns (address) {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return assetPairEscrow[_assetPairId].getInterestTokenAddress();
     }
 
@@ -823,8 +788,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         IERC20 _assetToken = IERC20(_assetTokenAddress);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
-        require(_assetAmount <= _userAssetBalance, "E418");
-        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "E419"); // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetAmount <= _userAssetBalance, "CPEM: INSUFF_ASSETS");
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CPEM: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
     }
 
     /**
@@ -836,7 +801,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @return  The Amount of underlying Assets held within the Token
      */
     function _baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) internal view returns (uint256) {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
         return assetPairEscrow[_assetPairId].baseParticleMass(_tokenUuid);
@@ -851,7 +816,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @return  The amount of interest the Token has generated (in Asset Token)
      */
     function _currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) internal returns (uint256) {
-        require(_isAssetPairEnabled(_assetPairId), "E301");
+        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
         return assetPairEscrow[_assetPairId].currentParticleCharge(_tokenUuid);

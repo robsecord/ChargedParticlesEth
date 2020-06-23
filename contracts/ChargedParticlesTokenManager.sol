@@ -21,12 +21,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-// Reduce deployment gas costs by limiting the size of text used in error messages
-// ERROR CODES:
-//  300:        ChargedParticlesTokenManager
-//      301         Caller is not a Fused-Particle
-//      302         Caller is not the Fused-Particle Type-Controller
-
 pragma solidity 0.6.10;
 pragma experimental ABIEncoderV2;
 
@@ -56,13 +50,13 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
 
     // Throws if called by any account other than a Fused-Particle contract.
     modifier onlyFusedParticles() {
-        require(fusedParticles[msg.sender], "E301");
+        require(fusedParticles[msg.sender], "CPTM: ONLY_FUSED");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles DAO contract.
     modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "ChargedParticles: INVALID_DAO");
+        require(hasRole(ROLE_DAO_GOV, msg.sender), "CPTM: INVALID_DAO");
         _;
     }
 
@@ -149,7 +143,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         onlyFusedParticles
         returns (uint256)
     {
-        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+        require(fusedParticleTypes[_typeId] == msg.sender, "CPTM: ONLY_FUSED");
         return _mint(_to, _typeId, _amount, _uri, _data);
     }
 
@@ -169,7 +163,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
     //     returns (uint256[] memory)
     // {
     //     for (uint256 i = 0; i < _types.length; i++) {
-    //         require(fusedParticleTypes[_types[i]] == msg.sender, "E302");
+    //         require(fusedParticleTypes[_types[i]] == msg.sender, "CPTM: ONLY_FUSED");
     //     }
     //     return _mintBatch(_to, _types, _amounts, _URIs, _data);
     // }
@@ -190,7 +184,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         if (_tokenId & TYPE_NF_BIT == TYPE_NF_BIT) {
             _typeId = _tokenId & TYPE_MASK;
         }
-        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+        require(fusedParticleTypes[_typeId] == msg.sender, "CPTM: ONLY_FUSED");
         _burn(_from, _tokenId, _amount);
     }
 
@@ -211,7 +205,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
     //         if (_typeId & TYPE_NF_BIT == TYPE_NF_BIT) {
     //             _typeId = _typeId & TYPE_MASK;
     //         }
-    //         require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+    //         require(fusedParticleTypes[_typeId] == msg.sender, "CPTM: ONLY_FUSED");
     //     }
     //     _burnBatch(_from, _tokenIds, _amounts);
     // }
@@ -230,7 +224,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         onlyFusedParticles
         returns (address)
     {
-        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+        require(fusedParticleTypes[_typeId] == msg.sender, "CPTM: ONLY_FUSED");
         return _createErc20Bridge(_typeId, _name, _symbol, _decimals);
     }
 
@@ -247,7 +241,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         onlyFusedParticles
         returns (address)
     {
-        require(fusedParticleTypes[_typeId] == msg.sender, "E302");
+        require(fusedParticleTypes[_typeId] == msg.sender, "CPTM: ONLY_FUSED");
         return _createErc721Bridge(_typeId, _name, _symbol);
     }
 
