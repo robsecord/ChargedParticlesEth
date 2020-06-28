@@ -1,4 +1,4 @@
-## Charged Particles - Solidity Contracts v0.4.1
+## Charged Particles - Solidity Contracts v0.4.2
 
 [![Discord](https://badgen.net/badge/definft/Charged%20Particles?icon=discord&label=discord)](https://discord.gg/Syh3gjz)
 [![Twitter Follow](https://badgen.net/twitter/follow/DeFiNFT?icon=twitter)](https://twitter.com/intent/follow?screen_name=DeFiNFT)
@@ -119,7 +119,8 @@ Join our community, share ideas and help support the project in anyway you want!
  0. In a separate terminal: yarn start
     
  1. yarn
- 2. yarn deploy-local
+ 2. yarn verify
+ 2. yarn start
 
 See package.json for more scripts
 

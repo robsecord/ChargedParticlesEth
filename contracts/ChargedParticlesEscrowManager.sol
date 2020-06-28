@@ -182,7 +182,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ROLE_DAO_GOV, msg.sender);
         _setupRole(ROLE_MAINTAINER, msg.sender);
-        version = "v0.4.1";
+        version = "v0.4.2";
     }
 
     /***********************************|

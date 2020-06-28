@@ -38,7 +38,7 @@ describe('ChargedParticles Contract', function () {
     });
 
     it('should maintain correct versioning', async () => {
-        expect(toStr(await chargedParticles.version())).to.equal('v0.4.1');
+        expect(toStr(await chargedParticles.version())).to.equal('v0.4.2');
     });
 
     describe('setupFees()', () => {
@@ -180,7 +180,7 @@ describe('ChargedParticles Contract', function () {
 //     debug({chargedParticles});
 //     const version = await chargedParticles.version({ from: owner });
 //     debug({version});
-//     expect(web3.utils.hexToAscii(version)).toMatch("v0.4.1");
+//     expect(web3.utils.hexToAscii(version)).toMatch("v0.4.2");
 //   });
 
 

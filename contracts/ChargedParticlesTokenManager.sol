@@ -70,7 +70,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ROLE_DAO_GOV, msg.sender);
         BridgedERC1155.initialize();
-        version = "v0.4.1";
+        version = "v0.4.2";
     }
 
 
