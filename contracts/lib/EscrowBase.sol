@@ -23,6 +23,7 @@
 
 pragma solidity 0.6.10;
 
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
@@ -36,7 +37,7 @@ import "./Common.sol";
 /**
  * @notice Escrow-Base Contract
  */
-abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
+abstract contract EscrowBase is Initializable, AccessControlUpgradeSafe, IEscrow, Common {
     using SafeMath for uint256;
 
     IChargedParticlesEscrowManager internal escrowMgr;
@@ -83,7 +84,7 @@ abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
     |          Initialization           |
     |__________________________________*/
 
-    function initialize() public virtual {
+    function initialize() public initializer {
         __AccessControl_init();
         _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _setupRole(ROLE_DAO_GOV, msg.sender);
@@ -141,6 +142,9 @@ abstract contract EscrowBase is AccessControlUpgradeSafe, IEscrow, Common {
         paused = false;
     }
 
+    /**
+     * @dev Enables DAO Management
+     */
     function enableDao(address _dao) external onlyDao {
         require(_dao != msg.sender, "CPEB: INVALID_NEW_DAO");
 

@@ -154,7 +154,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
     //     address _to,
     //     uint256[] calldata _types,
     //     uint256[] calldata _amounts,
-    //     string[] calldata _URIs,
+    //     string[] calldata _uris,
     //     bytes calldata _data
     // )
     //     external
@@ -165,7 +165,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
     //     for (uint256 i = 0; i < _types.length; i++) {
     //         require(fusedParticleTypes[_types[i]] == msg.sender, "CPTM: ONLY_FUSED");
     //     }
-    //     return _mintBatch(_to, _types, _amounts, _URIs, _data);
+    //     return _mintBatch(_to, _types, _amounts, _uris, _data);
     // }
 
     /**

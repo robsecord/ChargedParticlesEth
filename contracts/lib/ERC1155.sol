@@ -476,11 +476,11 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _to      The Address of the Token Receiver
      * @param _type    The Type ID of the Token
      * @param _amount  The amount of the Token to Mint
-     * @param _URI     The Metadata URI of the Token (ERC721 only)
+     * @param _uri     The Metadata URI of the Token (ERC721 only)
      * @param _data    Additional data with no specified format, sent in call to `_to`
      * @return The Token ID of the newly minted Token
      */
-    function _mint(address _to, uint256 _type, uint256 _amount, string memory _URI, bytes memory _data) internal returns (uint256) {
+    function _mint(address _to, uint256 _type, uint256 _amount, string memory _uri, bytes memory _data) internal returns (uint256) {
         uint256 _tokenId;
 
         // Non-fungible
@@ -490,7 +490,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
             _tokenId  = _type | index;
             nfOwners[_tokenId] = _to;
-            tokenUri[_tokenId] = _URI;
+            tokenUri[_tokenId] = _uri;
             _amount = 1;
 
             _addTokenToOwnerEnumeration(_type, _to, _tokenId);
@@ -516,11 +516,20 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _to       The Address of the Token Receiver
      * @param _types    The Type IDs of the Tokens
      * @param _amounts  The amounts of the Tokens to Mint
-     * @param _URIs     The Metadata URI of the Tokens (ERC721 only)
+     * @param _uris     The Metadata URI of the Tokens (ERC721 only)
      * @param _data     Additional data with no specified format, sent in call to `_to`
      * @return The Token IDs of the newly minted Tokens
      */
-    // function _mintBatch(address _to, uint256[] memory _types, uint256[] memory _amounts, string[] memory _URIs, bytes memory _data) internal returns (uint256[] memory) {
+    // function _mintBatch(
+    //     address _to, 
+    //     uint256[] memory _types, 
+    //     uint256[] memory _amounts, 
+    //     string[] memory _uris, 
+    //     bytes memory _data
+    // ) 
+    //     internal 
+    //     returns (uint256[] memory) 
+    // {
     //     require(_types.length == _amounts.length, "E1155: ARRAY_LEN_MISMATCH");
     //     uint256 _type;
     //     uint256 _index;
@@ -540,7 +549,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
     //             _tokenId  = _type | _index;
     //             nfOwners[_tokenId] = _to;
     //             _tokenIds[i] = _tokenId;
-    //             tokenUri[_tokenId] = _URIs[i];
+    //             tokenUri[_tokenId] = _uris[i];
     //             _amounts[i] = 1;
 
     //             _addTokenToOwnerEnumeration(_type, _to, _tokenId);

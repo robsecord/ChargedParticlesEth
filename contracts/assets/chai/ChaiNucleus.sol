@@ -77,8 +77,8 @@ interface JoinLike {
 }
 
 interface GemLike {
-    function transferFrom(address,address,uint) external returns (bool);
-    function approve(address,uint) external returns (bool);
+    function transferFrom(address, address, uint) external returns (bool);
+    function approve(address, uint) external returns (bool);
 }
 
 contract ChaiNucleus is INucleus {
@@ -132,10 +132,10 @@ contract ChaiNucleus is INucleus {
     }
 
     function initRopsten() public {
-        vat = VatLike(0xA85B3d84f54Fb238Ef257158da99FdfCe905C7aA);           // Deployed copy of: variations/assets/dai/DaiVat.sol
-        pot = PotLike(0x47563186A46Aa3EBbEA5D294c8514f0ED49f2e2c);           // Deployed copy of: variations/assets/dai/DaiPot.sol
-        daiJoin = JoinLike(0x298cb5798c0F0af4850d1a380E28E25C02FF087A);      // Deployed copy of: variations/assets/dai/DaiJoin.sol
-        daiToken = GemLike(0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6);      // Deployed copy of: variations/assets/dai/DaiGem.sol
+        vat = VatLike(0xFfCFcAA53b61cF5F332b4FBe14033c1Ff5A391eb);         // MCD_VAT
+        pot = PotLike(0x9588a660241aeA569B3965e2f00631f2C5eDaE33);         // MCD_POT
+        daiJoin = JoinLike(0xA0b569e9E0816A20Ab548D692340cC28aC7Be986);    // MCD_JOIN_DAI
+        daiToken = GemLike(0x31F42841c2db5173425b5223809CF3A38FEde360);    // MCD_DAI
 
         initialize();
     }

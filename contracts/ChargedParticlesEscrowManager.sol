@@ -83,20 +83,20 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     //    and sets the Custom Limits for their token(s)
 
     //      Contract => Has this contract address been Registered with Custom Limits?
-    mapping (address => bool) internal custom_registeredContract;
+    mapping (address => bool) internal customRegisteredContract;
 
     //      Contract => Does the Release-Action require the Charged Particle Token to be burned first?
-    mapping (address => bool) internal custom_releaseRequiresBurn;
+    mapping (address => bool) internal customReleaseRequiresBurn;
 
     //      Contract => Specific Asset-Pair that is allowed (otherwise, any Asset-Pair is allowed)
-    mapping (address => bytes16) internal custom_assetPairId;
+    mapping (address => bytes16) internal customAssetPairId;
 
     //      Contract => Deposit Fees to be earned for Contract Owner
-    mapping (address => uint256) internal custom_assetDepositFee;
+    mapping (address => uint256) internal customAssetDepositFee;
 
     //      Contract => Allowed Limit of Asset Token [min, max]
-    mapping (address => uint256) internal custom_assetDepositMin;
-    mapping (address => uint256) internal custom_assetDepositMax;
+    mapping (address => uint256) internal customAssetDepositMin;
+    mapping (address => uint256) internal customAssetDepositMax;
 
     // To "Energize" Particles of any Type, there is a Deposit Fee, which is
     //  a small percentage of the Interest-bearing Asset of the token immediately after deposit.
@@ -135,12 +135,42 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     // Events
     //
 
-    event RegisterParticleContract(address indexed _contractAddress);
-    event DischargeApproval(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _owner, address _operator);
-    event EnergizedParticle(address indexed _contractAddress, uint256 indexed _tokenId, bytes16 _assetPairId, uint256 _assetBalance);
-    event DischargedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount, uint256 _interestBalance);
-    event ReleasedParticle(address indexed _contractAddress, uint256 indexed _tokenId, address indexed _receiver, bytes16 _assetPairId, uint256 _receivedAmount);
-    event FeesWithdrawn(address indexed _contractAddress, address indexed _receiver, bytes16 _assetPairId, uint256 _interestAmoount);
+    event RegisterParticleContract(
+        address indexed _contractAddress
+    );
+    event DischargeApproval(
+        address indexed _contractAddress, 
+        uint256 indexed _tokenId, 
+        address indexed _owner, 
+        address _operator
+    );
+    event EnergizedParticle(
+        address indexed _contractAddress, 
+        uint256 indexed _tokenId, 
+        bytes16 _assetPairId, 
+        uint256 _assetBalance
+    );
+    event DischargedParticle(
+        address indexed _contractAddress, 
+        uint256 indexed _tokenId, 
+        address indexed _receiver, 
+        bytes16 _assetPairId, 
+        uint256 _receivedAmount, 
+        uint256 _interestBalance
+    );
+    event ReleasedParticle(
+        address indexed _contractAddress, 
+        uint256 indexed _tokenId, 
+        address indexed _receiver, 
+        bytes16 _assetPairId, 
+        uint256 _receivedAmount
+    );
+    event FeesWithdrawn(
+        address indexed _contractAddress, 
+        address indexed _receiver, 
+        bytes16 _assetPairId, 
+        uint256 _interestAmoount
+    );
 
     /***********************************|
     |          Initialization           |
@@ -190,11 +220,11 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     }
 
     function getAssetMinDeposit(address _contractAddress) external override view returns (uint256) {
-        return custom_assetDepositMin[_contractAddress];
+        return customAssetDepositMin[_contractAddress];
     }
 
     function getAssetMaxDeposit(address _contractAddress) external override view returns (uint256) {
-        return custom_assetDepositMax[_contractAddress];
+        return customAssetDepositMax[_contractAddress];
     }
 
     /**
@@ -204,7 +234,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _tokenId          The ID of the Token
      * @param _operator         The Address of the Operator to Approve
      */
-    function setDischargeApproval(address _contractAddress, uint256 _tokenId, address _operator) external override  {
+    function setDischargeApproval(address _contractAddress, uint256 _tokenId, address _operator) external override {
         INonFungible _tokenInterface = INonFungible(_contractAddress);
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
         require(_operator != _tokenOwner, "CPEM: CANNOT_BE_SELF");
@@ -323,7 +353,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         // Contract Registered!
-        custom_registeredContract[_contractAddress] = true;
+        customRegisteredContract[_contractAddress] = true;
 
         emit RegisterParticleContract(_contractAddress);
     }
@@ -335,12 +365,12 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _contractAddress       The Address to the External Contract of the Token
      * @param _releaseRequiresBurn   True if the External Contract requires tokens to be Burned before Release
      */
-    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external override {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+    function registerContractSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external override {
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
-        require(custom_assetPairId[_contractAddress].length > 0, "CPEM: REQUIRES_SINGLE_ASSET_PAIR");
+        require(customAssetPairId[_contractAddress].length > 0, "CPEM: REQUIRES_SINGLE_ASSET_PAIR");
 
-        custom_releaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
+        customReleaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
 
     /**
@@ -350,17 +380,17 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _assetPairId      The Asset-Pair required for Energizing a Token; otherwise Any Asset-Pair is allowed
      */
-    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) external override {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+    function registerContractSettingAssetPair(address _contractAddress, bytes16 _assetPairId) external override {
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         if (_assetPairId.length > 0) {
             require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         } else {
-            require(custom_releaseRequiresBurn[_contractAddress] != true, "CPEM: CANNOT_REQUIRE_RELEASE_BURN");
+            require(customReleaseRequiresBurn[_contractAddress] != true, "CPEM: CANNOT_REQUIRE_RELEASE_BURN");
         }
 
-        custom_assetPairId[_contractAddress] = _assetPairId;
+        customAssetPairId[_contractAddress] = _assetPairId;
     }
 
     /**
@@ -372,12 +402,12 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      *    A value of "50" would represent a Fee of 0.5% of the Funding Asset ((50 / 10000) * 100)
      *    This allows a fee as low as 0.01%  (value of "1")
      */
-    function registerContractSetting_DepositFee(address _contractAddress, uint256 _depositFee) external override {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+    function registerContractSettingDepositFee(address _contractAddress, uint256 _depositFee) external override {
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
         require(_depositFee <= MAX_CUSTOM_DEPOSIT_FEE, "CPEM: AMOUNT_INVALID");
 
-        custom_assetDepositFee[_contractAddress] = _depositFee;
+        customAssetDepositFee[_contractAddress] = _depositFee;
     }
 
     /**
@@ -387,12 +417,12 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _minDeposit       The Minimum Deposit required for a Token
      */
-    function registerContractSetting_MinDeposit(address _contractAddress, uint256 _minDeposit) external override {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+    function registerContractSettingMinDeposit(address _contractAddress, uint256 _minDeposit) external override {
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
         require(_minDeposit == 0 || _minDeposit > MIN_DEPOSIT_FEE, "CPEM: AMOUNT_INVALID");
 
-        custom_assetDepositMin[_contractAddress] = _minDeposit;
+        customAssetDepositMin[_contractAddress] = _minDeposit;
     }
 
     /**
@@ -402,11 +432,11 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _maxDeposit       The Maximum Deposit allowed for a Token
      */
-    function registerContractSetting_MaxDeposit(address _contractAddress, uint256 _maxDeposit) external override {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+    function registerContractSettingMaxDeposit(address _contractAddress, uint256 _maxDeposit) external override {
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
-        custom_assetDepositMax[_contractAddress] = _maxDeposit;
+        customAssetDepositMax[_contractAddress] = _maxDeposit;
     }
 
 
@@ -421,7 +451,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to Withdraw Fees for
      */
     function withdrawContractFees(address _contractAddress, address _receiver, bytes16 _assetPairId) external override nonReentrant {
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
 
         // Validate Contract Owner
         address _contractOwner = IOwnable(_contractAddress).owner();
@@ -464,7 +494,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     {
 //        require(_isNonFungibleToken(_contractAddress, _tokenId), "CPEM: INVALID_TYPE");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
-        require(custom_registeredContract[_contractAddress], "CPEM: UNREGISTERED");
+        require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
 
         // Get Escrow for Asset
         IEscrow _assetPairEscrow = assetPairEscrow[_assetPairId];
@@ -480,16 +510,16 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         // Validate Custom Contract Settings
         // Valid Asset-Pair?
-        if (custom_assetPairId[_contractAddress].length > 0) {
-            require(_assetPairId == custom_assetPairId[_contractAddress], "CPEM: INVALID_ASSET_PAIR");
+        if (customAssetPairId[_contractAddress].length > 0) {
+            require(_assetPairId == customAssetPairId[_contractAddress], "CPEM: INVALID_ASSET_PAIR");
         }
 
         // Valid Amount?
-        if (custom_assetDepositMin[_contractAddress] > 0) {
-            require(_newBalance >= custom_assetDepositMin[_contractAddress], "CPEM: INSUFF_DEPOSIT");
+        if (customAssetDepositMin[_contractAddress] > 0) {
+            require(_newBalance >= customAssetDepositMin[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
-        if (custom_assetDepositMax[_contractAddress] > 0) {
-            require(_newBalance <= custom_assetDepositMax[_contractAddress], "CPEM: INSUFF_DEPOSIT");
+        if (customAssetDepositMax[_contractAddress] > 0) {
+            require(_newBalance <= customAssetDepositMax[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
 
         // Transfer Asset Token from Caller to Contract
@@ -598,9 +628,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         // Validate Token Burn before Release
         bool requiresBurn;
-        if (custom_registeredContract[_contractAddress]) {
+        if (customRegisteredContract[_contractAddress]) {
             // Does Release Require Token Burn first?
-            if (custom_releaseRequiresBurn[_contractAddress]) {
+            if (customReleaseRequiresBurn[_contractAddress]) {
                 requiresBurn = true;
             }
         }
@@ -769,7 +799,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
             _depositFee = _interestTokenAmount.mul(depositFee).div(DEPOSIT_FEE_MODIFIER);
         }
 
-        uint256 _customFeeSetting = custom_assetDepositFee[_contractAddress];
+        uint256 _customFeeSetting = customAssetDepositFee[_contractAddress];
         if (_customFeeSetting > 0) {
             _customFee = _interestTokenAmount.mul(_customFeeSetting).div(DEPOSIT_FEE_MODIFIER);
         }
@@ -789,7 +819,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CPEM: INSUFF_ASSETS");
-        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CPEM: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
+        // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CPEM: TRANSFER_FAILED");
     }
 
     /**
@@ -831,6 +862,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
             return 0x0;
         }
 
+        // solhint-disable-next-line
         assembly {
             _result := mload(add(_source, 16))
         }

@@ -45,8 +45,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     uint32 constant internal ION_SPECIAL_BIT = 1073741824;  // 31st BIT
     address constant internal CONTRACT_ID = address(0xC1DA0da0DA0da0DA0da0DA0da0DA0da0DA0da0DA00);
 
-    IChargedParticlesTokenManager internal tokenMgr;
-    IChargedParticlesEscrowManager internal escrowMgr;
+    IChargedParticlesTokenManager public tokenMgr;
+    IChargedParticlesEscrowManager public escrowMgr;
 
     // Particles come in many "Types" created by Public Users.
     //   Each "Type" of Particle has a "Creator", who can set certain parameters
@@ -384,6 +384,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         }
 
         // Collect Fees
+        // solhint-disable-next-line
         else {
             collectedFees[CONTRACT_ID] = _ethPrice.add(collectedFees[CONTRACT_ID]);
         }
@@ -441,6 +442,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         }
 
         // Collect Fees
+        // solhint-disable-next-line
         else {
             collectedFees[CONTRACT_ID] = _ethPrice.add(collectedFees[CONTRACT_ID]);
         }
@@ -735,7 +737,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     /**
      * @dev Setup internal ION Token
      */
-    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _amount, uint256 _mintFee) external onlyDao returns (uint256) {
+    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _mintFee) external onlyDao returns (uint256) {
         require(ionTokenId == 0, "CP: ALREADY_INIT");
 
         // Create ION Token Type;
@@ -747,7 +749,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             false,           // is Private?
             _maxSupply,      // Max Supply
             _mintFee,        // Price per Token in ETH
-            _amount          // Initial amount to mint
+            _maxSupply       // Amount to mint
         );
 
         return ionTokenId;
@@ -920,7 +922,8 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CP: INSUFF_ASSETS");
-        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
+        // Be sure to Approve this Contract to transfer your Asset Token
+        require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED");
     }
 
     /**
@@ -932,6 +935,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             return 0x0;
         }
 
+        // solhint-disable-next-line
         assembly {
             _result := mload(add(_source, 16))
         }

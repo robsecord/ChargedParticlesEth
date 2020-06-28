@@ -55,11 +55,11 @@ interface IChargedParticlesEscrowManager {
 
     function isContractOwner(address _account, address _contract) external view returns (bool);
     function registerContractType(address _contractAddress) external;
-    function registerContractSetting_ReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external;
-    function registerContractSetting_AssetPair(address _contractAddress, bytes16 _assetPairId) external;
-    function registerContractSetting_DepositFee(address _contractAddress, uint256 _depositFee) external;
-    function registerContractSetting_MinDeposit(address _contractAddress, uint256 _minDeposit) external;
-    function registerContractSetting_MaxDeposit(address _contractAddress, uint256 _maxDeposit) external;
+    function registerContractSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external;
+    function registerContractSettingAssetPair(address _contractAddress, bytes16 _assetPairId) external;
+    function registerContractSettingDepositFee(address _contractAddress, uint256 _depositFee) external;
+    function registerContractSettingMinDeposit(address _contractAddress, uint256 _minDeposit) external;
+    function registerContractSettingMaxDeposit(address _contractAddress, uint256 _maxDeposit) external;
 
     function withdrawContractFees(address _contractAddress, address _receiver, bytes16 _assetPairId) external;
 
@@ -67,11 +67,39 @@ interface IChargedParticlesEscrowManager {
     |          Particle Charge          |
     |__________________________________*/
 
-    function energizeParticle(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256);
+    function energizeParticle(
+        address _contractAddress, 
+        uint256 _tokenId, 
+        bytes16 _assetPairId, 
+        uint256 _assetAmount
+    ) external returns (uint256);
 
-    function dischargeParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external returns (uint256, uint256);
-    function dischargeParticleAmount(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId, uint256 _assetAmount) external returns (uint256, uint256);
+    function dischargeParticle(
+        address _receiver, 
+        address _contractAddress, 
+        uint256 _tokenId, 
+        bytes16 _assetPairId
+    ) external returns (uint256, uint256);
 
-    function releaseParticle(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external returns (uint256);
-    function finalizeRelease(address _receiver, address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external returns (uint256);
+    function dischargeParticleAmount(
+        address _receiver, 
+        address _contractAddress, 
+        uint256 _tokenId, 
+        bytes16 _assetPairId, 
+        uint256 _assetAmount
+    ) external returns (uint256, uint256);
+
+    function releaseParticle(
+        address _receiver, 
+        address _contractAddress, 
+        uint256 _tokenId, 
+        bytes16 _assetPairId
+    ) external returns (uint256);
+    
+    function finalizeRelease(
+        address _receiver, 
+        address _contractAddress, 
+        uint256 _tokenId, 
+        bytes16 _assetPairId
+    ) external returns (uint256);
 }

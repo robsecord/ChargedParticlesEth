@@ -36,10 +36,35 @@ interface IChargedParticlesTokenManager {
     function isNonFungibleItem(uint256 _id) external pure returns(bool);
 
     function createType(string calldata _uri, bool isNF) external returns (uint256);
-    function mint(address _to, uint256 _typeId, uint256 _amount, string calldata _uri, bytes calldata _data) external returns (uint256);
-    // function mintBatch(address _to, uint256[] calldata _types, uint256[] calldata _amounts, string[] calldata _URIs, bytes calldata _data) external returns (uint256[] memory);
-    function burn(address _from, uint256 _tokenId, uint256 _amount) external;
-    // function burnBatch(address _from, uint256[] calldata _tokenIds, uint256[] calldata _amounts) external;
+
+    function mint(
+        address _to, 
+        uint256 _typeId, 
+        uint256 _amount, 
+        string calldata _uri, 
+        bytes calldata _data
+    ) external returns (uint256);
+    
+    // function mintBatch(
+    //     address _to, 
+    //     uint256[] calldata _types, 
+    //     uint256[] calldata _amounts, 
+    //     string[] calldata _uris, 
+    //     bytes calldata _data
+    // ) external returns (uint256[] memory);
+    
+    function burn(
+        address _from, 
+        uint256 _tokenId, 
+        uint256 _amount
+    ) external;
+    
+    // function burnBatch(
+    //     address _from, 
+    //     uint256[] calldata _tokenIds, 
+    //     uint256[] calldata _amounts
+    // ) external;
+    
     function createErc20Bridge(uint256 _typeId, string calldata _name, string calldata _symbol, uint8 _decimals) external returns (address);
     function createErc721Bridge(uint256 _typeId, string calldata _name, string calldata _symbol) external returns (address);
 

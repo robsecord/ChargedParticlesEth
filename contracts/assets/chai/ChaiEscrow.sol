@@ -23,19 +23,14 @@
 
 pragma solidity 0.6.10;
 
-import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "../../lib/EscrowBase.sol";
 
 /**
  * @notice Chai-Escrow for Charged Particles
  */
-contract ChaiEscrow is Initializable, EscrowBase {
+contract ChaiEscrow is EscrowBase {
     using SafeMath for uint256;
-
-    function initialize() public override {
-        EscrowBase.initialize();
-    }
 
     /**
      * @notice Gets the Amount of Asset Tokens that have been Deposited into the Particle
@@ -239,7 +234,8 @@ contract ChaiEscrow is Initializable, EscrowBase {
     function _collectAssetToken(address _from, uint256 _assetAmount) internal {
         uint256 _userAssetBalance = assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CHE: INSUFF_ASSETS");
-        require(assetToken.transferFrom(_from, address(this), _assetAmount), "CHE: TRANSFER_FAILED"); // Be sure to Approve this Contract to transfer your Asset Token
+         // Be sure to Approve this Contract to transfer your Asset Token
+        require(assetToken.transferFrom(_from, address(this), _assetAmount), "CHE: TRANSFER_FAILED");
     }
 
     /**
