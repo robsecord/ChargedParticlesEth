@@ -33,7 +33,7 @@ describe('ChargedParticlesTokenManager Contract', function () {
     });
 
     it('maintains correct versioning', async () => {
-        expect(toStr(await chargedParticlesTokenManager.version())).to.equal('v0.4.1');
+        expect(toStr(await chargedParticlesTokenManager.version())).to.equal('v0.4.2');
     });
 
 });

@@ -33,7 +33,7 @@ describe('ChargedParticlesEscrowManager Contract', function () {
     });
 
     it('maintains correct versioning', async () => {
-        expect(toStr(await chargedParticlesEscrowManager.version())).to.equal('v0.4.1');
+        expect(toStr(await chargedParticlesEscrowManager.version())).to.equal('v0.4.2');
     });
 
 });
