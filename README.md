@@ -84,7 +84,7 @@ Join our community, share ideas and help support the project in anyway you want!
     - OpenZeppelin Upgrades **v2.8.0**
     - OpenZeppelin Ethereum Contracts **v3.0.0**
     - Solidity  **v0.6.10** (solc-js)
-    - NodeJS **v12.14.1**
+    - NodeJS **v12.16.3**
     - Buidler **v1.3.5**
     - EthersJS **v4.0.27**
 
@@ -116,8 +116,6 @@ Join our community, share ideas and help support the project in anyway you want!
 
 ### Deploy:
 
- 0. In a separate terminal: yarn start
-    
  1. yarn
  2. yarn verify
  2. yarn start
