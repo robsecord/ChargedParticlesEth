@@ -1,36 +1,39 @@
 const {
     buidler,
+    deployments,
     ethers,
     expect,
-    deployContract,
-    presets,
-    toWei,
-    toStr,
+    EMPTY_STR,
+    ZERO_ADDRESS,
 } = require('./util/testEnv');
+
+const {
+    contractManager,
+    toWei,
+    toEth,
+    toStr,
+} = require('../js-utils/deploy-helpers');
 
 const debug = require('debug')('ChargedParticlesTokenManager.test');
 
-const ChargedParticlesTokenManager = require('../build/ChargedParticlesTokenManager.json')
-
-
 describe('ChargedParticlesTokenManager Contract', function () {
-  let primaryWallet;
-  let secondaryWallet;
+    let deployer;
+    let primaryWallet;
+    let secondaryWallet;
 
-  let tokenMgr;
+    let chargedParticlesTokenManager;
 
-  beforeEach(async () => {
-    [primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
+    const _getDeployedContract = contractManager(buidler);
 
-    debug('deploying ChargedParticlesTokenManager...');
-    tokenMgr = await deployContract(primaryWallet, ChargedParticlesTokenManager, [], presets.txOverrides);
+    beforeEach(async () => {
+        [deployer, primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
 
-    debug('initializing ChargedParticlesTokenManager...');
-    await tokenMgr.initialize();
-  });
+        await deployments.fixture();
+        chargedParticlesTokenManager  = await _getDeployedContract('ChargedParticlesTokenManager');
+    });
 
-  it('maintains correct versioning', async () => {
-    expect(toStr(await tokenMgr.version())).to.equal('v0.4.1');
-  });
+    it('maintains correct versioning', async () => {
+        expect(toStr(await chargedParticlesTokenManager.version())).to.equal('v0.4.1');
+    });
 
 });

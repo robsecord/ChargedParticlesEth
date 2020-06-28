@@ -1,36 +1,39 @@
 const {
     buidler,
+    deployments,
     ethers,
     expect,
-    deployContract,
-    presets,
-    toWei,
-    toStr,
+    EMPTY_STR,
+    ZERO_ADDRESS,
 } = require('./util/testEnv');
+
+const {
+    contractManager,
+    toWei,
+    toEth,
+    toStr,
+} = require('../js-utils/deploy-helpers');
 
 const debug = require('debug')('ChargedParticlesEscrowManager.test');
 
-const ChargedParticlesEscrowManager = require('../build/ChargedParticlesEscrowManager.json')
+describe('ChargedParticlesEscrowManager Contract', function () {
+    let deployer;
+    let primaryWallet;
+    let secondaryWallet;
 
+    let chargedParticlesEscrowManager;
 
-describe('ChargedParticles Contract', function () {
-  let primaryWallet;
-  let secondaryWallet;
+    const _getDeployedContract = contractManager(buidler);
 
-  let escrowMgr;
+    beforeEach(async () => {
+        [deployer, primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
 
-  beforeEach(async () => {
-    [primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
+        await deployments.fixture();
+        chargedParticlesEscrowManager  = await _getDeployedContract('ChargedParticlesEscrowManager');
+    });
 
-    debug('deploying ChargedParticlesEscrowManager...');
-    escrowMgr = await deployContract(primaryWallet, ChargedParticlesEscrowManager, [], presets.txOverrides);
-
-    debug('initializing ChargedParticlesEscrowManager...');
-    await escrowMgr.initialize();
-  });
-
-  it('maintains correct versioning', async () => {
-    expect(toStr(await escrowMgr.version())).to.equal('v0.4.1');
-  });
+    it('maintains correct versioning', async () => {
+        expect(toStr(await chargedParticlesEscrowManager.version())).to.equal('v0.4.1');
+    });
 
 });
