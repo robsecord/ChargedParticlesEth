@@ -8,22 +8,23 @@
     "defi"
   ],
   "engines": {
-    "node": ">=12.16.1",
+    "node": ">=12.16.3",
     "npm": ">=6.14.4"
   },
   "scripts": {
-    "reinstall": "rm -rf node_modules && rm -f yarn.lock && yarn clean && yarn",
+    "reinstall": "rm -rf node_modules && rm -f yarn.lock && yarn clean && yarn clean-test && yarn",
+    "verify": "yarn hint && yarn test",
     "clean": "rm -rf build cache",
-    "clean-test": "rm -rf build cache test-results.xml",
+    "clean-test": "rm -rf deployments/buidlerevm_31337 test-results.xml",
     "compile": "buidler --show-stack-traces --max-memory 8192 compile",
-    "test": "buidler test",
-    "start": "buidler node --port 8545",
-    "coverage": "yarn clean-test && buidler compile && buidler coverage --network coverage --temp build; rm -rf cache",
+    "test": "yarn clean-test && buidler test",
+    "hint": "solhint \"contracts/**/*.sol\"",
+    "coverage": "yarn clean && yarn clean-test && buidler compile && buidler coverage --network coverage --temp build; rm -rf cache",
     "gas": "REPORT_GAS=true buidler test --network local",
-    "deploy-local": "buidler run --network local scripts/deployment.js",
-    "deploy-kovan": "./deploy.sh -n kovan",
-    "deploy-ropsten": "./deploy.sh -n ropsten",
-    "deploy-mainnet": "./deploy.sh -n mainnet",
+    "start": "buidler node --port 8545",
+    "deploy-local": "buidler deploy --network local",
+    "deploy-kovan": "buidler deploy --network kovan --export ./deployments-kovan.json",
+    "deploy-ropsten": "buidler deploy --network ropsten --export ./deployments-ropsten.json",
     "gen-docs": "solidity-docgen -i contracts -o docs"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
     "@openzeppelin/upgrades": "^2.8.0",
     "@resolver-engine/core": "^0.3.3",
     "@truffle/hdwallet-provider": "^1.0.34",
+    "buidler-deploy": "^0.4.5",
     "buidler-gas-reporter": "^0.1.3",
     "chai": "^4.2.0",
     "chalk": "^4.0.0",
@@ -55,6 +57,7 @@
     "openzeppelin-solidity": "^2.4.0",
     "oz-console": "^2.0.1",
     "solc": "0.6.4",
+    "solhint": "^3.0.0",
     "solidity-coverage": "^0.7.4",
     "solidity-docgen": "^0.5.3"
   }
