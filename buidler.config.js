@@ -62,7 +62,7 @@ module.exports = {
             accounts: {
                 mnemonic: mnemonic.owner.kovan,
                 initialIndex: 0,
-                count: 2,
+                count: 3,
             }
         },
         ropsten: {
@@ -71,7 +71,7 @@ module.exports = {
             accounts: {
                 mnemonic: mnemonic.owner.ropsten,
                 initialIndex: 0,
-                count: 2,
+                count: 3,
             }
         }
     },
@@ -82,10 +82,7 @@ module.exports = {
     },
     namedAccounts: {
         deployer: {
-            default: 0, // local
-            1: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // mainnet
-            3: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // ropsten
-            42: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // kovan
+            default: 0,
         },
         trustedForwarder: {
             default: 7, // Account 8
