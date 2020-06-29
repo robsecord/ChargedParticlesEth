@@ -29,6 +29,8 @@ import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 
+import "@opengsn/gsn/contracts/BaseRelayRecipient.sol";
+
 import "./interfaces/IChargedParticlesTokenManager.sol";
 import "./interfaces/IChargedParticlesEscrowManager.sol";
 
@@ -38,7 +40,7 @@ import "./lib/Common.sol";
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
+contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpgradeSafe, Common {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -113,13 +115,13 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
 
     // Throws if called by any account other than the Charged Particles DAO contract.
     modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "CP: INVALID_DAO");
+        require(hasRole(ROLE_DAO_GOV, _msgSender()), "CP: INVALID_DAO");
         _;
     }
 
     // Throws if called by any account other than the Charged Particles Maintainer.
     modifier onlyMaintainer() {
-        require(hasRole(ROLE_MAINTAINER, msg.sender), "CP: INVALID_MAINTAINER");
+        require(hasRole(ROLE_MAINTAINER, _msgSender()), "CP: INVALID_MAINTAINER");
         _;
     }
 
@@ -191,9 +193,9 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     |__________________________________*/
 
     function initialize() public initializer {
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(ROLE_DAO_GOV, msg.sender);
-        _setupRole(ROLE_MAINTAINER, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _setupRole(ROLE_DAO_GOV, _msgSender());
+        _setupRole(ROLE_MAINTAINER, _msgSender());
         version = "v0.4.2";
     }
 
@@ -246,7 +248,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             return true;
         }
         // Private
-        if (typeCreator[_typeId] != msg.sender) {
+        if (typeCreator[_typeId] != _msgSender()) {
             return false;
         }
         // Has Max
@@ -361,7 +363,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(true);
 
         if (_payWithIons) {
-            _collectIons(msg.sender, _ionPrice);
+            _collectIons(_msgSender(), _ionPrice);
             _ethPrice = 0;
         } else {
             require(msg.value >= _ethPrice, "CP: INSUFF_FUNDS");
@@ -392,7 +394,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         // Refund over-payment
         uint256 _overage = msg.value.sub(_ethPrice);
         if (_overage > 0) {
-            msg.sender.sendValue(_overage);
+            _msgSender().sendValue(_overage);
         }
     }
 
@@ -419,7 +421,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         (uint256 _ethPrice, uint256 _ionPrice) = getCreationPrice(false);
 
         if (_payWithIons) {
-            _collectIons(msg.sender, _ionPrice);
+            _collectIons(_msgSender(), _ionPrice);
             _ethPrice = 0;
         } else {
             require(msg.value >= _ethPrice, "CP: INSUFF_FUNDS");
@@ -450,7 +452,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         // Refund over-payment
         uint256 _overage = msg.value.sub(_ethPrice);
         if (_overage > 0) {
-            msg.sender.sendValue(_overage);
+            _msgSender().sendValue(_overage);
         }
     }
 
@@ -489,7 +491,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         uint256 _ethPerToken;
 
         // Check Token Price
-        if (msg.sender != _creator) {
+        if (_msgSender() != _creator) {
             _ethPerToken = mintFee[_typeId];
             require(msg.value >= _ethPerToken, "CP: INSUFF_FUNDS");
         }
@@ -506,17 +508,17 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         energizeParticle(_tokenId, _assetAmount);
 
         // Log Event
-        emit ParticleMinted(msg.sender, _to, _tokenId, _uri);
+        emit ParticleMinted(_msgSender(), _to, _tokenId, _uri);
 
         // Track Collected Fees
-        if (msg.sender != _creator) {
+        if (_msgSender() != _creator) {
             collectedFees[_creator] = _ethPerToken.add(collectedFees[_creator]);
         }
 
         // Refund overpayment
         uint256 _overage = msg.value.sub(_ethPerToken);
         if (_overage > 0) {
-            msg.sender.sendValue(_overage);
+            _msgSender().sendValue(_overage);
         }
         return _tokenId;
     }
@@ -546,7 +548,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         uint256 _ethPerToken;
 
         // Check Token Price
-        if (msg.sender != _creator) {
+        if (_msgSender() != _creator) {
             _ethPerToken = mintFee[_typeId];
             _totalEth = _amount.mul(_ethPerToken);
             require(msg.value >= _totalEth, "CP: INSUFF_FUNDS");
@@ -554,9 +556,9 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
 
         // Mint Token
         tokenMgr.mint(_to, _typeId, _amount, "", _data);
-        emit PlasmaMinted(msg.sender, _to, _typeId, _amount);
+        emit PlasmaMinted(_msgSender(), _to, _typeId, _amount);
 
-        if (msg.sender != _creator) {
+        if (_msgSender() != _creator) {
             // Track Collected Fees
             collectedFees[_creator] = _totalEth.add(collectedFees[_creator]);
         }
@@ -564,7 +566,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         // Refund overpayment
         uint256 _overage = msg.value.sub(_totalEth);
         if (_overage > 0) {
-            msg.sender.sendValue(_overage);
+            _msgSender().sendValue(_overage);
         }
     }
 
@@ -592,12 +594,12 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         escrowMgr.releaseParticle(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
         // Burn Token
-        tokenMgr.burn(msg.sender, _tokenId, 1);
+        tokenMgr.burn(_msgSender(), _tokenId, 1);
 
         // Release Particle (Payout Asset + Interest)
         escrowMgr.finalizeRelease(_tokenOwner, _tokenContract, _tokenId, _assetPairId);
 
-        emit ParticleBurned(msg.sender, _tokenId);
+        emit ParticleBurned(_msgSender(), _tokenId);
     }
 
     /**
@@ -611,9 +613,9 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         require(registeredTypes[_typeId] > 0, "CP: INVALID_TYPE");
 
         // Burn Token
-        tokenMgr.burn(msg.sender, _typeId, _amount);
+        tokenMgr.burn(_msgSender(), _typeId, _amount);
 
-        emit PlasmaBurned(msg.sender, _typeId, _amount);
+        emit PlasmaBurned(_msgSender(), _typeId, _amount);
     }
 
     /***********************************|
@@ -636,7 +638,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         require(tokenMgr.isNonFungibleBaseType(_tokenId), "CP: FUNGIBLE_TYPE");
 
         // Transfer Asset Token from Caller to Contract
-        _collectAssetToken(msg.sender, _assetPairId, _assetAmount);
+        _collectAssetToken(_msgSender(), _assetPairId, _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
         return escrowMgr.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
@@ -685,7 +687,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
      */
     // function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
     //     address _creator = typeCreator[_typeId];
-    //     require(msg.sender == _creator, "CP: NOT_CREATOR");
+    //     require(_msgSender() == _creator, "CP: NOT_CREATOR");
 
     //     // Withdraw Particle Deposit Fees from Escrow
     //     escrowMgr.withdrawCreatorFees(_typeId);
@@ -696,7 +698,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
     //         collectedFees[_creator] = 0;
     //         _receiver.sendValue(_amount);
     //     }
-    //     emit CreatorFeesWithdrawn(msg.sender, _receiver, _amount);
+    //     emit CreatorFeesWithdrawn(_msgSender(), _receiver, _amount);
     // }
 
     /***********************************|
@@ -734,6 +736,10 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         escrowMgr = IChargedParticlesEscrowManager(_escrowMgr);
     }
 
+    function setTrustedForwarder(address _trustedForwarder) external onlyDao {
+        trustedForwarder = _trustedForwarder;
+    }
+
     /**
      * @dev Setup internal ION Token
      */
@@ -767,23 +773,23 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
             collectedFees[CONTRACT_ID] = 0;
             _receiver.sendValue(_amount);
         }
-        emit ContractFeesWithdrawn(msg.sender, _receiver, _amount);
+        emit ContractFeesWithdrawn(_msgSender(), _receiver, _amount);
     }
 
     function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "CP: INVALID_NEW_DAO");
+        require(_dao != _msgSender(), "CP: INVALID_NEW_DAO");
 
         grantRole(ROLE_DAO_GOV, _dao);
         // DAO must assign a Maintainer
 
-        if (hasRole(ROLE_DAO_GOV, msg.sender)) {
-            renounceRole(ROLE_DAO_GOV, msg.sender);
+        if (hasRole(ROLE_DAO_GOV, _msgSender())) {
+            renounceRole(ROLE_DAO_GOV, _msgSender());
         }
-        if (hasRole(ROLE_MAINTAINER, msg.sender)) {
-            renounceRole(ROLE_MAINTAINER, msg.sender);
+        if (hasRole(ROLE_MAINTAINER, _msgSender())) {
+            renounceRole(ROLE_MAINTAINER, _msgSender());
         }
-        if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
-            renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        if (hasRole(DEFAULT_ADMIN_ROLE, _msgSender())) {
+            renounceRole(DEFAULT_ADMIN_ROLE, _msgSender());
         }
     }
 
@@ -834,7 +840,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         mintFee[_particleTypeId] = _mintFee;
 
         // Creator of Type
-        typeCreator[_particleTypeId] = msg.sender;
+        typeCreator[_particleTypeId] = _msgSender();
 
         // Type Asset-Pair
         typeAssetPairId[_particleTypeId] = _assetPairId;
@@ -884,7 +890,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         registeredTypes[_plasmaTypeId] = _isPrivate ? 2 : 1;
 
         // Creator of Type
-        typeCreator[_plasmaTypeId] = msg.sender;
+        typeCreator[_plasmaTypeId] = _msgSender();
 
         // Max Supply of Token; 0 = No Max
         typeSupply[_plasmaTypeId] = _maxSupply;
@@ -894,7 +900,7 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
-            tokenMgr.mint(msg.sender, _plasmaTypeId, _initialMint, "", "");
+            tokenMgr.mint(_msgSender(), _plasmaTypeId, _initialMint, "", "");
         }
 
         emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri);
@@ -924,6 +930,10 @@ contract ChargedParticles is Initializable, AccessControlUpgradeSafe, Common {
         require(_assetAmount <= _userAssetBalance, "CP: INSUFF_ASSETS");
         // Be sure to Approve this Contract to transfer your Asset Token
         require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED");
+    }
+
+    function _msgSender() internal override(BaseRelayRecipient, ContextUpgradeSafe) virtual view returns (address payable) {
+        return BaseRelayRecipient._msgSender();
     }
 
     /**

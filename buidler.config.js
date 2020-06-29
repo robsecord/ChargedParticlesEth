@@ -87,6 +87,12 @@ module.exports = {
             3: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // ropsten
             42: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // kovan
         },
+        trustedForwarder: {
+            default: 7, // Account 8
+            1: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // mainnet
+            3: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // ropsten
+            42: '0x1337c0d31337c0D31337C0d31337c0d31337C0d3', // kovan
+        },
         dai: {
             default: 0, // local; to be deployed by deployer
             1: '0x6B175474E89094C44Da98b954EedeAC495271d0F', // mainnet

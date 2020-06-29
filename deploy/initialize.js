@@ -14,7 +14,7 @@ module.exports = async (bre) => {
     const _getDeployedContract = contractManager(bre)
 
     // Named accounts, defined in buidler.config.js:
-    const { deployer, dai } = await getNamedAccounts()
+    const { deployer, trustedForwarder, dai } = await getNamedAccounts()
   
     log("\n~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     log("Charged Particles - Contract Initialization");
@@ -71,6 +71,7 @@ module.exports = async (bre) => {
     await ChargedParticlesTokenManager.setFusedParticleState(ChargedParticles.address, true)
 
     log("  Preparing ChargedParticles...")
+    await ChargedParticles.setTrustedForwarder(trustedForwarder)
     await ChargedParticles.registerTokenManager(ChargedParticlesTokenManager.address)
     await ChargedParticles.registerEscrowManager(ChargedParticlesEscrowManager.address)
     await ChargedParticles.setupFees(presets.ChargedParticles.fees.eth, presets.ChargedParticles.fees.ion)
