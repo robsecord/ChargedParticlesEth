@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT
+
 // ChaiNucleus.sol -- Charged Particles
-// MIT License
 // Copyright (c) 2019, 2020 Rob Secord <robsecord.eth>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -54,15 +55,15 @@
 //   https://changelog.makerdao.com/releases/kovan/0.2.17/index.html
 
 
-pragma solidity 0.5.16;
+pragma solidity 0.6.10;
 
-import "../INucleus.sol";
+import "../../interfaces/INucleus.sol";
 
-contract VatLike {
+interface VatLike {
     function hope(address) external;
 }
 
-contract PotLike {
+interface PotLike {
     function chi() external returns (uint256);
     function rho() external returns (uint256);
     function drip() external returns (uint256);
@@ -70,14 +71,14 @@ contract PotLike {
     function exit(uint256) external;
 }
 
-contract JoinLike {
+interface JoinLike {
     function join(address, uint) external;
     function exit(address, uint) external;
 }
 
-contract GemLike {
-    function transferFrom(address,address,uint) external returns (bool);
-    function approve(address,uint) external returns (bool);
+interface GemLike {
+    function transferFrom(address, address, uint) external returns (bool);
+    function approve(address, uint) external returns (bool);
 }
 
 contract ChaiNucleus is INucleus {
@@ -131,10 +132,10 @@ contract ChaiNucleus is INucleus {
     }
 
     function initRopsten() public {
-        vat = VatLike(0xA85B3d84f54Fb238Ef257158da99FdfCe905C7aA);           // Deployed copy of: variations/assets/dai/DaiVat.sol
-        pot = PotLike(0x47563186A46Aa3EBbEA5D294c8514f0ED49f2e2c);           // Deployed copy of: variations/assets/dai/DaiPot.sol
-        daiJoin = JoinLike(0x298cb5798c0F0af4850d1a380E28E25C02FF087A);      // Deployed copy of: variations/assets/dai/DaiJoin.sol
-        daiToken = GemLike(0x8B7f1E7F3412331F1Cd317EAE5040DfE5eaAdAe6);      // Deployed copy of: variations/assets/dai/DaiGem.sol
+        vat = VatLike(0xFfCFcAA53b61cF5F332b4FBe14033c1Ff5A391eb);         // MCD_VAT
+        pot = PotLike(0x9588a660241aeA569B3965e2f00631f2C5eDaE33);         // MCD_POT
+        daiJoin = JoinLike(0xA0b569e9E0816A20Ab548D692340cC28aC7Be986);    // MCD_JOIN_DAI
+        daiToken = GemLike(0x31F42841c2db5173425b5223809CF3A38FEde360);    // MCD_DAI
 
         initialize();
     }
@@ -161,7 +162,7 @@ contract ChaiNucleus is INucleus {
      * @dev Balance in Interest-bearing Token
      */
     //    function balanceOf(address _account) external returns (uint);
-    function interestBalance(address _account) external returns (uint) {
+    function interestBalance(address _account) external override returns (uint) {
         return balanceOf[_account];
     }
 
@@ -169,7 +170,7 @@ contract ChaiNucleus is INucleus {
      * @dev Balance in Asset Token
      */
     //    function dai(address usr) external returns (uint wad);
-    function assetBalance(address _account) external returns (uint) {
+    function assetBalance(address _account) external override returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         return rmul(chi, balanceOf[_account]);
     }
@@ -178,7 +179,7 @@ contract ChaiNucleus is INucleus {
      * @dev Get amount of Asset Token equivalent to Interest Token
      */
     //    function dai(uint chai) external returns (uint wad); // Added
-    function toAsset(uint _interestAmount) external returns (uint) {
+    function toAsset(uint _interestAmount) external override returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         return rmul(chi, _interestAmount);
     }
@@ -187,7 +188,7 @@ contract ChaiNucleus is INucleus {
      * @dev Get amount of Interest Token equivalent to Asset Token
      */
     //    function chai(uint _dai) external returns (uint pie); // Added
-    function toInterest(uint _assetAmount) external returns (uint) {
+    function toInterest(uint _assetAmount) external override returns (uint) {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         // rounding up ensures usr gets at least _assetAmount dai
         return rdivup(_assetAmount, chi);
@@ -197,7 +198,7 @@ contract ChaiNucleus is INucleus {
      * @dev Deposit Asset Token and receive Interest-bearing Token
      */
     //    function join(address dst, uint wad) external;
-    function depositAsset(address _account, uint _assetAmount) external {
+    function depositAsset(address _account, uint _assetAmount) external override {
         uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
         uint pie = rdiv(_assetAmount, chi);
         balanceOf[_account] = add(balanceOf[_account], pie);
@@ -214,7 +215,27 @@ contract ChaiNucleus is INucleus {
      * @dev Withdraw amount specified in Interest-bearing Token
      */
     //    function exit(address src, uint wad) public;
-    function withdrawInterest(address _account, uint _interestAmount) public {
+    function withdrawInterest(address _account, uint _interestAmount) external override {
+        _withdrawInterest(_account, _interestAmount);
+    }
+
+    /**
+     * @dev Withdraw amount specified in Asset Token
+     */
+    //    function draw(address src, uint wad) external returns (uint _chai);
+    function withdrawAsset(address _account, uint _assetAmount) external override returns (uint) {
+        uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
+        // rounding up ensures usr gets at least _assetAmount dai
+        uint _chai = rdivup(_assetAmount, chi);
+        _withdrawInterest(_account, _chai);
+        return _chai;
+    }
+
+    /**
+     * @dev Withdraw amount specified in Interest-bearing Token
+     */
+    //    function exit(address src, uint wad) public;
+    function _withdrawInterest(address _account, uint _interestAmount) internal {
         require(_account == msg.sender, "pchai/insufficient-allowance");
         require(balanceOf[_account] >= _interestAmount, "pchai/insufficient-balance");
 
@@ -227,15 +248,4 @@ contract ChaiNucleus is INucleus {
         emit Transfer(_account, address(0), _interestAmount);
     }
 
-    /**
-     * @dev Withdraw amount specified in Asset Token
-     */
-    //    function draw(address src, uint wad) external returns (uint _chai);
-    function withdrawAsset(address _account, uint _assetAmount) external returns (uint) {
-        uint chi = (now > pot.rho()) ? pot.drip() : pot.chi();
-        // rounding up ensures usr gets at least _assetAmount dai
-        uint _chai = rdivup(_assetAmount, chi);
-        withdrawInterest(_account, _chai);
-        return _chai;
-    }
 }

@@ -1,0 +1,17 @@
+version: 2.1
+orbs:
+  coveralls: coveralls/coveralls@1.0.6
+jobs:
+  build-and-test:
+    docker:
+      - image: 'circleci/node:12.16.3'
+    steps:
+      - checkout
+      - run:
+          name: Install and Test
+          command: yarn && yarn coverage
+      - coveralls/upload
+workflows:
+    build-and-test:
+      jobs:
+        - build-and-test

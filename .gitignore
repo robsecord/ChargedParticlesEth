@@ -20,14 +20,10 @@ cache
 .openzeppelin/dev-*.json
 .openzeppelin/.session
 
-# Charged Particles
-ChargedParticles.json
-ChargedParticlesERC1155.json
-ChargedParticlesEscrow.json
-
 # Code Coverage
 coverage
 .coverage
 coverage.json
 coverageEnv
 artifacts
+test-results.xml
