@@ -25,8 +25,7 @@ const presets = {
         ionToken: {
             URI: 'https://ipfs.io/ipfs/QmbNDYSzPUuEKa8ppv1W11fVJVZdGBUku2ZDKBqmUmyQdT',
             maxSupply: toWei('2000000'),
-            mintFee: toWei('0.0001'),
-            initialMint: toWei('20')
+            mintFee: toWei('0.0001')
         }
     },
     EscrowManager: {
