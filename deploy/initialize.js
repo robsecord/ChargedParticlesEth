@@ -80,10 +80,6 @@ module.exports = async (bre) => {
     await ChaiEscrow.setPausedState(false)
     await ChargedParticles.setPausedState(false)
 
-    log("\n  Minting ION Tokens...")
-    const ionToken = presets.ChargedParticles.ionToken
-    await ChargedParticles.mintIons(ionToken.URI, ionToken.maxSupply, ionToken.mintFee)
-
     // Display Contract Addresses
     log("\n  Contract Deployments Complete!\n\n  Contracts:")
     log("  - ChaiEscrow:                    ", ChaiEscrow.address)

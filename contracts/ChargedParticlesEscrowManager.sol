@@ -338,6 +338,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         return _isContractOwner(_account, _contract);
     }
 
+    // You never use this!
+
     /**
      * @notice Registers a external ERC-721 Contract in order to define Custom Rules for Tokens
      * @param _contractAddress  The Address to the External Contract of the Token
@@ -358,6 +360,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         emit RegisterParticleContract(_contractAddress);
     }
 
+    // You never use this!
+
     /**
      * @notice Registers the "Release-Burn" Custom Rule on an external ERC-721 Token Contract
      *   When enabled, tokens that are "Charged" will require the Token to be Burned before
@@ -372,6 +376,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         customReleaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
+
+    // You never use this!
 
     /**
      * @notice Registers the "Asset-Pair" Custom Rule on an external ERC-721 Token Contract
@@ -393,6 +399,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         customAssetPairId[_contractAddress] = _assetPairId;
     }
 
+    // You never use this!
+
     /**
      * @notice Registers the "Deposit Fee" Custom Rule on an external ERC-721 Token Contract
      *    When set, every Token of the Custom ERC-721 Contract that is "Energized" pays a Fee to the
@@ -410,6 +418,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         customAssetDepositFee[_contractAddress] = _depositFee;
     }
 
+    // You never use this!
+
     /**
      * @notice Registers the "Minimum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
      *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at least this 
@@ -424,6 +434,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         customAssetDepositMin[_contractAddress] = _minDeposit;
     }
+
+    // You never use this!
 
     /**
      * @notice Registers the "Maximum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
@@ -494,6 +506,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     {
 //        require(_isNonFungibleToken(_contractAddress, _tokenId), "CPEM: INVALID_TYPE");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
+
+        // When and where should someone use escrowMgr.registerContractType(...) ?
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
 
         // Get Escrow for Asset
