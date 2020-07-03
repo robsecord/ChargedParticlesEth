@@ -745,7 +745,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     /**
      * @dev Setup internal ION Token
      */
-    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _mintFee, uint256 _initialMint) external onlyDao returns (uint256) {
+    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _mintFee) external onlyDao returns (uint256) {
         require(ionTokenId == 0, "CP: ALREADY_INIT");
 
         // Create ION Token Type;
@@ -757,7 +757,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
             false,           // is Private?
             _maxSupply,      // Max Supply
             _mintFee,        // Price per Token in ETH
-            _initialMint       // Amount to mint
+            _maxSupply       // Amount to mint
         );
 
         return ionTokenId;

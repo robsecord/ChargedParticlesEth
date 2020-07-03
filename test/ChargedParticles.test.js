@@ -103,20 +103,20 @@ describe('ChargedParticles Contract', function () {
         it('should only allow Admin/DAO to Mint IONs one time', async () => {
 
             //  Test Non-Admin/DAO
-            await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.URI, ion.maxSupply, ion.mintFee, ion.initialMint))
+            await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.URI, ion.maxSupply, ion.mintFee))
                 .to.be.revertedWith('CP: INVALID_DAO');
 
             // Test Mint
             chargedParticles.on("PlasmaTypeUpdated", (_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri, event) => {
                 expect(_symbol).to.equal(web3.utils.keccak256('ION'));
                 expect(_isPrivate).to.equal(false);
-                expect(_initialMint).to.equal(ion.initialMint);
+                expect(_initialMint).to.equal(ion.maxSupply);
                 expect(_uri).to.equal(ion.uri);
             });
 
-            await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee, ion.initialMint);
+            await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
 
-            await expect(chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee, ion.initialMint)).to.be.revertedWith("CP: ALREADY_INIT");
+            await expect(chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee)).to.be.revertedWith("CP: ALREADY_INIT");
         });
 
         describe("after minting ions", () => {
@@ -135,8 +135,8 @@ describe('ChargedParticles Contract', function () {
             }
 
             beforeEach(async () => {
-                const ionTokenId = await chargedParticles.callStatic.mintIons(ion.URI, ion.maxSupply, ion.mintFee, ion.maxSupply);
-                await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee, ion.maxSupply);
+                const ionTokenId = await chargedParticles.callStatic.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
+                await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
             });
 
             it('should not be able to create particle with ions when having insufficient balance', async () => {
