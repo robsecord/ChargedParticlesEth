@@ -4,7 +4,7 @@
 [![Twitter Follow](https://badgen.net/twitter/follow/DeFiNFT?icon=twitter)](https://twitter.com/intent/follow?screen_name=DeFiNFT)
 [![built-with openzeppelin](https://img.shields.io/badge/built%20with-OpenZeppelin-3677FF)](https://docs.openzeppelin.com/)
 
-[![Coverage Status](https://coveralls.io/repos/github/robsecord/ChargedParticlesEth/badge.svg?branch=master)](https://coveralls.io/github/robsecord/ChargedParticlesEth?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/robsecord/ChargedParticlesEth/badge.svg?branch=master)](https://coveralls.io/github/robsecord/ChargedParticlesEth?branch=master&v=123)
 ![GitHub last commit](https://img.shields.io/github/last-commit/robsecord/ChargedParticlesEth)
 ![GitHub package.json version](https://img.shields.io/github/package-json/v/robsecord/ChargedParticlesEth)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/robsecord/ChargedParticlesEth)
