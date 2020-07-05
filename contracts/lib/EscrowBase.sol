@@ -25,7 +25,7 @@ pragma solidity 0.6.10;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IEscrow.sol";
@@ -37,7 +37,7 @@ import "./Common.sol";
 /**
  * @notice Escrow-Base Contract
  */
-abstract contract EscrowBase is Initializable, AccessControlUpgradeSafe, IEscrow, Common {
+abstract contract EscrowBase is Initializable, OwnableUpgradeSafe, IEscrow, Common {
     using SafeMath for uint256;
 
     IChargedParticlesEscrowManager internal escrowMgr;
@@ -74,20 +74,12 @@ abstract contract EscrowBase is Initializable, AccessControlUpgradeSafe, IEscrow
         _;
     }
 
-    // Throws if called by any account other than the Charged Particles DAO contract.
-    modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "CPEB: INVALID_DAO");
-        _;
-    }
-
     /***********************************|
     |          Initialization           |
     |__________________________________*/
 
     function initialize() public initializer {
-        __AccessControl_init();
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(ROLE_DAO_GOV, msg.sender);
+        __Ownable_init();
         paused = true;
     }
 
@@ -115,21 +107,21 @@ abstract contract EscrowBase is Initializable, AccessControlUpgradeSafe, IEscrow
     /**
      * @dev Connects to the Charged Particles Escrow-Controller 
      */
-    function setPausedState(bool _paused) external onlyDao {
+    function setPausedState(bool _paused) external onlyOwner {
         paused = _paused;
     }
 
     /**
      * @dev Connects to the Charged Particles Escrow-Controller 
      */
-    function setEscrowManager(address _escrowMgr) external onlyDao {
+    function setEscrowManager(address _escrowMgr) external onlyOwner {
         escrowMgr = IChargedParticlesEscrowManager(_escrowMgr);
     }
 
     /**
      * @dev Register Contracts for Asset/Interest Pairs
      */
-    function registerAssetPair(address _assetTokenAddress, address _interestTokenAddress) external onlyDao {
+    function registerAssetPair(address _assetTokenAddress, address _interestTokenAddress) external onlyOwner {
         require(_assetTokenAddress != address(0x0), "CPEB: INVALID_ASSET_TOKEN");
         require(_interestTokenAddress != address(0x0), "CPEB: INVALID_INTEREST_TOKEN");
 
@@ -139,23 +131,6 @@ abstract contract EscrowBase is Initializable, AccessControlUpgradeSafe, IEscrow
 
         // Allow this contract to Tokenize Interest of Asset
         assetToken.approve(_interestTokenAddress, uint(-1));
-        paused = false;
-    }
-
-    /**
-     * @dev Enables DAO Management
-     */
-    function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "CPEB: INVALID_NEW_DAO");
-
-        grantRole(ROLE_DAO_GOV, _dao);
-
-        if (hasRole(ROLE_DAO_GOV, msg.sender)) {
-            renounceRole(ROLE_DAO_GOV, msg.sender);
-        }
-        if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
-            renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        }
     }
 
     /***********************************|

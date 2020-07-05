@@ -74,4 +74,5 @@ interface IChargedParticlesTokenManager {
     function ownerOf(uint256 _tokenId) external view returns (address);
     function balanceOf(address _tokenOwner, uint256 _typeId) external view returns (uint256);
     // function balanceOfBatch(address[] calldata _owners, uint256[] calldata _typeIds) external view returns (uint256[] memory);
+    function isApprovedForAll(address _tokenOwner, address _operator) external view returns (bool);
 }

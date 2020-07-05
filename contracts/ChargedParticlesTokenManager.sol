@@ -25,7 +25,7 @@ pragma solidity 0.6.10;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
@@ -36,7 +36,7 @@ import "./lib/BridgedERC1155.sol";
 /**
  * @notice Charged Particles ERC1155 - Token Manager
  */
-contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe, BridgedERC1155 {
+contract ChargedParticlesTokenManager is Initializable, OwnableUpgradeSafe, BridgedERC1155 {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -54,21 +54,12 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
         _;
     }
 
-    // Throws if called by any account other than the Charged Particles DAO contract.
-    modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, msg.sender), "CPTM: INVALID_DAO");
-        _;
-    }
-
-
     /***********************************|
     |          Initialization           |
     |__________________________________*/
 
     function initialize() public override initializer {
-        __AccessControl_init();
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _setupRole(ROLE_DAO_GOV, msg.sender);
+        __Ownable_init();
         BridgedERC1155.initialize();
         version = "v0.4.2";
     }
@@ -253,7 +244,7 @@ contract ChargedParticlesTokenManager is Initializable, AccessControlUpgradeSafe
     /**
      * @dev Adds an Integration Controller Contract as a Fused Particle to allow Creating/Minting
      */
-    function setFusedParticleState(address _particleAddress, bool _fusedState) external onlyDao {
+    function registerContractType(address _particleAddress, bool _fusedState) external onlyOwner {
         fusedParticles[_particleAddress] = _fusedState;
     }
 }
