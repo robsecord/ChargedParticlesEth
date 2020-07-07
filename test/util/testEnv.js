@@ -5,7 +5,7 @@ const { deployContract, deployMockContract } = require('ethereum-waffle');
 const { ethers } = require('ethers');
 const { expect } = require('chai');
 
-buidler.ethers.errors.setLogLevel('error');
+// buidler.ethers.errors.setLogLevel('error');
 
 module.exports = {
     buidler,

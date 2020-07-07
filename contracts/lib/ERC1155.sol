@@ -258,7 +258,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @param _operator     Address of authorized operator
      * @return True if the operator is approved, false if not
      */
-    function isApprovedForAll(address _tokenOwner, address _operator) public view returns (bool) {
+    function isApprovedForAll(address _tokenOwner, address _operator) public override view returns (bool) {
         return operators[_tokenOwner][_operator];
     }
 

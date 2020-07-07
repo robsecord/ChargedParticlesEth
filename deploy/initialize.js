@@ -5,6 +5,7 @@ const {
     contractManager,
     chainName,
     presets,
+    toWei,
 } = require('../js-utils/deploy-helpers')
 
 module.exports = async (bre) => {
@@ -62,13 +63,14 @@ module.exports = async (bre) => {
     log("\n  Preparing ChaiEscrow...")
     await ChaiEscrow.setEscrowManager(ChargedParticlesEscrowManager.address)
     await ChaiEscrow.registerAssetPair(Dai.address, ChaiNucleus.address)
+    await ChaiEscrow.setPausedState(false)
   
     log("  Preparing ChargedParticlesEscrowManager...")
     await ChargedParticlesEscrowManager.setDepositFee(presets.EscrowManager.fees.deposit)
     await ChargedParticlesEscrowManager.registerAssetPair("chai", ChaiEscrow.address)
   
     log("  Preparing ChargedParticlesTokenManager...")
-    await ChargedParticlesTokenManager.setFusedParticleState(ChargedParticles.address, true)
+    await ChargedParticlesTokenManager.registerContractType(ChargedParticles.address, true)
 
     log("  Preparing ChargedParticles...")
     await ChargedParticles.setTrustedForwarder(trustedForwarder)
@@ -76,13 +78,15 @@ module.exports = async (bre) => {
     await ChargedParticles.registerEscrowManager(ChargedParticlesEscrowManager.address)
     await ChargedParticles.setupFees(presets.ChargedParticles.fees.eth, presets.ChargedParticles.fees.ion)
 
+    log("  Register ChargedParticles with Escrow...")
+    await ChargedParticlesEscrowManager.registerContractType(ChargedParticles.address)
+
     log("\n  Enabling Contracts...")
-    await ChaiEscrow.setPausedState(false)
     await ChargedParticles.setPausedState(false)
 
-    log("\n  Minting ION Tokens...")
-    const ionToken = presets.ChargedParticles.ionToken
-    await ChargedParticles.mintIons(ionToken.URI, ionToken.maxSupply, ionToken.mintFee)
+    // log("\n  Minting ION Tokens...")
+    // const ionToken = presets.ChargedParticles.ionToken
+    // await ChargedParticles.mintIons(ionToken.URI, ionToken.maxSupply, ionToken.mintFee)
 
     // Display Contract Addresses
     log("\n  Contract Deployments Complete!\n\n  Contracts:")

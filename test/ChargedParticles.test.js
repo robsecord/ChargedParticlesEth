@@ -25,30 +25,34 @@ describe('ChargedParticles Contract', function () {
     let chargedParticles;
     let chargedParticlesTokenManager;
     let chargedParticlesEscrowManager;
+    let dai;
 
     const _getDeployedContract = contractManager(buidler);
 
-    beforeEach(async () => {
-        [deployer, primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
+    describe("before minting ions", () => {
 
-        await deployments.fixture();
-        chargedParticles              = await _getDeployedContract('ChargedParticles');
-        chargedParticlesTokenManager  = await _getDeployedContract('ChargedParticlesTokenManager');
-        chargedParticlesEscrowManager = await _getDeployedContract('ChargedParticlesEscrowManager');
-    });
+        const { presets } = require('../js-utils/deploy-helpers');
+        const ion = presets.ChargedParticles.ionToken;
+        
+        beforeEach(async () => {
+            [deployer, primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
+            await deployments.fixture();
+            chargedParticles              = await _getDeployedContract('ChargedParticles');
+            chargedParticlesTokenManager  = await _getDeployedContract('ChargedParticlesTokenManager');
+            chargedParticlesEscrowManager = await _getDeployedContract('ChargedParticlesEscrowManager');
+        });
 
-    it('should maintain correct versioning', async () => {
-        expect(toStr(await chargedParticles.version())).to.equal('v0.4.2');
-    });
+        it('should maintain correct versioning', async () => {
+            expect(toStr(await chargedParticles.version())).to.equal('v0.4.2');
+        });
 
-    describe('setupFees()', () => {
         it('should only allow modifications from Role: Admin/DAO', async () => {
             const ethFee = toWei('1');
             const ionFee = toWei('2');
 
             // Test Non-Admin
             await expect(chargedParticles.connect(secondaryWallet).setupFees(ethFee, ionFee))
-                .to.be.revertedWith('CP: INVALID_DAO');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin
             await chargedParticles.setupFees(ethFee, ionFee);
@@ -63,16 +67,14 @@ describe('ChargedParticles Contract', function () {
             expect(createFeeEthForNFT).to.equal(ethFee.mul(2));
             expect(createFeeIonForNFT).to.equal(ionFee.mul(2));
         });
-    });
 
-    describe('setPausedState()', () => {
         it('should only allow modifications from Role: Maintainer', async () => {
             let isPaused = await chargedParticles.connect(secondaryWallet).isPaused();
             expect(isPaused).to.equal(false);
 
             // Test Non-Admin
             await expect(chargedParticles.connect(secondaryWallet).setPausedState(false))
-                .to.be.revertedWith('CP: INVALID_MAINTAINER');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin - Toggle True
             await chargedParticles.setPausedState(true);
@@ -86,12 +88,10 @@ describe('ChargedParticles Contract', function () {
             isPaused = await chargedParticles.isPaused();
             expect(isPaused).to.equal(false);
         });
-    });
 
-    describe('registerTokenManager()', () => {
         it('should allow the Admin/DAO to assign a Valid Token Manager', async () => {
             await expect(chargedParticles.connect(secondaryWallet).registerTokenManager(chargedParticlesTokenManager.address))
-                .to.be.revertedWith('CP: INVALID_DAO');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             await expect(chargedParticles.registerTokenManager(ZERO_ADDRESS))
                 .to.be.revertedWith('CP: INVALID_ADDRESS');
@@ -99,69 +99,169 @@ describe('ChargedParticles Contract', function () {
             await chargedParticles.registerTokenManager(chargedParticlesTokenManager.address);
             expect(await chargedParticles.tokenMgr()).to.equal(chargedParticlesTokenManager.address);
         });
-    });
 
+        it('should only allow Admin/DAO to Mint IONs one time', async () => {
 
-
-
-
-    describe('mintIons()', () => {
-        it('should only allow Admin/DAO to Mint IONs one time'/*, async () => {
-            const ion = {
-                uri         : 'https://www.example.com',
-                maxSupply   : toWei('10001'), 
-                amount      : toWei('179'), 
-                mintFee     : toWei('1'),
-                typeId      : toWei('123'),
-            };
-
-            // Test Non-Admin/DAO
-            await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.uri, ion.maxSupply, ion.amount, ion.mintFee))
-                .to.be.revertedWith('CP: INVALID_DAO');
-
-            // Mocks
-            await chargedParticlesTokenManager.mock.createType.withArgs(ion.uri, false).returns(ion.typeId);
-            await chargedParticlesTokenManager.mock.createErc20Bridge.withArgs(ion.typeId, 'Charged Atoms', 'ION').returns(amount);
-            await chargedParticlesTokenManager.mock.mint.withArgs(primaryWallet._address, ion.typeId, ion.amount, EMPTY_STR, EMPTY_STR).returns(amount);
+            //  Test Non-Admin/DAO
+            await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.URI, ion.maxSupply, ion.mintFee))
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Mint
-            const receipt = await chargedParticles.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: owner, gas: 5e6 });
-            expectEvent(receipt, 'PlasmaTypeUpdated', {
-                _symbol: web3.utils.keccak256('ION'),
-                _isPrivate: false,
-                _initialMint: '42',
-                _uri: 'https://www.example.com'
+            chargedParticles.on("PlasmaTypeUpdated", (_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri, event) => {
+                expect(_symbol).to.equal(web3.utils.keccak256('ION'));
+                expect(_isPrivate).to.equal(false);
+                expect(_initialMint).to.equal(ion.maxSupply);
+                expect(_uri).to.equal(ion.uri);
             });
 
-            await expectRevert(
-                chargedParticles.mintIons('https://www.example.com', 1337, 42, mintFee).send({ from: owner }),
-                "E416"
-            );
-        }*/);
+            await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
+
+            await expect(chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee)).to.be.revertedWith("CP: ALREADY_INIT");
+        });
+
+        describe("after minting ions", () => {
+
+            let assetAmount = toWei('10');
+
+            const particle = {
+                name: "test-partcile",
+                uri: "https://example.com",
+                symbol: "TCH",
+                accessType: 0,
+                assetPair: "chai",
+                maxSupply: toWei('20000'),
+                mintFee: toWei('0.0001'),
+                payWithIons: true
+            }
+
+            beforeEach(async () => {
+                const ionTokenId = await chargedParticles.callStatic.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
+                await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
+            });
+
+            it('should not be able to create particle with ions when having insufficient balance', async () => {
+                await expect(chargedParticles.connect(secondaryWallet).createParticle(
+                    particle.name,
+                    particle.uri,
+                    particle.symbol,
+                    particle.accessType,
+                    particle.assetPair,
+                    particle.maxSupply,
+                    particle.mintFee,
+                    particle.payWithIons
+                )).to.be.revertedWith('E1155: INSUFF_BALANCE');
+            });
+
+            describe("after creating particle", () => {
+
+                let particleTypeId;
+
+                beforeEach(async () => {
+                    particleTypeId = await chargedParticles.callStatic.createParticle(
+                        particle.name,
+                        particle.uri,
+                        particle.symbol,
+                        particle.accessType,
+                        particle.assetPair,
+                        particle.maxSupply,
+                        particle.mintFee,
+                        particle.payWithIons
+                    );
+                    await chargedParticles.createParticle(
+                        particle.name,
+                        particle.uri,
+                        particle.symbol,
+                        particle.accessType,
+                        particle.assetPair,
+                        particle.maxSupply,
+                        particle.mintFee,
+                        particle.payWithIons
+                    );
+                });
+
+                it('cannot mint particles if having insufficient funds', async () => {
+
+                    const dai = await _getDeployedContract('Dai');
+                    await dai.mint(deployer.getAddress(), toWei('100'));
+                    await dai.approve(chargedParticles.address, toWei('100'));
+
+                    // await expect(chargedParticles.mintParticle(
+                    //     primaryWallet.getAddress(),
+                    //     particleTypeId,
+                    //     toWei('100'),
+                    //     "https://example.com",
+                    //     ethers.utils.formatBytes32String("some quirky data")
+                    // )).to.be.revertedWith('CP: INSUFF_FUNDS');
+
+                    // const tokenId = await chargedParticles.callStatic.mintParticle(
+                    //     orimaryWallet.getAddress(),
+                    //     particleTypeId,
+                    //     toWei('100'),
+                    //     "https://example.com",
+                    //     ethers.utils.formatBytes32String("some quirky data"),
+                    //     { value: toWei('0.0001') }
+                    // );
+
+                    // chargedParticles.on('ParticleMinted', (_sender, _receiver, _tokenId, _uri, event) => {
+                    //     expect(_tokenId).to.equal(tokenId);
+                    // })
+
+                    // await chargedParticles.mintParticle(
+                    //     primaryWallet.getAddress(),
+                    //     particleTypeId,
+                    //     toWei('100'),
+                    //     "https://example.com",
+                    //     ethers.utils.formatBytes32String("some quirky data"),
+                    //     { value: toWei('0.0001') }
+                    // );
+
+                });
+
+
+
+                // it.only('withdrawFees', async () => {
+                //     const balanceBefore1 = await web3.eth.getBalance(ionHodler);
+                //     const receipt1 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter1 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt1, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: '0'
+                //     });
+                //     expect((balanceAfter1 - balanceBefore1).toString()).toBe('0');
+
+                //     await contractInstance.methods.mintPlasma(ionHodler, ionTokenId, 3, []).send({ from: nonOwner, gas: 5e6, value: web3.utils.toWei('5', 'ether') });
+
+                //     const balanceBefore2 = await web3.eth.getBalance(ionHodler);
+                //     const receipt2 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter2 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt2, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: web3.utils.toWei('3', 'ether').toString()
+                //     });
+                //     expect(web3.utils.fromWei((balanceAfter2 - balanceBefore2).toString(), 'ether')).toBe('3');
+
+                //     const balanceBefore3 = await web3.eth.getBalance(ionHodler);
+                //     const receipt3 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter3 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt3, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: '0'
+                //     });
+                //     expect((balanceAfter3 - balanceBefore3).toString()).toBe('0');
+                // });
+            }); 
+
+        });
+
     });
 
-
-
-
 });
-
-
-
-
-
-// const { accounts, provider, contract } = require('@openzeppelin/test-environment');
-// const { TestHelper } = require('@openzeppelin/cli');
-// const { constants, expectEvent, expectRevert } = require('@openzeppelin/test-helpers');
-// const { Contracts, ZWeb3 } = require('@openzeppelin/upgrades');
-
-// ZWeb3.initialize(provider);
-// const { web3 } = ZWeb3;
-
-// const ChargedParticles = Contracts.getFromLocal('ChargedParticles');
-// const ChargedParticlesTokenManager = Contracts.getFromLocal('ChargedParticlesTokenManager');
-
-// // const ChargedParticles = contract.fromArtifacts('ChargedParticles');
-// // const ChargedParticlesTokenManager = contract.fromArtifacts('ChargedParticlesTokenManager');
 
 // describe('ChargedParticles', () => {
 //   let [owner, nonOwner, ionHodler] = accounts;

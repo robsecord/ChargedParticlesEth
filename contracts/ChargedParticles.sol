@@ -24,7 +24,7 @@
 pragma solidity 0.6.10;
 
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
@@ -33,6 +33,7 @@ import "@opengsn/gsn/contracts/BaseRelayRecipient.sol";
 
 import "./interfaces/IChargedParticlesTokenManager.sol";
 import "./interfaces/IChargedParticlesEscrowManager.sol";
+import "./interfaces/IParticleManager.sol";
 
 import "./lib/Common.sol";
 
@@ -40,7 +41,7 @@ import "./lib/Common.sol";
 /**
  * @notice Charged Particles Contract - Interest-Bearing NFTs
  */
-contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpgradeSafe, Common {
+contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient, OwnableUpgradeSafe, Common {
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -113,18 +114,6 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     // Modifiers
     //
 
-    // Throws if called by any account other than the Charged Particles DAO contract.
-    modifier onlyDao() {
-        require(hasRole(ROLE_DAO_GOV, _msgSender()), "CP: INVALID_DAO");
-        _;
-    }
-
-    // Throws if called by any account other than the Charged Particles Maintainer.
-    modifier onlyMaintainer() {
-        require(hasRole(ROLE_MAINTAINER, _msgSender()), "CP: INVALID_MAINTAINER");
-        _;
-    }
-
     modifier whenNotPaused() {
         require(!isPaused, "CP: PAUSED");
         _;
@@ -193,9 +182,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     |__________________________________*/
 
     function initialize() public initializer {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setupRole(ROLE_DAO_GOV, _msgSender());
-        _setupRole(ROLE_MAINTAINER, _msgSender());
+        __Ownable_init();
         version = "v0.4.2";
     }
 
@@ -305,6 +292,22 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     function getTotalMinted(uint256 _typeId) external view returns (uint256) {
         _typeId = tokenMgr.getNonFungibleBaseType(_typeId);
         return tokenMgr.totalMinted(_typeId);
+    }
+
+    /***********************************|
+    |         Particle Manager          |
+    |__________________________________*/
+
+    function contractOwner() external view override returns (address) {
+        return owner();
+    }
+
+    function ownerOf(uint256 _tokenId) external view override returns (address) {
+        return tokenMgr.ownerOf(_tokenId);
+    }
+
+    function isApprovedForAll(address _owner, address _operator) external view override returns (bool) {
+        return tokenMgr.isApprovedForAll(_owner, _operator);
     }
 
     /***********************************|
@@ -634,14 +637,14 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
         returns (uint256)
     {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
-        require(tokenMgr.isNonFungibleBaseType(_tokenId), "CP: FUNGIBLE_TYPE");
+        require(tokenMgr.isNonFungibleBaseType(_typeId), "CP: FUNGIBLE_TYPE");
 
         // Transfer Asset Token from Caller to Contract
+        bytes16 _assetPairId = typeAssetPairId[_typeId];
         _collectAssetToken(_msgSender(), _assetPairId, _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
-        return escrowMgr.energizeParticle(address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
+        return escrowMgr.energizeParticle(address(this), _tokenId, _assetPairId, _assetAmount);
     }
 
     /***********************************|
@@ -658,7 +661,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     function dischargeParticle(address _receiver, uint256 _tokenId) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrowMgr.dischargeParticle(_receiver, address(tokenMgr), _tokenId, _assetPairId);
+        return escrowMgr.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
     }
 
     /**
@@ -672,7 +675,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     function dischargeParticleAmount(address _receiver, uint256 _tokenId, uint256 _assetAmount) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
         bytes16 _assetPairId = typeAssetPairId[_typeId];
-        return escrowMgr.dischargeParticleAmount(_receiver, address(tokenMgr), _tokenId, _assetPairId, _assetAmount);
+        return escrowMgr.dischargeParticleAmount(_receiver, address(this), _tokenId, _assetPairId, _assetAmount);
     }
 
 
@@ -681,25 +684,20 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     |__________________________________*/
 
     /**
-     * @dev Allows contract owner to withdraw any fees earned
+     * @dev Allows a Type Creator to withdraw any fees earned
      * @param _receiver   The address of the receiver
-     * @param _typeId     The type of token to withdraw fees for
      */
-    // function withdrawCreatorFees(address payable _receiver, uint256 _typeId) public {
-    //     address _creator = typeCreator[_typeId];
-    //     require(_msgSender() == _creator, "CP: NOT_CREATOR");
+    function withdrawCreatorFees(address payable _receiver) public {
+        address _creator = _msgSender();
+        uint256 _amount = collectedFees[_creator];
+        require(_amount > 0, "CP: INSUFF_BALANCE");
+        require(_receiver != address(0x0), "CP: INVALID_ADDRESS");
 
-    //     // Withdraw Particle Deposit Fees from Escrow
-    //     escrowMgr.withdrawCreatorFees(_typeId);
-
-    //     // Withdraw Plasma Minting Fees (ETH)
-    //     uint256 _amount = collectedFees[_creator];
-    //     if (_amount > 0) {
-    //         collectedFees[_creator] = 0;
-    //         _receiver.sendValue(_amount);
-    //     }
-    //     emit CreatorFeesWithdrawn(_msgSender(), _receiver, _amount);
-    // }
+        // Withdraw Minting Fees (ETH)
+        collectedFees[_creator] = 0;
+        _receiver.sendValue(_amount);
+        emit CreatorFeesWithdrawn(_creator, _receiver, _amount);
+    }
 
     /***********************************|
     |          Only Admin/DAO           |
@@ -708,7 +706,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     /**
      * @dev Setup the Creation/Minting Fees
      */
-    function setupFees(uint256 _createFeeEth, uint256 _createFeeIon) external onlyDao {
+    function setupFees(uint256 _createFeeEth, uint256 _createFeeIon) external onlyOwner {
         createFeeEth = _createFeeEth;
         createFeeIon = _createFeeIon;
     }
@@ -716,14 +714,14 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     /**
      * @dev Toggle the "Paused" state of the contract
      */
-    function setPausedState(bool _paused) external onlyMaintainer {
+    function setPausedState(bool _paused) external onlyOwner {
         isPaused = _paused;
     }
 
     /**
      * @dev Register the address of the token manager contract
      */
-    function registerTokenManager(address _tokenMgr) external onlyDao {
+    function registerTokenManager(address _tokenMgr) external onlyOwner {
         require(_tokenMgr != address(0x0), "CP: INVALID_ADDRESS");
         tokenMgr = IChargedParticlesTokenManager(_tokenMgr);
     }
@@ -731,19 +729,19 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
     /**
      * @dev Register the address of the escrow contract
      */
-    function registerEscrowManager(address _escrowMgr) external onlyDao {
+    function registerEscrowManager(address _escrowMgr) external onlyOwner {
         require(_escrowMgr != address(0x0), "CP: INVALID_ADDRESS");
         escrowMgr = IChargedParticlesEscrowManager(_escrowMgr);
     }
 
-    function setTrustedForwarder(address _trustedForwarder) external onlyDao {
+    function setTrustedForwarder(address _trustedForwarder) external onlyOwner {
         trustedForwarder = _trustedForwarder;
     }
 
     /**
      * @dev Setup internal ION Token
      */
-    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _mintFee) external onlyDao returns (uint256) {
+    function mintIons(string calldata _uri, uint256 _maxSupply, uint256 _mintFee) external onlyOwner returns (uint256) {
         require(ionTokenId == 0, "CP: ALREADY_INIT");
 
         // Create ION Token Type;
@@ -765,7 +763,7 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
      * @dev Allows contract owner to withdraw any ETH fees earned
      *      Interest-token Fees are collected in Escrow, withdraw from there
      */
-    function withdrawFees(address payable _receiver) external onlyDao {
+    function withdrawFees(address payable _receiver) external onlyOwner {
         require(_receiver != address(0x0), "CP: INVALID_ADDRESS");
 
         uint256 _amount = collectedFees[CONTRACT_ID];
@@ -774,23 +772,6 @@ contract ChargedParticles is Initializable, BaseRelayRecipient, AccessControlUpg
             _receiver.sendValue(_amount);
         }
         emit ContractFeesWithdrawn(_msgSender(), _receiver, _amount);
-    }
-
-    function enableDao(address _dao) external onlyDao {
-        require(_dao != _msgSender(), "CP: INVALID_NEW_DAO");
-
-        grantRole(ROLE_DAO_GOV, _dao);
-        // DAO must assign a Maintainer
-
-        if (hasRole(ROLE_DAO_GOV, _msgSender())) {
-            renounceRole(ROLE_DAO_GOV, _msgSender());
-        }
-        if (hasRole(ROLE_MAINTAINER, _msgSender())) {
-            renounceRole(ROLE_MAINTAINER, _msgSender());
-        }
-        if (hasRole(DEFAULT_ADMIN_ROLE, _msgSender())) {
-            renounceRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        }
     }
 
     /***********************************|
