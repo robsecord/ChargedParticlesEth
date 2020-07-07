@@ -28,22 +28,14 @@ import "@openzeppelin/contracts-ethereum-package/contracts/access/AccessControl.
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-ethereum-package/contracts/introspection/IERC165.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 
 import "./interfaces/IChargedParticlesEscrowManager.sol";
+import "./interfaces/IParticleManager.sol";
 import "./interfaces/IEscrow.sol";
 
 import "./lib/Common.sol";
 
-interface IOwnable {
-    function owner() external view returns (address);
-}
-
-interface INonFungible {
-    function ownerOf(uint256 _tokenId) external view returns (address);
-    function isApprovedForAll(address _owner, address _operator) external view returns (bool);
-}
 
 /**
  * @notice Charged Particles Escrow Contract
@@ -179,9 +171,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     function initialize() public initializer {
         __ReentrancyGuard_init();
         __AccessControl_init();
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+
         _setupRole(ROLE_DAO_GOV, msg.sender);
+        _setRoleAdmin(ROLE_DAO_GOV, ROLE_DAO_GOV);
+
         _setupRole(ROLE_MAINTAINER, msg.sender);
+        _setRoleAdmin(ROLE_MAINTAINER, ROLE_DAO_GOV);
+
         version = "v0.4.2";
     }
 
@@ -235,7 +231,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _operator         The Address of the Operator to Approve
      */
     function setDischargeApproval(address _contractAddress, uint256 _tokenId, address _operator) external override {
-        INonFungible _tokenInterface = INonFungible(_contractAddress);
+        IParticleManager _tokenInterface = IParticleManager(_contractAddress);
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
         require(_operator != _tokenOwner, "CPEM: CANNOT_BE_SELF");
         require(msg.sender == _tokenOwner || _tokenInterface.isApprovedForAll(_tokenOwner, msg.sender), "CPEM: NOT_OPERATOR");
@@ -344,15 +340,15 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @notice Registers a external ERC-721 Contract in order to define Custom Rules for Tokens
      * @param _contractAddress  The Address to the External Contract of the Token
      */
-    function registerContractType(address _contractAddress) external override {
+    function registerContractType(address _contractAddress) external override onlyDao {
         // Check Token Interface to ensure compliance
-        IERC165 _tokenInterface = IERC165(_contractAddress);
-        bool _is721 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC721);
-        bool _is1155 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC1155);
-        require(_is721 || _is1155, "CPEM: INVALID_INTERFACE");
+        // IERC165 _tokenInterface = IERC165(_contractAddress);
+        // bool _is721 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC721);
+        // bool _is1155 = _tokenInterface.supportsInterface(INTERFACE_SIGNATURE_ERC1155);
+        // require(_is721 || _is1155, "CPEM: INVALID_INTERFACE");
 
         // Check Contract Owner to prevent random people from setting Limits
-        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
+        // require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
         // Contract Registered!
         customRegisteredContract[_contractAddress] = true;
@@ -464,12 +460,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      */
     function withdrawContractFees(address _contractAddress, address _receiver, bytes16 _assetPairId) external override nonReentrant {
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
-
-        // Validate Contract Owner
-        address _contractOwner = IOwnable(_contractAddress).owner();
-        require(_contractOwner == msg.sender, "CPEM: NOT_OWNER");
-
+        require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
+        
         uint256 _interestAmount = assetPairEscrow[_assetPairId].withdrawFees(_contractAddress, _receiver);
         emit FeesWithdrawn(_contractAddress, _receiver, _assetPairId, _interestAmount);
     }
@@ -504,7 +497,6 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         nonReentrant
         returns (uint256)
     {
-//        require(_isNonFungibleToken(_contractAddress, _tokenId), "CPEM: INVALID_TYPE");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         // When and where should someone use escrowMgr.registerContractType(...) ?
@@ -634,7 +626,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         require(_baseParticleMass(_contractAddress, _tokenId, _assetPairId) > 0, "CPEM: INSUFF_MASS");
-        INonFungible _tokenInterface = INonFungible(_contractAddress);
+        IParticleManager _tokenInterface = IParticleManager(_contractAddress);
 
         // Validate Token Owner/Operator
         address _tokenOwner = _tokenInterface.ownerOf(_tokenId);
@@ -677,7 +669,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         override 
         returns (uint256)
     {
-        INonFungible _tokenInterface = INonFungible(_contractAddress);
+        IParticleManager _tokenInterface = IParticleManager(_contractAddress);
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
         address releaser = assetToBeReleasedBy[_tokenUuid];
 
@@ -722,26 +714,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     /**
      * @dev Disable a specific Asset-Pair
      */
-    function disableAssetPair(bytes16 _assetPairId) external onlyDao {
+    function disableAssetPair(bytes16 _assetPairId) external onlyMaintainer {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         assetPairEscrow[_assetPairId] = IEscrow(address(0x0));
     }
 
-    /**
-     * @dev Allows Escrow Contract Owner/DAO to withdraw any fees earned
-     */
-    function withdrawFees(address _receiver, string calldata _assetPair) external onlyDao {
-        address _self = address(this);
-        bytes16 _assetPairId = _toBytes16(_assetPair);
-        require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
-        uint256 _interestAmount = assetPairEscrow[_assetPairId].withdrawFees(_self, _receiver);
-        emit FeesWithdrawn(_self, _receiver, _assetPairId, _interestAmount);
-    }
-
     function enableDao(address _dao) external onlyDao {
-        require(_dao != msg.sender, "CPEM: INVALID_NEW_DAO");
-
         grantRole(ROLE_DAO_GOV, _dao);
         // DAO must assign a Maintainer
 
@@ -750,9 +729,6 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         }
         if (hasRole(ROLE_MAINTAINER, msg.sender)) {
             renounceRole(ROLE_MAINTAINER, msg.sender);
-        }
-        if (hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
-            renounceRole(DEFAULT_ADMIN_ROLE, msg.sender);
         }
     }
 
@@ -787,7 +763,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @return True if the _account is the Owner of the _contract
      */
     function _isContractOwner(address _account, address _contract) internal view returns (bool) {
-        address _contractOwner = IOwnable(_contract).owner();
+        address _contractOwner = IParticleManager(_contract).contractOwner();
         return _contractOwner != address(0x0) && _contractOwner == _account;
     }
 

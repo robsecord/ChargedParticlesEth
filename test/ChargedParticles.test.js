@@ -52,7 +52,7 @@ describe('ChargedParticles Contract', function () {
 
             // Test Non-Admin
             await expect(chargedParticles.connect(secondaryWallet).setupFees(ethFee, ionFee))
-                .to.be.revertedWith('CP: INVALID_DAO');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin
             await chargedParticles.setupFees(ethFee, ionFee);
@@ -74,7 +74,7 @@ describe('ChargedParticles Contract', function () {
 
             // Test Non-Admin
             await expect(chargedParticles.connect(secondaryWallet).setPausedState(false))
-                .to.be.revertedWith('CP: INVALID_MAINTAINER');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin - Toggle True
             await chargedParticles.setPausedState(true);
@@ -91,7 +91,7 @@ describe('ChargedParticles Contract', function () {
 
         it('should allow the Admin/DAO to assign a Valid Token Manager', async () => {
             await expect(chargedParticles.connect(secondaryWallet).registerTokenManager(chargedParticlesTokenManager.address))
-                .to.be.revertedWith('CP: INVALID_DAO');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             await expect(chargedParticles.registerTokenManager(ZERO_ADDRESS))
                 .to.be.revertedWith('CP: INVALID_ADDRESS');
@@ -104,7 +104,7 @@ describe('ChargedParticles Contract', function () {
 
             //  Test Non-Admin/DAO
             await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.URI, ion.maxSupply, ion.mintFee))
-                .to.be.revertedWith('CP: INVALID_DAO');
+                .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Mint
             chargedParticles.on("PlasmaTypeUpdated", (_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri, event) => {
@@ -217,7 +217,45 @@ describe('ChargedParticles Contract', function () {
 
                 });
 
-            });
+
+
+                // it.only('withdrawFees', async () => {
+                //     const balanceBefore1 = await web3.eth.getBalance(ionHodler);
+                //     const receipt1 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter1 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt1, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: '0'
+                //     });
+                //     expect((balanceAfter1 - balanceBefore1).toString()).toBe('0');
+
+                //     await contractInstance.methods.mintPlasma(ionHodler, ionTokenId, 3, []).send({ from: nonOwner, gas: 5e6, value: web3.utils.toWei('5', 'ether') });
+
+                //     const balanceBefore2 = await web3.eth.getBalance(ionHodler);
+                //     const receipt2 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter2 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt2, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: web3.utils.toWei('3', 'ether').toString()
+                //     });
+                //     expect(web3.utils.fromWei((balanceAfter2 - balanceBefore2).toString(), 'ether')).toBe('3');
+
+                //     const balanceBefore3 = await web3.eth.getBalance(ionHodler);
+                //     const receipt3 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
+                //     const balanceAfter3 = await web3.eth.getBalance(ionHodler);
+
+                //     expectEvent(receipt3, 'ContractFeesWithdrawn', {
+                //         _sender: owner,
+                //         _receiver: ionHodler,
+                //         _amount: '0'
+                //     });
+                //     expect((balanceAfter3 - balanceBefore3).toString()).toBe('0');
+                // });
+            }); 
 
         });
 
