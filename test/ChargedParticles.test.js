@@ -185,35 +185,36 @@ describe('ChargedParticles Contract', function () {
                     await dai.mint(deployer.getAddress(), toWei('100'));
                     await dai.approve(chargedParticles.address, toWei('100'));
 
-                    // await expect(chargedParticles.mintParticle(
-                    //     primaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data")
-                    // )).to.be.revertedWith('CP: INSUFF_FUNDS');
+                    await expect(chargedParticles.mintParticle(
+                        primaryWallet.getAddress(),
+                        particleTypeId,
+                        toWei('100'),
+                        "https://example.com",
+                        ethers.utils.formatBytes32String("some quirky data")
+                    )).to.be.revertedWith('CP: INSUFF_FUNDS');
 
-                    // const tokenId = await chargedParticles.callStatic.mintParticle(
-                    //     orimaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data"),
-                    //     { value: toWei('0.0001') }
-                    // );
+                    const tokenId = await chargedParticles.callStatic.mintParticle(
+                        deployer.getAddress(),
+                        particleTypeId,
+                        toWei('100'),
+                        "https://example.com",
+                        ethers.utils.formatBytes32String("some quirky data"),
+                        { value: toWei('0.0001') }
+                    );
 
-                    // chargedParticles.on('ParticleMinted', (_sender, _receiver, _tokenId, _uri, event) => {
-                    //     expect(_tokenId).to.equal(tokenId);
-                    // })
+                    chargedParticles.on('ParticleMinted', (_sender, _receiver, _tokenId, _uri, event) => {
+                        expect(_tokenId).to.equal(tokenId);
+                        console.log('Here');
+                    })
 
-                    // await chargedParticles.mintParticle(
-                    //     primaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data"),
-                    //     { value: toWei('0.0001') }
-                    // );
+                    await chargedParticles.mintParticle(
+                        deployer.getAddress(),
+                        particleTypeId,
+                        toWei('100'),
+                        "https://example.com",
+                        ethers.utils.formatBytes32String("some quirky data"),
+                        { value: toWei('0.0001') }
+                    );
 
                 });
 

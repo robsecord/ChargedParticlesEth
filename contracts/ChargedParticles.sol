@@ -34,6 +34,7 @@ import "@opengsn/gsn/contracts/BaseRelayRecipient.sol";
 import "./interfaces/IChargedParticlesTokenManager.sol";
 import "./interfaces/IChargedParticlesEscrowManager.sol";
 import "./interfaces/IParticleManager.sol";
+import "./interfaces/IApproval.sol";
 
 import "./lib/Common.sol";
 
@@ -642,6 +643,9 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         // Transfer Asset Token from Caller to Contract
         bytes16 _assetPairId = typeAssetPairId[_typeId];
         _collectAssetToken(_msgSender(), _assetPairId, _assetAmount);
+
+        // Approve escrowMgr to spend _assetAmount
+        IApproval(escrowMgr.getAssetTokenAddress(_assetPairId)).approve(address(escrowMgr), _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
         return escrowMgr.energizeParticle(address(this), _tokenId, _assetPairId, _assetAmount);

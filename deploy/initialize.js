@@ -78,9 +78,6 @@ module.exports = async (bre) => {
     await ChargedParticles.registerEscrowManager(ChargedParticlesEscrowManager.address)
     await ChargedParticles.setupFees(presets.ChargedParticles.fees.eth, presets.ChargedParticles.fees.ion)
 
-    log("  Register ChargedParticles with Escrow...")
-    await ChargedParticlesEscrowManager.registerContractType(ChargedParticles.address)
-
     log("\n  Enabling Contracts...")
     await ChargedParticles.setPausedState(false)
 
