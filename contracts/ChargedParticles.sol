@@ -644,6 +644,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         _collectAssetToken(_msgSender(), _assetPairId, _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
+        _getAssetToken(_assetPairId).approve(address(escrowMgr), _assetAmount);
         return escrowMgr.energizeParticle(address(this), _tokenId, _assetPairId, _assetAmount);
     }
 
@@ -825,7 +826,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
 
         // Type Asset-Pair
         typeAssetPairId[_particleTypeId] = _assetPairId;
-        
+
         // Log Event
         emit ParticleTypeUpdated(
             _particleTypeId,
@@ -904,13 +905,17 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
     function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
-        address _assetTokenAddress = escrowMgr.getAssetTokenAddress(_assetPairId);
-        IERC20 _assetToken = IERC20(_assetTokenAddress);
+        IERC20 _assetToken = _getAssetToken(_assetPairId);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CP: INSUFF_ASSETS");
         // Be sure to Approve this Contract to transfer your Asset Token
         require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED");
+    }
+
+    function _getAssetToken(bytes16 _assetPairId) internal returns (IERC20) {
+        address _assetTokenAddress = escrowMgr.getAssetTokenAddress(_assetPairId);
+        return IERC20(_assetTokenAddress);
     }
 
     function _msgSender() internal override(BaseRelayRecipient, ContextUpgradeSafe) virtual view returns (address payable) {

@@ -131,36 +131,36 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address indexed _contractAddress
     );
     event DischargeApproval(
-        address indexed _contractAddress, 
-        uint256 indexed _tokenId, 
-        address indexed _owner, 
+        address indexed _contractAddress,
+        uint256 indexed _tokenId,
+        address indexed _owner,
         address _operator
     );
     event EnergizedParticle(
-        address indexed _contractAddress, 
-        uint256 indexed _tokenId, 
-        bytes16 _assetPairId, 
+        address indexed _contractAddress,
+        uint256 indexed _tokenId,
+        bytes16 _assetPairId,
         uint256 _assetBalance
     );
     event DischargedParticle(
-        address indexed _contractAddress, 
-        uint256 indexed _tokenId, 
-        address indexed _receiver, 
-        bytes16 _assetPairId, 
-        uint256 _receivedAmount, 
+        address indexed _contractAddress,
+        uint256 indexed _tokenId,
+        address indexed _receiver,
+        bytes16 _assetPairId,
+        uint256 _receivedAmount,
         uint256 _interestBalance
     );
     event ReleasedParticle(
-        address indexed _contractAddress, 
-        uint256 indexed _tokenId, 
-        address indexed _receiver, 
-        bytes16 _assetPairId, 
+        address indexed _contractAddress,
+        uint256 indexed _tokenId,
+        address indexed _receiver,
+        bytes16 _assetPairId,
         uint256 _receivedAmount
     );
     event FeesWithdrawn(
-        address indexed _contractAddress, 
-        address indexed _receiver, 
-        bytes16 _assetPairId, 
+        address indexed _contractAddress,
+        address indexed _receiver,
+        bytes16 _assetPairId,
         uint256 _interestAmoount
     );
 
@@ -265,7 +265,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         uint256 _interestTokenAmount
     )
         external
-        override 
+        override
         view
         returns (uint256, uint256)
     {
@@ -284,7 +284,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         uint256 _interestTokenAmount
     )
         external
-        override 
+        override
         view
         returns (uint256)
     {
@@ -305,7 +305,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     }
 
     /**
-     * @notice Gets the amount of Interest that the Particle has generated representing 
+     * @notice Gets the amount of Interest that the Particle has generated representing
      *    the Charge of the Particle
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _tokenId          The ID of the Token within the External Contract
@@ -408,7 +408,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
     /**
      * @notice Registers the "Minimum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
-     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at least this 
+     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at least this
      *    amount of Asset Token.
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _minDeposit       The Minimum Deposit required for a Token
@@ -423,7 +423,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
     /**
      * @notice Registers the "Maximum Deposit Amount" Custom Rule on an external ERC-721 Token Contract
-     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at most this 
+     *    When set, every Token of the Custom ERC-721 Contract must be "Energized" with at most this
      *    amount of Asset Token.
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _maxDeposit       The Maximum Deposit allowed for a Token
@@ -450,7 +450,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
-        
+
         uint256 _interestAmount = assetPairEscrow[_assetPairId].withdrawFees(_contractAddress, _receiver);
         emit FeesWithdrawn(_contractAddress, _receiver, _assetPairId, _interestAmount);
     }
@@ -470,7 +470,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      *
      * @param _contractAddress  The Address to the Contract of the Token to Energize
      * @param _tokenId          The ID of the Token to Energize
-     * @param _assetPairId      The Asset-Pair to Energize the Token with 
+     * @param _assetPairId      The Asset-Pair to Energize the Token with
      * @param _assetAmount      The Amount of Asset Token to Energize the Token with
      * @return  The amount of Interest-bearing Tokens added to the escrow for the Token
      */
@@ -481,7 +481,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         uint256 _assetAmount
     )
         external
-        override 
+        override
         nonReentrant
         returns (uint256)
     {
@@ -536,7 +536,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _receiver         The Address to Receive the Discharged Asset Tokens
      * @param _contractAddress  The Address to the Contract of the Token to Discharge
      * @param _tokenId          The ID of the Token to Discharge
-     * @param _assetPairId      The Asset-Pair to Discharge from the Token 
+     * @param _assetPairId      The Asset-Pair to Discharge from the Token
      * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
     function dischargeParticle(
@@ -546,7 +546,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         bytes16 _assetPairId
     )
         external
-        override 
+        override
         nonReentrant
         returns (uint256, uint256)
     {
@@ -560,7 +560,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _receiver         The Address to Receive the Discharged Asset Tokens
      * @param _contractAddress  The Address to the Contract of the Token to Discharge
      * @param _tokenId          The ID of the Token to Discharge
-     * @param _assetPairId      The Asset-Pair to Discharge from the Token 
+     * @param _assetPairId      The Asset-Pair to Discharge from the Token
      * @param _assetAmount      The specific amount of Asset Token to Discharge from the Token
      * @return  Two values; 1: Amount of Asset Token Received, 2: Remaining Charge of the Token
      */
@@ -572,7 +572,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         uint256 _assetAmount
     )
         external
-        override 
+        override
         nonReentrant
         returns (uint256, uint256)
     {
@@ -587,7 +587,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     /**
      * @notice Releases the Full amount of Asset + Interest held within the Particle by Asset-Pair
      *    Tokens that require Burn before Release MUST call "finalizeRelease" after Burning the Token.
-     *    In such cases, the Order of Operations should be: 
+     *    In such cases, the Order of Operations should be:
      *       1. call "releaseParticle"
      *       2. Burn Token
      *       3. call "finalizeRelease"
@@ -596,7 +596,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _receiver         The Address to Receive the Released Asset Tokens
      * @param _contractAddress  The Address to the Contract of the Token to Release
      * @param _tokenId          The ID of the Token to Release
-     * @param _assetPairId      The Asset-Pair to Release from the Token 
+     * @param _assetPairId      The Asset-Pair to Release from the Token
      * @return  The Total Amount of Asset Token Released including all converted Interest
      */
     function releaseParticle(
@@ -606,7 +606,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         bytes16 _assetPairId
     )
         external
-        override 
+        override
         nonReentrant
         returns (uint256)
     {
@@ -642,7 +642,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _receiver         The Address to Receive the Released Asset Tokens
      * @param _contractAddress  The Address to the Contract of the Token to Release
      * @param _tokenId          The ID of the Token to Release
-     * @param _assetPairId      The Asset-Pair to Release from the Token 
+     * @param _assetPairId      The Asset-Pair to Release from the Token
      * @return  The Total Amount of Asset Token Released including all converted Interest
      */
     function finalizeRelease(
@@ -652,7 +652,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         bytes16 _assetPairId
     )
         external
-        override 
+        override
         returns (uint256)
     {
         IParticleManager _tokenInterface = IParticleManager(_contractAddress);
@@ -695,6 +695,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         // Register Pair
         assetPairs.push(_assetPairId);
         assetPairEscrow[_assetPairId] = _newEscrow;
+
+        // Infinite approve the Escrow
+        _getAssetToken(_assetPairId).approve(_escrow, uint256(-1));
     }
 
     /**
@@ -783,6 +786,11 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         return (_depositFee, _customFee);
     }
 
+    function _getAssetToken(bytes16 _assetPairId) internal returns (IERC20) {
+        address _assetTokenAddress = _getAssetTokenAddress(_assetPairId);
+        return IERC20(_assetTokenAddress);
+    }
+
     /**
      * @dev Collects the Required Asset Token from the users wallet
      * @param _from         The owner address to collect the Assets from
@@ -790,8 +798,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
     function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
-        address _assetTokenAddress = _getAssetTokenAddress(_assetPairId);
-        IERC20 _assetToken = IERC20(_assetTokenAddress);
+        IERC20 _assetToken = _getAssetToken(_assetPairId);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CPEM: INSUFF_ASSETS");
@@ -815,7 +822,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     }
 
     /**
-     * @dev Gets the amount of Interest that the Particle has generated representing 
+     * @dev Gets the amount of Interest that the Particle has generated representing
      *    the Charge of the Particle
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _tokenId          The ID of the Token within the External Contract
