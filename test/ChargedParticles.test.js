@@ -1,6 +1,7 @@
 const {
     buidler,
     deployments,
+    deployMockContract,
     ethers,
     expect,
     EMPTY_STR,
@@ -9,37 +10,75 @@ const {
 
 const {
     contractManager,
+    txOverrides,
     toWei,
     toEth,
     toStr,
+    presets,
 } = require('../js-utils/deploy-helpers');
+
+const Dai = require('../build/Dai.json');
+const ChaiNucleus = require('../build/ChaiNucleus.json');
+const ChaiEscrow = require('../build/ChaiEscrow.json');
+const ChargedParticlesTokenManager = require('../build/ChargedParticlesTokenManager.json');
+const ChargedParticlesEscrowManager = require('../build/ChargedParticlesEscrowManager.json');
 
 const debug = require('debug')('ChargedParticles.test');
 
+const particle = {
+  name: "test-particle",
+  uri: "https://example.com",
+  symbol: "TEST",
+  accessType: 1,
+  assetPair: "chai",
+  maxSupply: toWei('20000'),
+  mintFee: toWei('0.0001'),
+  payWithIons: true
+};
 
 describe('ChargedParticles Contract', function () {
-    let deployer;
-    let primaryWallet;
-    let secondaryWallet;
-
-    let chargedParticles;
+    let deployer, primaryWallet, secondaryWallet;
+    let chargedParticles, chargedParticlesPrimary, chargedParticlesSecondary;
     let chargedParticlesTokenManager;
     let chargedParticlesEscrowManager;
+    let particleCreationParams;
+    let chaiEscrow;
     let dai;
+
+    let ionTokenId = 123;
+    let particleTypeId = 456;
+    let particleTokenId = 789;
+
+    let ion = presets.ChargedParticles.ionToken;
 
     const _getDeployedContract = contractManager(buidler);
 
     describe("before minting ions", () => {
 
-        const { presets } = require('../js-utils/deploy-helpers');
-        const ion = presets.ChargedParticles.ionToken;
-        
         beforeEach(async () => {
             [deployer, primaryWallet, secondaryWallet] = await buidler.ethers.getSigners();
             await deployments.fixture();
-            chargedParticles              = await _getDeployedContract('ChargedParticles');
-            chargedParticlesTokenManager  = await _getDeployedContract('ChargedParticlesTokenManager');
-            chargedParticlesEscrowManager = await _getDeployedContract('ChargedParticlesEscrowManager');
+
+            // Mock Contracts
+            dai                           = await deployMockContract(deployer, Dai.abi, txOverrides());
+            chaiNucleus                   = await deployMockContract(deployer, ChaiNucleus.abi, txOverrides());
+            chaiEscrow                    = await deployMockContract(deployer, ChaiEscrow.abi, txOverrides());
+            chargedParticlesTokenManager  = await deployMockContract(deployer, ChargedParticlesTokenManager.abi, txOverrides());
+            chargedParticlesEscrowManager = await deployMockContract(deployer, ChargedParticlesEscrowManager.abi, txOverrides());
+
+            // Contract under test
+            chargedParticles = await _getDeployedContract('ChargedParticles');
+
+            // Prep contract under test
+            await chargedParticles.registerTokenManager(chargedParticlesTokenManager.address);
+            await chargedParticles.registerEscrowManager(chargedParticlesEscrowManager.address);
+
+            // Pre-mocks
+            await chargedParticlesEscrowManager.mock.getAssetTokenAddress.withArgs('chai').returns(dai.address)
+
+            // Primary & Secondary Signers on Contract
+            chargedParticlesPrimary = chargedParticles.connect(primaryWallet);
+            chargedParticlesSecondary = chargedParticles.connect(secondaryWallet);
         });
 
         it('should maintain correct versioning', async () => {
@@ -51,7 +90,7 @@ describe('ChargedParticles Contract', function () {
             const ionFee = toWei('2');
 
             // Test Non-Admin
-            await expect(chargedParticles.connect(secondaryWallet).setupFees(ethFee, ionFee))
+            await expect(chargedParticlesSecondary.setupFees(ethFee, ionFee))
                 .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin
@@ -69,17 +108,17 @@ describe('ChargedParticles Contract', function () {
         });
 
         it('should only allow modifications from Role: Maintainer', async () => {
-            let isPaused = await chargedParticles.connect(secondaryWallet).isPaused();
+            let isPaused = await chargedParticlesSecondary.isPaused();
             expect(isPaused).to.equal(false);
 
             // Test Non-Admin
-            await expect(chargedParticles.connect(secondaryWallet).setPausedState(false))
+            await expect(chargedParticlesSecondary.setPausedState(false))
                 .to.be.revertedWith('Ownable: caller is not the owner');
 
             // Test Admin - Toggle True
             await chargedParticles.setPausedState(true);
 
-            isPaused = await chargedParticles.connect(secondaryWallet).isPaused();
+            isPaused = await chargedParticlesSecondary.isPaused();
             expect(isPaused).to.equal(true);
 
             // Test Admin - Toggle False
@@ -90,7 +129,7 @@ describe('ChargedParticles Contract', function () {
         });
 
         it('should allow the Admin/DAO to assign a Valid Token Manager', async () => {
-            await expect(chargedParticles.connect(secondaryWallet).registerTokenManager(chargedParticlesTokenManager.address))
+            await expect(chargedParticlesSecondary.registerTokenManager(chargedParticlesTokenManager.address))
                 .to.be.revertedWith('Ownable: caller is not the owner');
 
             await expect(chargedParticles.registerTokenManager(ZERO_ADDRESS))
@@ -103,11 +142,18 @@ describe('ChargedParticles Contract', function () {
         it('should only allow Admin/DAO to Mint IONs one time', async () => {
 
             //  Test Non-Admin/DAO
-            await expect(chargedParticles.connect(secondaryWallet).mintIons(ion.URI, ion.maxSupply, ion.mintFee))
+            await expect(chargedParticlesSecondary.mintIons(ion.URI, ion.maxSupply, ion.mintFee))
                 .to.be.revertedWith('Ownable: caller is not the owner');
 
+            // Mocks
+            await chargedParticlesTokenManager.mock.createType.withArgs(ion.URI, false).returns(ionTokenId);
+            await chargedParticlesTokenManager.mock.createErc20Bridge.withArgs(ionTokenId, ion.name, ion.symbol, 18).returns(ZERO_ADDRESS);
+            await chargedParticlesTokenManager.mock.mint
+                // .withArgs(deployer._address, ionTokenId, ion.maxSupply, ion.URI, ethers.utils.formatBytes32String('ions'))
+                .returns(ionTokenId);
+
             // Test Mint
-            chargedParticles.on("PlasmaTypeUpdated", (_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri, event) => {
+            chargedParticles.on('PlasmaTypeUpdated', (_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri, event) => {
                 expect(_symbol).to.equal(web3.utils.keccak256('ION'));
                 expect(_isPrivate).to.equal(false);
                 expect(_initialMint).to.equal(ion.maxSupply);
@@ -116,110 +162,146 @@ describe('ChargedParticles Contract', function () {
 
             await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
 
-            await expect(chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee)).to.be.revertedWith("CP: ALREADY_INIT");
+            await expect(chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee))
+                .to.be.revertedWith("CP: ALREADY_INIT");
         });
 
         describe("after minting ions", () => {
-
-            let assetAmount = toWei('10');
-
-            const particle = {
-                name: "test-partcile",
-                uri: "https://example.com",
-                symbol: "TCH",
-                accessType: 0,
-                assetPair: "chai",
-                maxSupply: toWei('20000'),
-                mintFee: toWei('0.0001'),
-                payWithIons: true
-            }
+            let assetAmount = toWei('100');
 
             beforeEach(async () => {
-                const ionTokenId = await chargedParticles.callStatic.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
+                particleCreationParams = [
+                  particle.name,
+                  particle.uri,
+                  particle.symbol,
+                  particle.accessType,
+                  particle.assetPair,
+                  particle.maxSupply,
+                  particle.mintFee,
+                  particle.payWithIons
+                ];
+
+                // Mocks
+                await chargedParticlesTokenManager.mock.createType.withArgs(ion.URI, false).returns(ionTokenId);
+                await chargedParticlesTokenManager.mock.createErc20Bridge.withArgs(ionTokenId, ion.name, ion.symbol, 18).returns(ZERO_ADDRESS);
+                await chargedParticlesTokenManager.mock.burn.returns();
+                await chargedParticlesTokenManager.mock.mint
+                    // .withArgs(deployer._address, ionTokenId, ion.maxSupply, ion.URI, ethers.utils.formatBytes32String('ions'))
+                    .returns(ionTokenId);
+
+                // Test
                 await chargedParticles.mintIons(ion.URI, ion.maxSupply, ion.mintFee);
             });
 
-            it('should not be able to create particle with ions when having insufficient balance', async () => {
-                await expect(chargedParticles.connect(secondaryWallet).createParticle(
-                    particle.name,
-                    particle.uri,
-                    particle.symbol,
-                    particle.accessType,
-                    particle.assetPair,
-                    particle.maxSupply,
-                    particle.mintFee,
-                    particle.payWithIons
-                )).to.be.revertedWith('E1155: INSUFF_BALANCE');
+            it('should not be able to create a particle with an insufficient ION balance', async () => {
+                // Mocks
+                await chargedParticlesEscrowManager.mock.isAssetPairEnabled.withArgs('chai').returns(true);
+                await chargedParticlesTokenManager.mock.balanceOf.withArgs(secondaryWallet._address, ionTokenId).returns(0);
+
+                // Test
+                await expect(chargedParticlesSecondary.createParticle(...particleCreationParams))
+                    .to.be.revertedWith('CP: INSUFF_IONS');
             });
 
-            describe("after creating particle", () => {
-
-                let particleTypeId;
+            describe.only("after creating particle", () => {
 
                 beforeEach(async () => {
-                    particleTypeId = await chargedParticles.callStatic.createParticle(
-                        particle.name,
-                        particle.uri,
-                        particle.symbol,
-                        particle.accessType,
-                        particle.assetPair,
-                        particle.maxSupply,
-                        particle.mintFee,
-                        particle.payWithIons
-                    );
-                    await chargedParticles.createParticle(
-                        particle.name,
-                        particle.uri,
-                        particle.symbol,
-                        particle.accessType,
-                        particle.assetPair,
-                        particle.maxSupply,
-                        particle.mintFee,
-                        particle.payWithIons
-                    );
+                    particleCreationParams = [
+                      particle.name,
+                      particle.uri,
+                      particle.symbol,
+                      particle.accessType,
+                      particle.assetPair,
+                      particle.maxSupply,
+                      particle.mintFee,
+                      false
+                    ];
+
+                    // Mocks
+                    await chargedParticlesEscrowManager.mock.isAssetPairEnabled.withArgs('chai').returns(true);
+
+                    await chargedParticlesTokenManager.mock.totalMinted.withArgs(particleTypeId).returns(0);
+                    await chargedParticlesTokenManager.mock.isNonFungibleBaseType.withArgs(particleTypeId).returns(true);
+                    await chargedParticlesTokenManager.mock.createType.withArgs(particle.uri, true).returns(particleTypeId);
+                    await chargedParticlesTokenManager.mock.createErc721Bridge.withArgs(particleTypeId, particle.name, particle.symbol).returns(ZERO_ADDRESS);
+
+                    // Prep
+                    await chargedParticlesPrimary.createParticle(...particleCreationParams, { value: presets.ChargedParticles.fees.eth.mul(2) });
                 });
 
-                it('cannot mint particles if having insufficient funds', async () => {
+                it('cannot mint particles with insufficient funds', async () => {
+                    // Mocks
+                    await chargedParticlesTokenManager.mock.getNonFungibleBaseType.withArgs(particleTokenId).returns(particleTypeId);
+                    await chargedParticlesTokenManager.mock.mint
+                        .withArgs(secondaryWallet._address, particleTypeId, 1, particle.uri, EMPTY_STR)
+                        .returns(particleTokenId);
 
-                    const dai = await _getDeployedContract('Dai');
-                    await dai.mint(deployer.getAddress(), toWei('100'));
-                    await dai.approve(chargedParticles.address, toWei('100'));
-
-                    // await expect(chargedParticles.mintParticle(
-                    //     primaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data")
-                    // )).to.be.revertedWith('CP: INSUFF_FUNDS');
-
-                    // const tokenId = await chargedParticles.callStatic.mintParticle(
-                    //     orimaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data"),
-                    //     { value: toWei('0.0001') }
-                    // );
-
-                    // chargedParticles.on('ParticleMinted', (_sender, _receiver, _tokenId, _uri, event) => {
-                    //     expect(_tokenId).to.equal(tokenId);
-                    // })
-
-                    // await chargedParticles.mintParticle(
-                    //     primaryWallet.getAddress(),
-                    //     particleTypeId,
-                    //     toWei('100'),
-                    //     "https://example.com",
-                    //     ethers.utils.formatBytes32String("some quirky data"),
-                    //     { value: toWei('0.0001') }
-                    // );
-
+                    // Test
+                    await expect(chargedParticlesSecondary.mintParticle(
+                        secondaryWallet._address,
+                        particleTypeId,
+                        assetAmount,
+                        particle.uri,
+                        EMPTY_STR
+                    )).to.be.revertedWith('CP: INSUFF_FUNDS');
                 });
 
+                it('cannot mint particles with insufficient assets', async () => {
+                    // Mocks
+                    await dai.mock.balanceOf.withArgs(secondaryWallet._address).returns(0);
+                    await chargedParticlesTokenManager.mock.totalMinted.withArgs(particleTypeId).returns(0);
+                    await chargedParticlesTokenManager.mock.isNonFungibleBaseType.withArgs(particleTypeId).returns(true);
+                    await chargedParticlesTokenManager.mock.uri.withArgs(particleTypeId).returns(particle.uri);
+                    await chargedParticlesTokenManager.mock.getNonFungibleBaseType.withArgs(particleTokenId).returns(particleTypeId);
+                    await chargedParticlesTokenManager.mock.mint
+                        .withArgs(secondaryWallet._address, particleTypeId, 1, particle.uri, EMPTY_STR)
+                        .returns(particleTokenId);
 
+                    // Test
+                    await expect(chargedParticlesSecondary.mintParticle(
+                        secondaryWallet._address,
+                        particleTypeId,
+                        assetAmount,
+                        particle.uri,
+                        EMPTY_STR,
+                        { value: particle.mintFee }
+                    )).to.be.revertedWith('CP: INSUFF_ASSETS');
+                });
 
-                // it.only('withdrawFees', async () => {
+                it('can mint particles with sufficient funds & assets', async () => {
+                    // Mocks
+                    await dai.mock.balanceOf.withArgs(secondaryWallet._address).returns(toWei('1000'));
+                    await dai.mock.approve.withArgs(chargedParticlesEscrowManager.address, assetAmount).returns(true);
+                    await dai.mock.transferFrom
+                        .withArgs(secondaryWallet._address, chargedParticles.address, assetAmount)
+                        .returns(true);
+
+                    await chargedParticlesTokenManager.mock.totalMinted.withArgs(particleTypeId).returns(0);
+                    await chargedParticlesTokenManager.mock.isNonFungibleBaseType.withArgs(particleTypeId).returns(true);
+                    await chargedParticlesTokenManager.mock.uri.withArgs(particleTypeId).returns(particle.uri);
+                    await chargedParticlesTokenManager.mock.getNonFungibleBaseType.withArgs(particleTokenId).returns(particleTypeId);
+                    await chargedParticlesTokenManager.mock.mint
+                        .withArgs(secondaryWallet._address, particleTypeId, 1, particle.uri, EMPTY_STR)
+                        .returns(particleTokenId);
+
+                    await chargedParticlesEscrowManager.mock.energizeParticle
+                        .withArgs(chargedParticles.address, particleTokenId, 'chai', assetAmount)
+                        .returns(assetAmount);
+
+                    // Test
+                    await expect(chargedParticlesSecondary.mintParticle(
+                        secondaryWallet._address,
+                        particleTypeId,
+                        assetAmount,
+                        particle.uri,
+                        EMPTY_STR,
+                        { value: particle.mintFee }
+                    ))
+                        .to.emit(chargedParticlesSecondary, 'ParticleMinted')
+                        .withArgs(secondaryWallet._address, secondaryWallet._address, particleTokenId, particle.uri);
+                });
+
+                // it('withdrawFees', async () => {
                 //     const balanceBefore1 = await web3.eth.getBalance(ionHodler);
                 //     const receipt1 = await contractInstance.methods.withdrawFees(ionHodler).send({ from: owner, gas: 5e6 });
                 //     const balanceAfter1 = await web3.eth.getBalance(ionHodler);
@@ -255,7 +337,7 @@ describe('ChargedParticles Contract', function () {
                 //     });
                 //     expect((balanceAfter3 - balanceBefore3).toString()).toBe('0');
                 // });
-            }); 
+            });
 
         });
 
@@ -295,7 +377,7 @@ describe('ChargedParticles Contract', function () {
 //         chargedParticles.registerTokenManager(tokenManagerInstance.address).send({ from: nonOwner }),
 //         "Ownable: caller is not the owner"
 //       );
-      
+
 //       await expectRevert(
 //         chargedParticles.registerTokenManager(constants.ZERO_ADDRESS).send({ from: owner }),
 //         "E412"
@@ -519,7 +601,7 @@ describe('ChargedParticles Contract', function () {
 //         );
 
 //         const receipt = await chargedParticles.burnPlasma(ionTokenId, 10).send({ from: owner });
-  
+
 //         expectEvent(receipt, 'PlasmaBurned', {
 //           _from: owner,
 //           _typeId: ionTokenId,

@@ -16,6 +16,6 @@ module.exports = {
     deployContract,
     deployMockContract,
 
-    EMPTY_STR: [],
-    ZERO_ADDRESS: '0x0000000000000000000000000000000000000000',
+    EMPTY_STR: ethers.utils.formatBytes32String(""),
+    ZERO_ADDRESS: ethers.constants.AddressZero,
 };

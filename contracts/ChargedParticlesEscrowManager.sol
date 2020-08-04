@@ -59,9 +59,9 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     //
 
     // Asset-Pair-IDs
-    bytes16[] internal assetPairs;
-    // mapping (bytes16 => bool) internal assetPairEnabled;
-    mapping (bytes16 => IEscrow) internal assetPairEscrow;
+    string[] internal assetPairs;
+    // mapping (string => bool) internal assetPairEnabled;
+    mapping (string => IEscrow) internal assetPairEscrow;
 
     //     TokenUUID => Operator Approval per Token
     mapping (uint256 => address) internal tokenDischargeApprovals;
@@ -81,7 +81,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     mapping (address => bool) internal customReleaseRequiresBurn;
 
     //      Contract => Specific Asset-Pair that is allowed (otherwise, any Asset-Pair is allowed)
-    mapping (address => bytes16) internal customAssetPairId;
+    mapping (address => string) internal customAssetPairId;
 
     //      Contract => Deposit Fees to be earned for Contract Owner
     mapping (address => uint256) internal customAssetDepositFee;
@@ -139,14 +139,14 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     event EnergizedParticle(
         address indexed _contractAddress,
         uint256 indexed _tokenId,
-        bytes16 _assetPairId,
+        string _assetPairId,
         uint256 _assetBalance
     );
     event DischargedParticle(
         address indexed _contractAddress,
         uint256 indexed _tokenId,
         address indexed _receiver,
-        bytes16 _assetPairId,
+        string _assetPairId,
         uint256 _receivedAmount,
         uint256 _interestBalance
     );
@@ -154,13 +154,13 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address indexed _contractAddress,
         uint256 indexed _tokenId,
         address indexed _receiver,
-        bytes16 _assetPairId,
+        string _assetPairId,
         uint256 _receivedAmount
     );
     event FeesWithdrawn(
         address indexed _contractAddress,
         address indexed _receiver,
-        bytes16 _assetPairId,
+        string _assetPairId,
         uint256 _interestAmoount
     );
 
@@ -185,7 +185,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     |         Particle Physics          |
     |__________________________________*/
 
-    function isAssetPairEnabled(bytes16 _assetPairId) external override view returns (bool) {
+    function isAssetPairEnabled(string calldata _assetPairId) external override view returns (bool) {
         return _isAssetPairEnabled(_assetPairId);
     }
 
@@ -193,21 +193,21 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         return assetPairs.length;
     }
 
-    function getAssetPairByIndex(uint _index) external override view returns (bytes16) {
+    function getAssetPairByIndex(uint _index) external override view returns (string memory) {
         require(_index >= 0 && _index < assetPairs.length, "CPEM: INVALID_INDEX");
         return assetPairs[_index];
     }
 
-    function getAssetTokenEscrow(bytes16 _assetPairId) external override view returns (address) {
+    function getAssetTokenEscrow(string calldata _assetPairId) external override view returns (address) {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return address(assetPairEscrow[_assetPairId]);
     }
 
-    function getAssetTokenAddress(bytes16 _assetPairId) external override view returns (address) {
+    function getAssetTokenAddress(string calldata _assetPairId) external override view returns (address) {
         return _getAssetTokenAddress(_assetPairId);
     }
 
-    function getInterestTokenAddress(bytes16 _assetPairId) external override view returns (address) {
+    function getInterestTokenAddress(string calldata _assetPairId) external override view returns (address) {
         return _getInterestTokenAddress(_assetPairId);
     }
 
@@ -300,7 +300,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The Amount of underlying Assets held within the Token
      */
-    function baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external override view returns (uint256) {
+    function baseParticleMass(address _contractAddress, uint256 _tokenId, string calldata _assetPairId) external override view returns (uint256) {
         return _baseParticleMass(_contractAddress, _tokenId, _assetPairId);
     }
 
@@ -312,7 +312,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The amount of interest the Token has generated (in Asset Token)
      */
-    function currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) external override returns (uint256) {
+    function currentParticleCharge(address _contractAddress, uint256 _tokenId, string calldata _assetPairId) external override returns (uint256) {
         return _currentParticleCharge(_contractAddress, _tokenId, _assetPairId);
     }
 
@@ -364,7 +364,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     function registerContractSettingReleaseBurn(address _contractAddress, bool _releaseRequiresBurn) external override {
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
-        require(customAssetPairId[_contractAddress].length > 0, "CPEM: REQUIRES_SINGLE_ASSET_PAIR");
+        require(bytes(customAssetPairId[_contractAddress]).length > 0, "CPEM: REQUIRES_SINGLE_ASSET_PAIR");
 
         customReleaseRequiresBurn[_contractAddress] = _releaseRequiresBurn;
     }
@@ -376,11 +376,11 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _contractAddress  The Address to the External Contract of the Token
      * @param _assetPairId      The Asset-Pair required for Energizing a Token; otherwise Any Asset-Pair is allowed
      */
-    function registerContractSettingAssetPair(address _contractAddress, bytes16 _assetPairId) external override {
+    function registerContractSettingAssetPair(address _contractAddress, string calldata _assetPairId) external override {
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
 
-        if (_assetPairId.length > 0) {
+        if (bytes(_assetPairId).length > 0) {
             require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         } else {
             require(customReleaseRequiresBurn[_contractAddress] != true, "CPEM: CANNOT_REQUIRE_RELEASE_BURN");
@@ -446,7 +446,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _receiver         The Address of the Receiver of the Collected Fees
      * @param _assetPairId      The Asset-Pair ID to Withdraw Fees for
      */
-    function withdrawContractFees(address _contractAddress, address _receiver, bytes16 _assetPairId) external override nonReentrant {
+    function withdrawContractFees(address _contractAddress, address _receiver, string calldata _assetPairId) external override nonReentrant {
         require(customRegisteredContract[_contractAddress], "CPEM: UNREGISTERED");
         require(_isContractOwner(msg.sender, _contractAddress), "CPEM: NOT_OWNER");
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
@@ -477,7 +477,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     function energizeParticle(
         address _contractAddress,
         uint256 _tokenId,
-        bytes16 _assetPairId,
+        string calldata _assetPairId,
         uint256 _assetAmount
     )
         external
@@ -502,14 +502,15 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
 
         // Validate Custom Contract Settings
         // Valid Asset-Pair?
-        if (customAssetPairId[_contractAddress].length > 0) {
-            require(_assetPairId == customAssetPairId[_contractAddress], "CPEM: INVALID_ASSET_PAIR");
+        if (bytes(customAssetPairId[_contractAddress]).length > 0) {
+            require(keccak256(abi.encodePacked(customAssetPairId[_contractAddress])) == keccak256(abi.encodePacked(_assetPairId)), "CPEM: INVALID_ASSET_PAIR");
         }
 
         // Valid Amount?
         if (customAssetDepositMin[_contractAddress] > 0) {
             require(_newBalance >= customAssetDepositMin[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
+
         if (customAssetDepositMax[_contractAddress] > 0) {
             require(_newBalance <= customAssetDepositMax[_contractAddress], "CPEM: INSUFF_DEPOSIT");
         }
@@ -543,7 +544,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address _receiver,
         address _contractAddress,
         uint256 _tokenId,
-        bytes16 _assetPairId
+        string calldata _assetPairId
     )
         external
         override
@@ -568,7 +569,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address _receiver,
         address _contractAddress,
         uint256 _tokenId,
-        bytes16 _assetPairId,
+        string calldata _assetPairId,
         uint256 _assetAmount
     )
         external
@@ -603,7 +604,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address _receiver,
         address _contractAddress,
         uint256 _tokenId,
-        bytes16 _assetPairId
+        string calldata _assetPairId
     )
         external
         override
@@ -649,7 +650,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         address _receiver,
         address _contractAddress,
         uint256 _tokenId,
-        bytes16 _assetPairId
+        string calldata _assetPairId
     )
         external
         override
@@ -686,9 +687,8 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     /**
      * @dev Register Contracts for Asset/Interest Pairs
      */
-    function registerAssetPair(string calldata _assetPair, address _escrow) external onlyMaintainer {
+    function registerAssetPair(string calldata _assetPairId, address _escrow) external onlyMaintainer {
         // Validate Escrow
-        bytes16 _assetPairId = _toBytes16(_assetPair);
         IEscrow _newEscrow = IEscrow(_escrow);
         require(_newEscrow.isPaused() != true, "CPEM: INVALID_ESCROW");
 
@@ -703,7 +703,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     /**
      * @dev Disable a specific Asset-Pair
      */
-    function disableAssetPair(bytes16 _assetPairId) external onlyMaintainer {
+    function disableAssetPair(string calldata _assetPairId) external onlyMaintainer {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         assetPairEscrow[_assetPairId] = IEscrow(address(0x0));
@@ -725,15 +725,15 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
     |         Private Functions         |
     |__________________________________*/
 
-    function _isAssetPairEnabled(bytes16 _assetPairId) internal view returns (bool) {
+    function _isAssetPairEnabled(string calldata _assetPairId) internal view returns (bool) {
         return (address(assetPairEscrow[_assetPairId]) != address(0x0));
     }
-    function _getAssetTokenAddress(bytes16 _assetPairId) internal view returns (address) {
+    function _getAssetTokenAddress(string calldata _assetPairId) internal view returns (address) {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return assetPairEscrow[_assetPairId].getAssetTokenAddress();
     }
 
-    function _getInterestTokenAddress(bytes16 _assetPairId) internal view returns (address) {
+    function _getInterestTokenAddress(string calldata _assetPairId) internal view returns (address) {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
         return assetPairEscrow[_assetPairId].getInterestTokenAddress();
     }
@@ -786,7 +786,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
         return (_depositFee, _customFee);
     }
 
-    function _getAssetToken(bytes16 _assetPairId) internal returns (IERC20) {
+    function _getAssetToken(string calldata _assetPairId) internal view returns (IERC20) {
         address _assetTokenAddress = _getAssetTokenAddress(_assetPairId);
         return IERC20(_assetTokenAddress);
     }
@@ -797,7 +797,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId  The ID of the Asset-Pair that the Particle will use for the Underlying Assets
      * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
-    function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
+    function _collectAssetToken(address _from, string calldata _assetPairId, uint256 _assetAmount) internal {
         IERC20 _assetToken = _getAssetToken(_assetPairId);
 
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
@@ -814,7 +814,7 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The Amount of underlying Assets held within the Token
      */
-    function _baseParticleMass(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) internal view returns (uint256) {
+    function _baseParticleMass(address _contractAddress, uint256 _tokenId, string calldata _assetPairId) internal view returns (uint256) {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
@@ -829,25 +829,10 @@ contract ChargedParticlesEscrowManager is IChargedParticlesEscrowManager, Initia
      * @param _assetPairId      The Asset-Pair ID to check the Asset balance of
      * @return  The amount of interest the Token has generated (in Asset Token)
      */
-    function _currentParticleCharge(address _contractAddress, uint256 _tokenId, bytes16 _assetPairId) internal returns (uint256) {
+    function _currentParticleCharge(address _contractAddress, uint256 _tokenId, string calldata _assetPairId) internal returns (uint256) {
         require(_isAssetPairEnabled(_assetPairId), "CPEM: INVALID_ASSET_PAIR");
 
         uint256 _tokenUuid = _getUUID(_contractAddress, _tokenId);
         return assetPairEscrow[_assetPairId].currentParticleCharge(_tokenUuid);
-    }
-
-    /**
-     * @dev Converts a string value into a bytes16 value
-     */
-    function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
-        bytes memory _tmp = bytes(_source);
-        if (_tmp.length == 0) {
-            return 0x0;
-        }
-
-        // solhint-disable-next-line
-        assembly {
-            _result := mload(add(_source, 16))
-        }
     }
 }

@@ -80,7 +80,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
     mapping (uint256 => uint256) internal mintFee;
 
     //        TypeID => Specific Asset-Pair to be used for this Type
-    mapping (uint256 => bytes16) internal typeAssetPairId;
+    mapping (uint256 => string) internal typeAssetPairId;
 
     //        TypeID => Special bit-markings for this Type
     mapping (uint256 => uint32) internal typeSpecialBits;
@@ -128,7 +128,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         string indexed _symbol,
         bool indexed _isPrivate,
         bool _isSeries,
-        bytes16 _assetPairId,
+        string _assetPairId,
         string _uri
     );
 
@@ -321,7 +321,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      */
     function baseParticleMass(uint256 _tokenId) external view returns (uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
+        string memory _assetPairId = typeAssetPairId[_typeId];
         return escrowMgr.baseParticleMass(address(tokenMgr), _tokenId, _assetPairId);
     }
 
@@ -335,7 +335,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         require(registeredTypes[_typeId] > 0, "CP: INVALID_TYPE");
         require(tokenMgr.isNonFungible(_tokenId), "CP: FUNGIBLE_TYPE");
 
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
+        string memory _assetPairId = typeAssetPairId[_typeId];
         return escrowMgr.currentParticleCharge(address(tokenMgr), _tokenId, _assetPairId);
     }
 
@@ -584,7 +584,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
     function burnParticle(uint256 _tokenId) external {
         address _tokenContract = address(tokenMgr);
         address _tokenOwner;
-        bytes16 _assetPairId;
+        string memory _assetPairId;
 
         // Verify Token
         require(tokenMgr.isNonFungibleBaseType(_tokenId), "CP: FUNGIBLE_TYPE");
@@ -640,7 +640,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         require(tokenMgr.isNonFungibleBaseType(_typeId), "CP: FUNGIBLE_TYPE");
 
         // Transfer Asset Token from Caller to Contract
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
+        string memory _assetPairId = typeAssetPairId[_typeId];
         _collectAssetToken(_msgSender(), _assetPairId, _assetAmount);
 
         // Energize Particle; Transfering Asset from Contract to Escrow
@@ -661,7 +661,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      */
     function dischargeParticle(address _receiver, uint256 _tokenId) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
+        string memory _assetPairId = typeAssetPairId[_typeId];
         return escrowMgr.dischargeParticle(_receiver, address(this), _tokenId, _assetPairId);
     }
 
@@ -675,7 +675,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      */
     function dischargeParticleAmount(address _receiver, uint256 _tokenId, uint256 _assetAmount) external returns (uint256, uint256) {
         uint256 _typeId = tokenMgr.getNonFungibleBaseType(_tokenId);
-        bytes16 _assetPairId = typeAssetPairId[_typeId];
+        string memory _assetPairId = typeAssetPairId[_typeId];
         return escrowMgr.dischargeParticleAmount(_receiver, address(this), _tokenId, _assetPairId, _assetAmount);
     }
 
@@ -784,7 +784,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      * @param _name             The Name of the Particle
      * @param _uri              A unique URI for the Token Type which will serve the JSON metadata
      * @param _accessType       A bit indicating the Access Type; Private/Public, Series/Collection
-     * @param _assetPair        The Name of the Asset-Pair that the Particle will use for the Underlying Assets
+     * @param _assetPairId      The ID of the Asset-Pair that the Particle will use for the Underlying Assets
      * @param _maxSupply        The Max Supply of Tokens that can be minted
      *                          Provide a value of 0 for no limit
      * @param _mintFee          The "Mint" Fee that is collected for each Particle and paid to the Particle Type Creator
@@ -796,14 +796,13 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
         string memory _uri,
         string memory _symbol,
         uint8 _accessType,
-        string memory _assetPair,
+        string memory _assetPairId,
         uint256 _maxSupply,
         uint256 _mintFee
     )
         internal
         returns (uint256 _particleTypeId)
     {
-        bytes16 _assetPairId = _toBytes16(_assetPair);
         require(escrowMgr.isAssetPairEnabled(_assetPairId), "CP: INVALID_ASSET_PAIR");
 
         // Create Type
@@ -882,7 +881,7 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
 
         // Mint Initial Tokens
         if (_initialMint > 0) {
-            tokenMgr.mint(_msgSender(), _plasmaTypeId, _initialMint, "", "");
+            tokenMgr.mint(_msgSender(), _plasmaTypeId, _initialMint, _uri, "ions");
         }
 
         emit PlasmaTypeUpdated(_plasmaTypeId, _symbol, _isPrivate, _initialMint, _uri);
@@ -894,6 +893,8 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      * @param _ions  The amount of IONs to collect from the user
      */
     function _collectIons(address _from, uint256 _ions) internal {
+        require(tokenMgr.balanceOf(_from, ionTokenId) > 0, "CP: INSUFF_IONS");
+
         // Burn IONs from User
         tokenMgr.burn(_from, ionTokenId, _ions);
     }
@@ -904,36 +905,20 @@ contract ChargedParticles is Initializable, IParticleManager, BaseRelayRecipient
      * @param _assetPairId  The ID of the Asset-Pair that the Particle will use for the Underlying Assets
      * @param _assetAmount  The Amount of Asset Tokens to Collect
      */
-    function _collectAssetToken(address _from, bytes16 _assetPairId, uint256 _assetAmount) internal {
+    function _collectAssetToken(address _from, string memory _assetPairId, uint256 _assetAmount) internal {
         IERC20 _assetToken = _getAssetToken(_assetPairId);
-
         uint256 _userAssetBalance = _assetToken.balanceOf(_from);
         require(_assetAmount <= _userAssetBalance, "CP: INSUFF_ASSETS");
         // Be sure to Approve this Contract to transfer your Asset Token
         require(_assetToken.transferFrom(_from, address(this), _assetAmount), "CP: TRANSFER_FAILED");
     }
 
-    function _getAssetToken(bytes16 _assetPairId) internal returns (IERC20) {
+    function _getAssetToken(string memory _assetPairId) internal view returns (IERC20) {
         address _assetTokenAddress = escrowMgr.getAssetTokenAddress(_assetPairId);
         return IERC20(_assetTokenAddress);
     }
 
     function _msgSender() internal override(BaseRelayRecipient, ContextUpgradeSafe) virtual view returns (address payable) {
         return BaseRelayRecipient._msgSender();
-    }
-
-    /**
-     * @dev Convert a String to Bytes16
-     */
-    function _toBytes16(string memory _source) private pure returns (bytes16 _result) {
-        bytes memory _tmp = bytes(_source);
-        if (_tmp.length == 0) {
-            return 0x0;
-        }
-
-        // solhint-disable-next-line
-        assembly {
-            _result := mload(add(_source, 16))
-        }
     }
 }

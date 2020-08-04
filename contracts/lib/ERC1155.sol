@@ -47,7 +47,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     //
     // Generic (ERC20 & ERC721)
-    // 
+    //
     //       Account =>         Operator => Allowed?
     mapping (address => mapping (address => bool)) internal operators;   // Operator Approval for All Tokens by Type
     //        TypeID => Total Minted Supply
@@ -141,7 +141,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      */
     function supportsInterface(bytes4 _interfaceID) external override view returns (bool) {
         if (_interfaceID == INTERFACE_SIGNATURE_ERC165 ||
-        _interfaceID == INTERFACE_SIGNATURE_ERC1155) {
+            _interfaceID == INTERFACE_SIGNATURE_ERC1155) {
             return true;
         }
         return false;
@@ -196,9 +196,9 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @notice Gets a specific Token by Index of a Users Enumerable Non-fungible Tokens (ERC-721 only)
-     * @param _typeId  The Type ID of the Token 
+     * @param _typeId  The Type ID of the Token
      * @param _owner   The address of the Token Holder
-     * @param _index   The Index of the Token 
+     * @param _index   The Index of the Token
      * @return  The ID of the Token by Owner, Type & Index
      */
     function tokenOfOwnerByIndex(uint256 _typeId, address _owner, uint256 _index) public view returns (uint256) {
@@ -208,8 +208,8 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @notice Gets a specific Token by Index in All Enumerable Non-fungible Tokens (ERC-721 only)
-     * @param _typeId  The Type ID of the Token 
-     * @param _index   The Index of the Token 
+     * @param _typeId  The Type ID of the Token
+     * @param _index   The Index of the Token
      * @return  The ID of the Token by Type & Index
      */
     function tokenByIndex(uint256 _typeId, uint256 _index) public view returns (uint256) {
@@ -521,14 +521,14 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
      * @return The Token IDs of the newly minted Tokens
      */
     // function _mintBatch(
-    //     address _to, 
-    //     uint256[] memory _types, 
-    //     uint256[] memory _amounts, 
-    //     string[] memory _uris, 
+    //     address _to,
+    //     uint256[] memory _types,
+    //     uint256[] memory _amounts,
+    //     string[] memory _uris,
     //     bytes memory _data
-    // ) 
-    //     internal 
-    //     returns (uint256[] memory) 
+    // )
+    //     internal
+    //     returns (uint256[] memory)
     // {
     //     require(_types.length == _amounts.length, "E1155: ARRAY_LEN_MISMATCH");
     //     uint256 _type;
@@ -646,7 +646,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @dev Adds NFT Tokens to a Users Enumerable List
-     * @param _typeId   The Type ID of the Token 
+     * @param _typeId   The Type ID of the Token
      * @param _to       The Address of the Token Receiver
      * @param _tokenId  The ID of the Token
      */
@@ -657,7 +657,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @dev Adds NFT Tokens to the All-Tokens Enumerable List
-     * @param _typeId   The Type ID of the Token 
+     * @param _typeId   The Type ID of the Token
      * @param _tokenId  The ID of the Token
      */
     function _addTokenToAllTokensEnumeration(uint256 _typeId, uint256 _tokenId) internal {
@@ -667,7 +667,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @dev Removes NFT Tokens from a Users Enumerable List
-     * @param _typeId   The Type ID of the Token 
+     * @param _typeId   The Type ID of the Token
      * @param _from     The Address of the Token Holder
      * @param _tokenId  The ID of the T oken
      */
@@ -687,7 +687,7 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
 
     /**
      * @dev Removes NFT Tokens from the All-Tokens Enumerable List
-     * @param _typeId   The Type ID of the Token 
+     * @param _typeId   The Type ID of the Token
      * @param _tokenId  The ID of the Token
      */
     function _removeTokenFromAllTokensEnumeration(uint256 _typeId, uint256 _tokenId) internal {
@@ -724,4 +724,3 @@ abstract contract ERC1155 is Initializable, Common, IChargedParticlesTokenManage
     //     }
     // }
 }
-

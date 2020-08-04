@@ -4,7 +4,7 @@ const toWei = ethers.utils.parseEther
 const toEth = ethers.utils.formatEther
 const toStr = (val) => ethers.utils.toUtf8String(val).replace(/\0/g, '')
 
-const txOverrides = (options = {}) => ({gas: 4000000, ...options})
+const txOverrides = (options = {}) => ({gas: 15000000, ...options})
 
 const chainName = (chainId) => {
     switch (chainId) {
@@ -25,7 +25,9 @@ const presets = {
         ionToken: {
             URI: 'https://ipfs.io/ipfs/QmbNDYSzPUuEKa8ppv1W11fVJVZdGBUku2ZDKBqmUmyQdT',
             maxSupply: toWei('2000000'),
-            mintFee: toWei('0.0001')
+            mintFee: toWei('0.0001'),
+            name: 'Charged Atoms',
+            symbol: 'ION'
         }
     },
     EscrowManager: {

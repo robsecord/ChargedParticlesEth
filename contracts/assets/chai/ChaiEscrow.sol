@@ -43,7 +43,7 @@ contract ChaiEscrow is EscrowBase {
     }
 
     /**
-     * @notice Gets the amount of Interest that the Particle has generated representing 
+     * @notice Gets the amount of Interest that the Particle has generated representing
      *    the Charge of the Particle
      * @param _tokenUuid        The ID of the Token within the External Contract
      * @return  The amount of interest the Token has generated (in Asset Token)
@@ -92,7 +92,7 @@ contract ChaiEscrow is EscrowBase {
         //   with the victim's assets, provided the victim has approved this contract in the past.
         //   If contracts wish to energize a particle, they must first collect the asset
         //   from the user, and approve this contract to transfer from the source contract
-        _collectAssetToken(msg.sender, _assetAmount); 
+        _collectAssetToken(msg.sender, _assetAmount);
 
         // Tokenize Interest
         uint256 _interestAmount = _tokenizeInterest(_contractAddress, _assetAmount);
@@ -157,7 +157,7 @@ contract ChaiEscrow is EscrowBase {
     /**
      * @notice Releases the Full amount of Asset + Interest held within the Particle by Asset-Pair
      *    Tokens that require Burn before Release MUST call "finalizeRelease" after Burning the Token.
-     *    In such cases, the Order of Operations should be: 
+     *    In such cases, the Order of Operations should be:
      *       1. call "releaseParticle"
      *       2. Burn Token
      *       3. call "finalizeRelease"
@@ -215,7 +215,7 @@ contract ChaiEscrow is EscrowBase {
     }
 
     /**
-     * @notice Gets the amount of Interest that the Particle has generated representing 
+     * @notice Gets the amount of Interest that the Particle has generated representing
      *    the Charge of the Particle
      * @param _tokenUuid        The ID of the Token within the External Contract
      * @return  The amount of interest the Token has generated (in Asset Token)
@@ -286,7 +286,7 @@ contract ChaiEscrow is EscrowBase {
     }
 
     /**
-     * @dev Collects a Specified Asset Amount of the Asset Token from the Interest Token stored for the Particle 
+     * @dev Collects a Specified Asset Amount of the Asset Token from the Interest Token stored for the Particle
      */
     function _siphonAsset(uint256 _assetAmount) internal returns (uint256, uint256) {
         address _self = address(this);
@@ -304,7 +304,7 @@ contract ChaiEscrow is EscrowBase {
     }
 
     /**
-     * @dev Collects a Specified Interest Amount of the Asset Token from the Interest Token stored for the Particle 
+     * @dev Collects a Specified Interest Amount of the Asset Token from the Interest Token stored for the Particle
      */
     function _siphonInterest(uint256 _interestAmount) internal returns (uint256, uint256) {
         address _self = address(this);
